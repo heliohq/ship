@@ -1,6 +1,6 @@
 {
   "name": "ship",
-  "description": "Ship plugin for Claude Code - plan, review, and QA your projects",
+  "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
   "version": "1.0.0",
   "author": {
     "name": "Ship",

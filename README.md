@@ -1,6 +1,6 @@
 # Ship
 
-A Claude Code plugin for planning, reviewing, and QA of your projects.
+A comprehensive agent harness for end-to-end, large-scale software product development.
 
 ## Skills
 
