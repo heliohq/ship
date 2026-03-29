@@ -43,7 +43,11 @@ else
 fi
 
 # --- Setup (state file + repo detection + git hooks) ---
+# Only /ship:auto needs the full pipeline setup (state file, stop gate, guard).
+# Other skills (setup, debug, review, etc.) just need the pre-flight checks above.
+# Non-pipeline skills pass a known keyword; auto passes the user's task description.
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-if [ -n "$TASK_DESCRIPTION" ]; then
+NON_PIPELINE_SKILLS="setup debug refactor review clean test qa plan implement handoff"
+if [ -n "$TASK_DESCRIPTION" ] && [[ " $NON_PIPELINE_SKILLS " != *" $TASK_DESCRIPTION "* ]]; then
   bash "$SCRIPT_DIR/setup-ship-coding.sh" "$TASK_DESCRIPTION" "$CWD"
 fi
