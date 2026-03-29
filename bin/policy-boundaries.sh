@@ -113,12 +113,16 @@ check_policy_self_protection() {
   relative_path="$file"
   if [[ "$file" == "$repo_root/"* ]]; then
     relative_path="${file#$repo_root/}"
+  else
+    # Handle symlink mismatch (e.g. /tmp vs /private/tmp on macOS)
+    local alt_root="${repo_root#/private}"
+    if [[ "$file" == "$alt_root/"* ]]; then
+      relative_path="${file#$alt_root/}"
+    fi
   fi
 
   if [[ "$relative_path" == ".ship/ship.policy.json" ]] || \
-     [[ "$relative_path" == ".ship/ship.policy.base.json" ]] || \
-     [[ "$file" == "$repo_root/.ship/ship.policy.json" ]] || \
-     [[ "$file" == "$repo_root/.ship/ship.policy.base.json" ]]; then
+     [[ "$relative_path" == ".ship/ship.policy.base.json" ]]; then
     return 0
   fi
 

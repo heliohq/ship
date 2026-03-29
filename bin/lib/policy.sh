@@ -144,6 +144,9 @@ merge_policies() {
             )
         elif ($base | type) == "array" and ($repo | type) == "array" then
           $repo
+        elif ($base | type) == "string" and ($repo | type) == "string"
+          and action_rank($base) >= 0 and action_rank($repo) >= 0 then
+          stricter_action($base; $repo)
         else
           $repo
         end;
@@ -172,13 +175,38 @@ match_glob() {
   relative_path="${file_path#./}"
   candidates=("$file_path")
 
+  # Resolve symlinks for comparison (macOS /tmp → /private/tmp)
+  local resolved_path="$file_path"
+  if command -v realpath >/dev/null 2>&1; then
+    resolved_path=$(realpath "$file_path" 2>/dev/null || echo "$file_path")
+  elif [ -e "$file_path" ]; then
+    resolved_path=$(cd "$(dirname "$file_path")" 2>/dev/null && pwd -P)/$(basename "$file_path")
+  fi
+  [ "$resolved_path" != "$file_path" ] && candidates+=("$resolved_path")
+
   # Callers may pass repo-relative or absolute paths, so test both forms.
   if [ "$relative_path" != "$file_path" ]; then
     candidates+=("$relative_path")
   fi
 
+  # Strip repo root prefix to get relative path (try both original and resolved)
+  local added_relative=0
   if [[ "$file_path" == "$repo_root/"* ]]; then
     candidates+=("${file_path#$repo_root/}")
+    added_relative=1
+  fi
+  if [[ "$resolved_path" == "$repo_root/"* ]] && [ "$resolved_path" != "$file_path" ]; then
+    candidates+=("${resolved_path#$repo_root/}")
+    added_relative=1
+  fi
+  # Fallback: if repo_root is a resolved symlink (e.g. /private/tmp) but file_path
+  # uses the unresolved form (/tmp), try resolving repo_root's symlink prefix
+  if [ "$added_relative" -eq 0 ]; then
+    # Try common symlink: /private/tmp ↔ /tmp on macOS
+    local alt_root="${repo_root#/private}"
+    if [[ "$file_path" == "$alt_root/"* ]]; then
+      candidates+=("${file_path#$alt_root/}")
+    fi
   fi
 
   shopt -q extglob && extglob_was_enabled=1
