@@ -53,26 +53,51 @@ else
   TASK_DIR="$REPO_ROOT/$TASK_DIR"
 fi
 
+# ── READ POLICY ──────────────────────────────────────────────
+# Read workflow phase requirements from policy
+POLICY_JSON="$REPO_ROOT/.ship/ship.policy.json"
+
+# Defaults: all phases required (backward compatible)
+PLAN_REQUIRED="required"
+REVIEW_REQUIRED="required"
+VERIFY_REQUIRED="required"
+QA_REQUIRED="required"
+SIMPLIFY_REQUIRED="required"
+
+if [ -f "$POLICY_JSON" ]; then
+  PLAN_REQUIRED=$(jq -r '.workflow.phases.plan // "required"' "$POLICY_JSON")
+  REVIEW_REQUIRED=$(jq -r '.workflow.phases.review // "required"' "$POLICY_JSON")
+  VERIFY_REQUIRED=$(jq -r '.workflow.phases.verify // "required"' "$POLICY_JSON")
+  QA_REQUIRED=$(jq -r '.workflow.phases.qa // "required"' "$POLICY_JSON")
+  SIMPLIFY_REQUIRED=$(jq -r '.workflow.phases.simplify // "required"' "$POLICY_JSON")
+fi
+
 PROBLEMS=""
 
 # ── 1. DESIGN ARTIFACTS (Step 2) ──────────────────────────────
-if [ ! -s "$TASK_DIR/plan/spec.md" ]; then
-  PROBLEMS="${PROBLEMS}\n- plan/spec.md is missing. Go back to Step 2 (Design) — dispatch ship-plan subagent to produce the spec."
-fi
-if [ ! -s "$TASK_DIR/plan/plan.md" ]; then
-  PROBLEMS="${PROBLEMS}\n- plan/plan.md is missing. Go back to Step 2 (Design) — dispatch ship-plan subagent to produce the implementation plan."
+if [ "$PLAN_REQUIRED" = "required" ]; then
+  if [ ! -s "$TASK_DIR/plan/spec.md" ]; then
+    PROBLEMS="${PROBLEMS}\n- plan/spec.md is missing. Go back to Step 2 (Design) — dispatch ship-plan subagent to produce the spec."
+  fi
+  if [ ! -s "$TASK_DIR/plan/plan.md" ]; then
+    PROBLEMS="${PROBLEMS}\n- plan/plan.md is missing. Go back to Step 2 (Design) — dispatch ship-plan subagent to produce the implementation plan."
+  fi
 fi
 
 # ── 2. REVIEW ARTIFACT (Step 5) ──────────────────────────────
-if [ ! -s "$TASK_DIR/review.md" ]; then
-  PROBLEMS="${PROBLEMS}\n- review.md is missing. Go back to Step 5 (Review) — dispatch code review subagent to review the diff against the spec."
+if [ "$REVIEW_REQUIRED" = "required" ]; then
+  if [ ! -s "$TASK_DIR/review.md" ]; then
+    PROBLEMS="${PROBLEMS}\n- review.md is missing. Go back to Step 5 (Review) — dispatch code review subagent to review the diff against the spec."
+  fi
 fi
 
 # ── 3. VERIFY ARTIFACT (Step 6) ──────────────────────────────
-if [ ! -s "$TASK_DIR/verify.md" ]; then
-  PROBLEMS="${PROBLEMS}\n- verify.md is missing. Go back to Step 6 (Verify) — dispatch verification subagent to run tests, lint, and spec compliance."
-elif grep -qi 'spec compliance:.*FAIL\|Coverage verdict:.*FAIL' "$TASK_DIR/verify.md" 2>/dev/null; then
-  PROBLEMS="${PROBLEMS}\n- verify.md contains FAIL verdicts. Go back to Step 6 (Verify) — fix the failing checks and re-run verification."
+if [ "$VERIFY_REQUIRED" = "required" ]; then
+  if [ ! -s "$TASK_DIR/verify.md" ]; then
+    PROBLEMS="${PROBLEMS}\n- verify.md is missing. Go back to Step 6 (Verify) — dispatch verification subagent to run tests, lint, and spec compliance."
+  elif grep -qi 'spec compliance:.*FAIL\|Coverage verdict:.*FAIL' "$TASK_DIR/verify.md" 2>/dev/null; then
+    PROBLEMS="${PROBLEMS}\n- verify.md contains FAIL verdicts. Go back to Step 6 (Verify) — fix the failing checks and re-run verification."
+  fi
 fi
 
 # ── 4. PROOF EVIDENCE (Step 6) ────────────────────────────────
@@ -100,7 +125,7 @@ if [ -d "$REPO_ROOT/.git" ]; then
 fi
 
 # ── 6. QA ARTIFACT (Step 7) ──────────────────────────────────
-if [ "$HAS_CODE_CHANGES" = "true" ]; then
+if [ "$QA_REQUIRED" = "required" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then
   # Check both old path (qa.md) and new path (qa/qa.md)
   QA_FILE=""
   [ -s "$TASK_DIR/qa/qa.md" ] && QA_FILE="$TASK_DIR/qa/qa.md"
@@ -122,7 +147,7 @@ if [ "$HAS_CODE_CHANGES" = "true" ]; then
 fi
 
 # ── 7. SIMPLIFY ARTIFACT (Step 8) ────────────────────────────
-if [ "$HAS_CODE_CHANGES" = "true" ]; then
+if [ "$SIMPLIFY_REQUIRED" = "required" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then
   if [ ! -s "$TASK_DIR/simplify.md" ]; then
     PROBLEMS="${PROBLEMS}\n- simplify.md is missing but code was changed. Go back to Step 8 (Simplify) — dispatch simplify subagent for behavior-preserving cleanup."
   fi
