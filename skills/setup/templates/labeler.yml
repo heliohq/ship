@@ -1,0 +1,20 @@
+# Adapt: match labels to actual repo directory structure
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: "frontend/**"
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file: "src/**"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.md"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package-lock.json"
+          - "go.sum"
+          - "requirements*.txt"
+          - "Cargo.lock"

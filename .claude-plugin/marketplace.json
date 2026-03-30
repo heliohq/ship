@@ -1,0 +1,16 @@
+{
+  "name": "ship-marketplace",
+  "description": "Marketplace for the Ship agent harness plugin",
+  "owner": {
+    "name": "Ship",
+    "url": "https://ship.tech"
+  },
+  "plugins": [
+    {
+      "name": "ship",
+      "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
+      "version": "1.0.0",
+      "source": "./"
+    }
+  ]
+}
