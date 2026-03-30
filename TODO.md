@@ -8,6 +8,7 @@
 
 ## P1: Quality & Trust
 
+- [ ] **Bash redirection bypass** — `policy-boundaries.sh` only hooks `Write`/`Edit` tools. Bash `cat >`, `echo >`, `tee` bypass `read_only`/`no_access` rules entirely. `guard-orchestrator.sh` has redirection detection but only activates during `/ship:auto` sessions. Fix: add redirection-to-protected-path detection in `policy-operations.sh` for always-on enforcement. (`bin/policy-operations.sh`)
 - [ ] **Session learning** — Per-project `.ship/learnings.md`. After each debug/review, append what was learned. Inject at SessionStart for future sessions. Minimal viable version, not full instinct system.
 - [ ] **Dependency audit** — Beyond secrets scanning. Check AI-introduced dependencies against known vulnerability DBs. Hook into `npm audit` / `pip audit` / `go vuln`. Add to `quality.pre_commit` or as a separate PostToolUse check.
 - [ ] **Complete stub skills** — `test` (write and run tests), `clean` (dead code removal), `review` (code review). Currently stubs in `skills/`.
