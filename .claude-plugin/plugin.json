@@ -1,13 +1,13 @@
 {
   "name": "ship",
   "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": {
     "name": "Ship",
     "url": "https://ship.tech"
   },
   "homepage": "https://ship.tech",
-  "repository": "https://github.com/tryship/shipx",
+  "repository": "https://github.com/tryship/ship",
   "license": "MIT",
   "keywords": [
     "agent",
