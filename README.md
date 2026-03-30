@@ -31,23 +31,25 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 ## The Basic Workflow
 
-**setup** — Run once per repo. Detects languages and package managers, installs missing linters/formatters/type checkers/test runners, sets up CI/CD workflows, and generates AGENTS.md. Idempotent — safe to run again.
+**setup** — Bootstrap a repo for AI-ready development with Ship enforcement. Detects languages and tooling across 14 languages, generates security policy (ship.policy.json) and AI handbook (AGENTS.md). Optional modules install missing tools, configure CI/CD, and set up AI code review.
 
 **plan** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent Codex challenger for 2 rounds of adversarial review. You see the plan only after it survives falsification.
 
 **auto** — The full pipeline. Bootstraps a task directory, invokes plan, presents the design for your approval, then runs implement → review → verify → QA → simplify → handoff autonomously. The orchestrator is read-only — a guard hook blocks it from touching files. Every phase is a fresh subagent dispatch.
 
-**implement** — Executes stories one by one. Each story goes to codex for TDD implementation, then to a fresh reviewer agent for code quality + spec compliance + convention compliance. On failure: targeted fix, not re-implementation. Max 2 fix rounds per story before escalating.
+**implement** — Executes implementation stories from a plan. Codex implements each story, Claude reviews spec compliance and code correctness. Stories run sequentially.
 
-**review** — Independent code review against the spec. Dispatched as a fresh agent that has never seen the implementation context. Findings are categorized by severity; critical issues block progress.
+**review** *(Coming Soon)* — Review code for bugs, security issues, and best practices. Use when reviewing PRs, checking code quality, or analyzing changes before merging.
 
 **qa** — Starts the application, builds a rubric from the spec, and tests every acceptance criterion against the running product. Independence contract: cannot read review.md, verify.md, or plan.md. Only L1 evidence (direct observation) counts for MUST criteria. Reports verdict with fix guidance.
 
 **handoff** — Creates a PR with proof bundle (test results, lint, coverage, QA verdict, spec compliance). Then enters the post-PR loop: poll CI, fix failures, address review comments, resolve merge conflicts. Doesn't stop until the PR is merge-ready or retries are exhausted.
 
-**debug** — For when the cause is unknown. Reproduces the failure, isolates the root cause through systematic narrowing, writes the smallest fix with a mandatory regression test. No simplify pass — debug fixes should be minimal.
+**debug** *(Coming Soon)* — For when the cause is unknown. Reproduces the failure, isolates the root cause through systematic narrowing, writes the smallest fix with a mandatory regression test.
 
-**refactor** — Captures behavioral baseline first, then refactors in small incremental steps. Every step must pass existing tests before moving on. Review focuses specifically on behavior preservation, not just code quality.
+**refactor** *(Coming Soon)* — Behavior-preserving code cleanup: extraction, renaming, dead-code removal, legacy-path retirement, structural simplification.
+
+**clean** *(Coming Soon)* — Clean up dead code, unused imports, redundant abstractions, and unnecessary complexity.
 
 Skills trigger automatically based on what you're doing. The harness enforces the workflow — you don't need to remember the process.
 
@@ -57,15 +59,15 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 |-------|-------------|
 | `/ship:auto` | Full 9-phase coding pipeline: design → implement → review → verify → QA → simplify → PR |
 | `/ship:plan` | Adversarial pre-coding planning with Codex challenger (2-round convergence) |
-| `/ship:implement` | Per-story implementation with TDD, code review, and targeted fix loops |
-| `/ship:debug` | Root cause investigation and targeted repair for unknown failures |
-| `/ship:refactor` | Behavior-preserving code cleanup with baseline comparison |
+| `/ship:implement` | Execute implementation stories from a plan — Codex implements, Claude reviews |
+| `/ship:debug` | *(Coming Soon)* Root cause investigation and targeted repair for unknown failures |
+| `/ship:refactor` | *(Coming Soon)* Behavior-preserving code cleanup with baseline comparison |
 | `/ship:qa` | Independent QA evaluation: functional, exploratory, and health testing with L1 evidence |
 | `/ship:handoff` | PR creation with proof bundle, CI fix loop, and review comment resolution |
-| `/ship:setup` | Bootstrap a repo from zero to AI-ready (linters, formatters, CI/CD, AGENTS.md) |
-| `/ship:review` | Review code for bugs, security issues, and best practices |
+| `/ship:setup` | Bootstrap a repo for AI-ready development — detects 14 languages, generates ship.policy.json and AGENTS.md |
+| `/ship:review` | *(Coming Soon)* Review code for bugs, security issues, and best practices |
 | `/ship:test` | Write and run tests for code changes |
-| `/ship:clean` | Clean up dead code, unused imports, and unnecessary complexity |
+| `/ship:clean` | *(Coming Soon)* Clean up dead code, unused imports, and unnecessary complexity |
 
 ## Installation
 
