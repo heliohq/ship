@@ -1,5 +1,6 @@
 ---
 name: handoff
+version: 0.2.0
 description: >
   Use when code is ready to ship: creates a PR with proof bundle, waits for
   CI/CD, addresses review comments and merge conflicts, and iterates until
@@ -20,9 +21,10 @@ allowed-tools:
 
 # Ship: Handoff
 
-This is a **non-interactive, fully automated** workflow. Do NOT ask for
-confirmation at any step. Run straight through — create PR, fix CI,
-address reviews, resolve conflicts — and output the merge-ready PR URL.
+No routine confirmations. Escalates to user only for judgment decisions
+(architectural review comments, missing release pipeline). Run straight
+through — create PR, fix CI, address reviews, resolve conflicts — and
+output the merge-ready PR URL.
 
 ## Principal Contradiction
 
@@ -228,7 +230,7 @@ Check required artifacts exist and are non-empty:
 - `plan/spec.md`, `plan/plan.md` — if task dir has `plan/` (skip for standalone)
 - `review.md` — if task dir has it (skip for standalone)
 - `verify.md`
-- `qa.md` — only if code files changed
+- `qa/qa.md` — only if code files changed
 - `simplify.md` — only if code files changed
 
 If any required artifact missing → go back to the phase that owns it, or escalate.
@@ -251,7 +253,15 @@ If CHANGELOG.md exists:
 
 ### Step B: Create PR
 
-Build proof bundle from `proof/current/*.txt` files.
+Build proof bundle from these sources:
+
+| Check | Source file | How to read |
+|-------|------------|-------------|
+| tests | `proof/current/tests.txt` | First line: `HEAD_SHA=<sha>` |
+| lint | `proof/current/lint.txt` | First line: `HEAD_SHA=<sha>` |
+| coverage | `proof/current/coverage.txt` | First line: `HEAD_SHA=<sha>` |
+| verify | `verify.md` | First line: `<!-- VERIFY_RESULT: PASS\|FAIL -->` |
+| qa | `qa/qa.md` | First line: `<!-- QA_RESULT: ... -->` |
 
 PR body template:
 ```markdown
@@ -266,8 +276,8 @@ HEAD: `<sha>`
 | tests | PASS/FAIL | Yes/Stale |
 | lint | PASS/WARN | Yes/Stale |
 | coverage | PASS/SKIP | Yes/Stale |
+| verify | PASS/FAIL | Yes/Stale |
 | qa | PASS/FAIL/SKIP | Yes/Stale |
-| spec | PASS/FAIL | Yes/Stale |
 
 ## Test Plan
 - [x] All tests pass (<N> tests)

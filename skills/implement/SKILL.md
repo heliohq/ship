@@ -1,5 +1,6 @@
 ---
 name: implement
+version: 0.3.0
 description: Execute implementation stories from a plan. Codex implements each story via MCP, Claude reviews spec compliance and code correctness. Stories run sequentially; review must pass before the next story starts.
 allowed-tools:
   - Bash
@@ -100,7 +101,7 @@ review degrades to self-review.
 
 ## Hard Rules
 
-1. You never write code, read diffs, or run tests yourself.
+1. You never write code, read diffs for review, or run tests yourself. Coordination metadata (git rev-parse, git diff --name-only, git status) is allowed.
 2. Codex implements via MCP, not CLI. One story per session.
 3. Claude Agent reviews fresh each time — no accumulated context.
 4. Every review finding must include file:line + reproducible evidence.
@@ -261,8 +262,18 @@ in the "Prior Stories Completed" section.
 
 ## Phase 3: Cross-Story Regression
 
-After all stories pass, run `TEST_CMD` one final time. If tests fail,
-dispatch a targeted fix via Codex MCP and re-verify.
+After all stories pass, dispatch Codex MCP to run the full test suite:
+
+```
+mcp__codex__codex({
+  prompt: "Run the full test suite: <TEST_CMD>. Report PASS or FAIL with output.",
+  sandbox: "workspace-write",
+  approval-policy: "never",
+  cwd: <repo root>
+})
+```
+
+If tests fail, dispatch a targeted fix via Codex MCP and re-verify.
 
 ---
 

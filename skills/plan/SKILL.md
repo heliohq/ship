@@ -293,8 +293,10 @@ Mark as **confirmed** — independent replication increases confidence.
 ### After diff resolution:
 
 - Update `spec.md` and `plan.md` with all `patched` items.
-- If any `escalated` items exist, ask user via AskUserQuestion before
-  proceeding.
+- If any `escalated` items exist:
+  - **Standalone mode:** ask user via AskUserQuestion before proceeding.
+  - **ship:auto mode:** do NOT ask user. Treat escalated items as BLOCKED
+    and return. Auto owns the only user-approval gate (Phase 3).
 - If diff reveals a critical investigation gap (e.g., Plan B found
   important code Plan A missed entirely), go back to Phase 2 for
   targeted re-investigation. Maximum 1 re-investigation loop.

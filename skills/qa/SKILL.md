@@ -5,13 +5,6 @@ description: >
   Independent QA: starts the application, verifies spec criteria against
   the running product, explores beyond the spec for edge cases, and
   checks baseline health. Reports verdict with L1 evidence.
-allowed-tools:
-  - Bash
-  - Read
-  - Grep
-  - Glob
-  - Write
-  - Edit
 ---
 
 # Ship: QA
@@ -341,12 +334,18 @@ Floor at 0. Ceiling at 10.
 |-----------|---------|
 | Any MUST criterion FAIL | **FAIL** |
 | Any MUST with only L2 evidence | **FAIL** |
+| Any MUST SKIP due to unavailable tools | **SKIP** (untested MUST cannot be PASS) |
 | All MUST PASS + functional >= 7 | **PASS** |
 | All MUST PASS but health < 5 | **PASS_WITH_CONCERNS** |
 | No criteria evaluated | **SKIP** |
 
 Exploratory findings are reported but do not change the verdict.
 Critical exploratory findings are flagged as PASS_WITH_CONCERNS.
+
+**Tool unavailability rule:** If a MUST criterion requires a tool that
+is not available (e.g., browser for visual verification), mark it SKIP,
+not FAIL. But the overall verdict cannot be PASS when any MUST was
+skipped — it becomes SKIP. Untested MUSTs never silently become passing.
 
 ## Phase 7: Write Report
 

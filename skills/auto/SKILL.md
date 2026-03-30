@@ -8,7 +8,6 @@ description: >
 allowed-tools:
   - Bash
   - Read
-  - Write
   - Agent
   - AskUserQuestion
   - mcp__codex__codex
@@ -37,8 +36,9 @@ battles and the overall war.
 
 ```
 READ-ONLY ORCHESTRATOR.
-NEVER READ CODE, WRITE CODE, OR RUN TESTS YOURSELF.
+NEVER READ CODE, WRITE CODE, OR WRITE ARTIFACTS YOURSELF.
 DELEGATE EVERYTHING. DECIDE EVERYTHING.
+COORDINATION COMMANDS (git rev-parse, git status, mkdir) ARE ALLOWED.
 ```
 
 You delegate every phase to specialized subagents with isolated
@@ -101,15 +101,15 @@ digraph auto {
 | Orchestrator | **You (Claude)** | Read-only coordinator, no code/tests |
 | Design | **ship:plan** (subagent) | Adversarial planning with Codex |
 | Implementation | **ship:implement** (subagent) | Codex MCP implements, Claude reviews |
-| Code review | **Codex MCP** (read-only) | Different model = cross-story global review |
-| Verification | **Bash** (direct) | Mechanical: just run TEST_CMD + lint |
+| Code review | **Codex MCP** (read-only, writes review.md) | Different model = cross-story global review |
+| Verification | **Agent** (subagent, runs TEST_CMD + lint, writes verify.md) | Keeps orchestrator artifact-free |
 | QA | **ship:qa** (subagent) | Independent testing against running app |
-| Simplify | **simplify** (subagent) | Behavior-preserving cleanup |
+| Simplify | **simplify** (Claude built-in skill, via Agent) | Behavior-preserving cleanup |
 | Handoff | **ship:handoff** (subagent) | PR creation + CI loop |
 
 ## Hard Rules
 
-1. You have NO Write or Edit tools. All artifacts are produced by subagents.
+1. You have NO Write or Edit tools. All artifacts are produced by subagents or MCP calls.
 2. All codebase work goes through subagents — never read code yourself.
 3. Derive phase from artifacts on disk (see resume table).
 4. You own the decision loop — read output, decide next action.
@@ -157,7 +157,7 @@ If a task directory already exists, derive resume phase from artifacts:
 | `plan/spec.md` + `plan/plan.md` | Implement (Phase 4) |
 | `review.md` | Verify (Phase 6) |
 | `verify.md` | QA (Phase 7) |
-| `qa.md` | Simplify (Phase 8) |
+| `qa/qa.md` | Simplify (Phase 8) |
 | `simplify.md` | Handoff (Phase 9) |
 
 Output: `[Ship] Resuming task "<title>" — phase: <derived phase>`
@@ -236,34 +236,41 @@ mcp__codex__codex({
     For each issue: file:line, what's wrong, how to fix.
     If no issues: reply CLEAN.
 
-    Output format:
+    Write your full output to .ship/tasks/<task_id>/review.md.
+
+    Output format (in review.md):
     CLEAN — no issues found.
     or
     FINDINGS:
     1. [file:line] <issue> — fix: <how>
     2. ...",
-  sandbox: "read-only",
+  sandbox: "workspace-write",
   approval-policy: "never",
   cwd: <repo root>
 })
 ```
 
-Write Codex output to `.ship/tasks/<task_id>/review.md`.
-
 **After return:**
 - CLEAN → proceed to Phase 6
 - FINDINGS → fix via Codex MCP (`workspace-write`), re-review (max 3 rounds)
 
-## Phase 6: Verify (direct Bash)
+## Phase 6: Verify (Agent subagent)
 
-Run tests, linter, and type checker directly. No subagent needed —
-this is mechanical verification.
+Mechanical verification: run tests, linter, type checker. Delegated to
+a subagent to keep the orchestrator artifact-free.
 
-Write pass/fail summary to `.ship/tasks/<task_id>/verify.md`.
+```
+Agent(prompt="Run the following and write results to .ship/tasks/<task_id>/verify.md:
+  1. Tests: <TEST_CMD>
+  2. Linter: <LINT_CMD>
+  First line of verify.md must be: <!-- VERIFY_RESULT: PASS|FAIL -->
+  Then full output of each command.
+  If any command fails, result is FAIL.")
+```
 
-**After evaluation:**
-- All pass → Phase 7
-- Failure → fix via Codex MCP → re-verify (max 3 rounds, then escalate)
+**After return:** read first line of `verify.md` for PASS/FAIL.
+- PASS → Phase 7
+- FAIL → fix via Codex MCP → re-verify (max 3 rounds, then escalate)
 
 ## Phase 7: QA
 
@@ -273,7 +280,7 @@ Write pass/fail summary to `.ship/tasks/<task_id>/verify.md`.
   QA's own skip logic.
 
 ```
-Agent(prompt="Call Skill('qa'). Params: spec=<spec_path>, diff_cmd='git diff main...HEAD', output=.ship/tasks/<task_id>/qa.md, rubric_output=.ship/tasks/<task_id>/qa-rubric.md")
+Agent(prompt="Call Skill('qa'). Params: spec=<spec_path>, diff_cmd='git diff main...HEAD', output=.ship/tasks/<task_id>/qa/qa.md, rubric_output=.ship/tasks/<task_id>/qa/rubric.md")
 ```
 
 **After return:**
