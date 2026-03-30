@@ -92,35 +92,13 @@ At the bottom, include:
 
 - `Any special notes AI should know about this project? (optional, Enter to skip)`
 
-## Phase 3: Core (automatic)
+## Phase 3: Modules (per tier) — run BEFORE policy generation
 
-Always run this phase for every tier.
-
-### 3.1 Generate `.ship/ship.policy.json`
-
-- Read [templates/ship.policy.json](templates/ship.policy.json).
-- Fill `quality.pre_commit` with only `ready` tools, using the actual detected commands, never a hardcoded stack.
-- Fill `quality.require_tests` patterns from detected source and test layout.
-- Merge boundaries from the chosen tier and custom boundaries input.
-- If a policy already exists, show a diff and ask for confirmation before overwriting.
-- Use `jq` for all JSON manipulation.
-
-### 3.2 Generate `AGENTS.md`
-
-- Read [templates/agents-md.md](templates/agents-md.md).
-- Fill commands with the actual detected build, test, lint, format, and typecheck commands.
-- Fill repo map, code style, boundaries, testing notes, and gotchas from actual repo inspection.
-- Keep the generated file under 200 lines.
-- If `AGENTS.md` or `CLAUDE.md` already exists, show a diff and ask before replacing `AGENTS.md`.
-- Show the generated `AGENTS.md` to the user for review.
-
-### 3.3 Auxiliary
-
-- Create `.ship/audit/`.
-- Update `.gitignore` to include `.ship/tasks/` and `.ship/audit/`, not `.ship/` broadly.
-- Make changes atomically so partial setup does not leave broken state.
-
-## Phase 4: Modules (per tier)
+**Why modules run first:** `ship.policy.json` activates enforcement hooks
+the moment it exists. If CI/CD files or tooling configs are written after
+the policy, the policy's own `read_only` rules (e.g. `.github/workflows/**`)
+will block setup from completing. Therefore: write all files first, generate
+the policy last.
 
 Tier A runs all modules. Tier B skips all modules. Tier C runs only checked modules.
 
@@ -129,6 +107,49 @@ Tier A runs all modules. Tier B skips all modules. Tier C runs only checked modu
 | Install Tools | Read [references/tooling.md](references/tooling.md) |
 | CI/CD | Read [references/ci.md](references/ci.md) |
 | AI Code Review | Read [references/review.md](references/review.md) |
+
+After each module, commit atomically:
+```
+git add <changed files>
+git commit -m "<conventional commit message>"
+```
+
+## Phase 4: Core — generate policy and AGENTS.md last
+
+Always run this phase for every tier. This is the final phase because
+`ship.policy.json` activates enforcement hooks immediately on creation.
+
+### 4.1 Generate `AGENTS.md`
+
+- Read [templates/agents-md.md](templates/agents-md.md).
+- Fill commands with the actual detected (and newly installed) build, test, lint, format, and typecheck commands.
+- Fill repo map, code style, boundaries, testing notes, and gotchas from actual repo inspection.
+- Keep the generated file under 200 lines.
+- If `AGENTS.md` or `CLAUDE.md` already exists, show a diff and ask before replacing.
+- Show the generated `AGENTS.md` to the user for review before committing.
+
+### 4.2 Auxiliary
+
+- Create `.ship/audit/`.
+- Update `.gitignore` to include `.ship/tasks/` and `.ship/audit/`, not `.ship/` broadly.
+- Add language-specific ignores (`node_modules/`, `__pycache__/`, `.venv/`, `dist/`, etc.) if not already present.
+
+### 4.3 Generate `.ship/ship.policy.json` — LAST
+
+- Read [templates/ship.policy.json](templates/ship.policy.json).
+- Fill `quality.pre_commit` with only `ready` tools (including newly installed ones), using actual detected commands.
+- Fill `quality.require_tests` patterns from detected source and test layout.
+- Merge boundaries from the chosen tier and custom boundaries input.
+- If a policy already exists, show a diff and ask for confirmation before overwriting.
+- Use `jq` for all JSON manipulation.
+
+### 4.4 Commit
+
+Commit all core files atomically:
+```
+git add AGENTS.md .ship/ .gitignore
+git commit -m "feat: generate ship policy and AGENTS.md"
+```
 
 ## Done
 
