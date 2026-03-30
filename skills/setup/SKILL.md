@@ -102,6 +102,9 @@ the policy last.
 
 Tier A runs all modules. Tier B skips all modules. Tier C runs only checked modules.
 
+**Hard rule:** Execute ONLY the modules the user selected. Never run a
+module the user did not check. This is not a suggestion — it is a gate.
+
 | Module | Action |
 |---|---|
 | Install Tools | Read [references/tooling.md](references/tooling.md) |
