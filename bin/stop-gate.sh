@@ -53,9 +53,9 @@ else
   TASK_DIR="$REPO_ROOT/$TASK_DIR"
 fi
 
-# ── READ POLICY ──────────────────────────────────────────────
-# Read workflow phase requirements from policy
-POLICY_JSON="$REPO_ROOT/.ship/ship.policy.json"
+# ── READ WORKFLOW CONFIG ─────────────────────────────────────
+# Read workflow phase requirements from rules.json
+RULES_JSON="$REPO_ROOT/.ship/rules/rules.json"
 
 # Defaults: all phases required (backward compatible)
 PLAN_REQUIRED="required"
@@ -64,12 +64,12 @@ VERIFY_REQUIRED="required"
 QA_REQUIRED="required"
 SIMPLIFY_REQUIRED="required"
 
-if [ -f "$POLICY_JSON" ]; then
-  PLAN_REQUIRED=$(jq -r '.workflow.phases.plan // "required"' "$POLICY_JSON")
-  REVIEW_REQUIRED=$(jq -r '.workflow.phases.review // "required"' "$POLICY_JSON")
-  VERIFY_REQUIRED=$(jq -r '.workflow.phases.verify // "required"' "$POLICY_JSON")
-  QA_REQUIRED=$(jq -r '.workflow.phases.qa // "required"' "$POLICY_JSON")
-  SIMPLIFY_REQUIRED=$(jq -r '.workflow.phases.simplify // "required"' "$POLICY_JSON")
+if [ -f "$RULES_JSON" ]; then
+  PLAN_REQUIRED=$(jq -r '.workflow.phases.plan // "required"' "$RULES_JSON")
+  REVIEW_REQUIRED=$(jq -r '.workflow.phases.review // "required"' "$RULES_JSON")
+  VERIFY_REQUIRED=$(jq -r '.workflow.phases.verify // "required"' "$RULES_JSON")
+  QA_REQUIRED=$(jq -r '.workflow.phases.qa // "required"' "$RULES_JSON")
+  SIMPLIFY_REQUIRED=$(jq -r '.workflow.phases.simplify // "required"' "$RULES_JSON")
 fi
 
 PROBLEMS=""
