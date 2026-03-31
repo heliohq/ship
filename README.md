@@ -8,7 +8,7 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 
 **The problem Ship solves:** AI coding agents are capable but unreliable. They skip tests, hallucinate about code they haven't read, review their own work and call it good, and declare victory without evidence. Ship makes these failure modes structurally impossible.
 
-**The orchestrator is read-only.** A shell hook (`guard-orchestrator.sh`) mechanically blocks the orchestrator from writing files, reading diffs, or running tests. It can only READ, DECIDE, and DELEGATE. This isn't a suggestion — it's enforced at the tool level. The orchestrator's sole job is to dispatch fresh subagents with precisely crafted context and decide what to do with their output.
+**Quality gates at every transition.** The `stop-gate.sh` hook prevents the orchestrator from exiting until all pipeline phases are complete. Each phase produces artifacts that the next phase consumes — no shortcuts, no skipped steps.
 
 **Every phase is an isolated subagent.** The reviewer has never seen the implementation context. The QA evaluator is contractually forbidden from reading the review or verification artifacts — it can only look at the spec and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
 

@@ -228,10 +228,7 @@ The following components are replaced and can be removed:
 | `merge_policies` logic | Not needed (no org inheritance) |
 
 Retained components:
-- `bin/guard-orchestrator.sh` — workflow enforcement (orthogonal to rules)
 - `bin/stop-gate.sh` — phase enforcement (orthogonal to rules)
-- `bin/post-compact.sh` — state re-injection (orthogonal to rules)
-- `bin/audit-logger.sh` — optional, AI decides during setup if needed
 
 ## What Ship Provides vs What AI Generates
 

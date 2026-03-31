@@ -13,7 +13,7 @@
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `bin/` | Shell scripts | Workflow hooks (stop-gate, guard-orchestrator, audit-logger) |
+| `bin/` | Shell scripts | Workflow hooks (stop-gate) and utilities (task-id) |
 | `hooks/` | `hooks.json` | Plugin-level hook registration (Stop only) |
 | `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:plan, etc.) |
 | `skills/setup/templates/` | Config templates | CI, Dependabot, labeler, AGENTS.md template |
@@ -30,9 +30,7 @@ Two independent layers:
 - Toggled via `/ship:harness` and `/ship:unharness`
 
 **Workflow layer (opt-in via /ship:auto):** Fires only during ship-coding sessions.
-- `guard-orchestrator.sh` — blocks orchestrator from writing files (read-only enforcement)
 - `stop-gate.sh` — blocks session exit until all pipeline artifacts are complete
-- `post-compact.sh` — re-injects task state after context compaction
 
 ## Code Style
 

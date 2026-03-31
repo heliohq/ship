@@ -312,13 +312,7 @@ Merge two hook entries into `.claude/settings.json`:
 
 If `.claude/settings.json` already exists, merge hooks and preserve existing entries.
 
-### Step G: Optionally generate audit hook
-
-If the project would benefit from audit logging (enterprise,
-compliance-sensitive), add a `PostToolUse` hook calling
-`bash bin/audit-logger.sh`.
-
-### Step H: Commit
+### Step G: Commit
 
 ```
 git add AGENTS.md .ship/ .claude/settings.json .gitignore
@@ -358,7 +352,7 @@ AGENTS.md            — AI handbook for this repo
 
 End with an outcome-oriented summary:
 
-- `Security`: structural and semantic rules generated, hooks active, audit path ready
+- `Security`: structural and semantic rules generated, hooks active
 - `Quality`: detected checks enforced, warnings for anything still missing
 - `CI/CD`: include only if configured
 - `Documentation`: AGENTS.md generated or updated

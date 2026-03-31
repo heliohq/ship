@@ -14,7 +14,6 @@
 
 - [ ] **Agent hook cost optimization** — Every Write/Edit triggers Haiku for semantic rules. Investigate debouncing, batching, or scope-based filtering to reduce cost on high-frequency edit sessions.
 - [ ] **Rule evolution** — When the codebase evolves, rules may become stale. Add `/ship:harness-update` skill to re-scan and propose rule changes.
-- [ ] **Register guard-orchestrator.sh and post-compact.sh** — These scripts exist but have no hook registration. Pre-existing gap discovered during Harness v2 migration.
 
 ## P2: Ecosystem
 
