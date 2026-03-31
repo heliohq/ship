@@ -107,7 +107,7 @@ digraph auto {
 | Orchestrator | **You (Claude)** | Read-only coordinator, no code/tests |
 | Design | **ship:plan** (subagent) | Adversarial planning with Codex |
 | Implementation | **ship:implement** (subagent) | Codex MCP implements, Claude reviews |
-| Code review | **Codex MCP** (read-only, writes review.md) | Different model = cross-story global review |
+| Code review | **ship:review** (subagent) | Staff-engineer review: find all bugs + diagnose structural deficiencies |
 | Verification | **Agent** (subagent, runs TEST_CMD + lint, writes verify.md) | Keeps orchestrator artifact-free |
 | QA | **ship:qa** (subagent) | Independent testing against running app |
 | Simplify | **simplify** (Claude built-in skill, via Agent) | Behavior-preserving cleanup |
@@ -130,7 +130,7 @@ digraph auto {
 | Design → Approval | spec.md + plan.md non-empty on disk | Escalate BLOCKED |
 | Approval → Implement | User said "proceed" | Wait or re-design |
 | Implement → Review | New commits exist (HEAD advanced) | Escalate BLOCKED |
-| Review → Verify | Review clean (no findings) | Fix → re-review (max 3) |
+| Review → Verify | No bugs in review.md | Fix → re-review (max 3) |
 | Verify → QA | Tests + lint pass | Fix → re-verify (max 3) |
 | QA → Simplify | QA PASS or SKIP | Fix → re-verify → re-QA (max 2) |
 | Simplify → Handoff | Tests still pass after simplify | Revert simplify, proceed |
@@ -221,48 +221,19 @@ Agent(prompt="Call Skill('ship-dev'). Params: task_dir=.ship/tasks/<task_id>, sp
 
 Output: `[Ship] All stories implemented. Starting code review...`
 
-## Phase 5: Review (Codex MCP, independent)
+## Phase 5: Review (ship:review, independent)
 
 Global code review across all stories. Implement's per-story review
-catches story-level issues; this catches cross-story problems
-(duplication, inconsistency, global architectural issues).
-
-Dispatch Codex MCP in read-only mode:
+catches story-level issues; this catches cross-story bugs and
+diagnoses the structural deficiencies that breed them.
 
 ```
-mcp__codex__codex({
-  prompt: "You are an independent code reviewer. Read the spec and
-    the full diff, then report issues.
-
-    Spec: .ship/tasks/<task_id>/plan/spec.md
-    Diff: run git diff main...HEAD
-
-    Report ONLY issues that are:
-    - Spec violations (feature missing or wrong)
-    - Cross-file inconsistencies (duplicate logic, naming conflicts)
-    - Runtime errors (with triggering scenario)
-    - Security vulnerabilities (with attack vector)
-
-    For each issue: file:line, what's wrong, how to fix.
-    If no issues: reply CLEAN.
-
-    Write your full output to .ship/tasks/<task_id>/review.md.
-
-    Output format (in review.md):
-    CLEAN — no issues found.
-    or
-    FINDINGS:
-    1. [file:line] <issue> — fix: <how>
-    2. ...",
-  sandbox: "workspace-write",
-  approval-policy: "never",
-  cwd: <repo root>
-})
+Agent(prompt="Call Skill('ship-review'). Params: spec=.ship/tasks/<task_id>/plan/spec.md, task_id=<task_id>, task_dir=.ship/tasks/<task_id>, base_branch=<base>")
 ```
 
-**After return:**
-- CLEAN → proceed to Phase 6
-- FINDINGS → fix via Codex MCP (`workspace-write`), re-review (max 3 rounds)
+**After return:** read `.ship/tasks/<task_id>/review.md`.
+- No bugs → proceed to Phase 6
+- Bugs found → fix via Codex MCP, re-review (max 3 rounds)
 
 ## Phase 6: Verify (Agent subagent)
 

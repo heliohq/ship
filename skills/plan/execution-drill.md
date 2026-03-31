@@ -9,7 +9,6 @@ Use a **new** `mcp__codex__codex` session (not the Plan B thread).
 ```
 mcp__codex__codex({
   prompt: <prompt below, with <task_id> filled in>,
-  sandbox: "read-only",
   approval-policy: "never",
   cwd: <repo root>
 })

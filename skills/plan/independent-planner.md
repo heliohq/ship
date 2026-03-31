@@ -7,7 +7,6 @@ Used in Phase 4 of `/ship-plan`. Codex produces Plan B independently.
 ```
 mcp__codex__codex({
   prompt: <prompt below, with <original task description> filled in>,
-  sandbox: "read-only",
   approval-policy: "never",
   cwd: <repo root>
 })

@@ -338,7 +338,6 @@ Max 2 rounds — after that, escalate.
        - Fix ONLY the CI failures. Do not refactor.
        - Run tests after fixing: <TEST_CMD>
        - Commit with conventional commits.",
-     sandbox: "workspace-write",
      approval-policy: "never",
      cwd: <repo root>
    })

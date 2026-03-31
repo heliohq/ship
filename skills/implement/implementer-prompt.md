@@ -7,7 +7,6 @@ Used in Phase 2 Step A of `/ship-dev`. Codex implements one story.
 ```
 mcp__codex__codex({
   prompt: <prompt below, with all placeholders filled>,
-  sandbox: "workspace-write",
   approval-policy: "never",
   cwd: <repo root>
 })

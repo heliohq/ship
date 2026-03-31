@@ -7,7 +7,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:ship-auto`](#ship-auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to merge-ready PR. Delegates every phase to fresh subagents with quality gates at every transition. You approve the plan once; it handles the rest. |
 | [`/ship:ship-plan`](#ship-plan) | **Adversarial Planner** | Reads your codebase, writes a plan, then hands it to an independent Codex challenger. Two rounds of adversarial review. A blind execution drill. You see the plan only after it survives falsification. |
 | [`/ship:ship-dev`](#ship-dev) | **Implementation Engine** | Executes stories from a plan. Codex writes code, Claude reviews — different models catching each other's blind spots. Stories run sequentially; review must pass before the next one starts. |
-| [`/ship:ship-review`](#ship-review) | **Staff Engineer** | Review code for bugs, security issues, and best practices. Structural audit, not style nitpicks. |
+| [`/ship:ship-review`](#ship-review) | **Staff Engineer** | Find every bug in the diff, then diagnose the structural deficiency that breeds them. Bugs are symptoms — the structural crack is the disease. |
 | [`/ship:ship-qa`](#ship-qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:ship-handoff`](#ship-handoff) | **Release Engineer** | Creates a PR with a proof bundle, then enters the fix loop: CI failures, review comments, merge conflicts. Doesn't stop until the PR is merge-ready or retries are exhausted. |
 | [`/ship:ship-refactor`](#ship-refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Writes a refactor spec, then hands off to auto for execution. |
@@ -43,7 +43,7 @@ Plan → Approve → Dev → Review → Verify → QA → Simplify → Handoff
 2. **Design** — invoke `ship-plan` for adversarial planning
 3. **Approve** — present the plan to you. This is the only human gate.
 4. **Dev** — invoke `ship-dev` to execute implementation stories
-5. **Review** — independent code review via Codex MCP
+5. **Review** — invoke `ship-review` for staff-engineer code review
 6. **Verify** — run tests + lint. Up to 3 retry rounds.
 7. **QA** — invoke `ship-qa` against the running application
 8. **Simplify** — behavior-preserving cleanup (dead code, redundant abstractions)
@@ -233,20 +233,15 @@ Claude: [Dev] Reading plan: 3 stories for rate-limit-upload
 
 ## `ship-review`
 
-This is the **paranoid staff engineer**.
+This is the **staff engineer who finds the disease, not just the symptoms**.
 
-Code review isn't about style. It's about asking: **what can still break?**
+Code review has two jobs:
 
-Ship's review looks for the class of bugs that survive CI but explode in production:
+1. **Find every bug.** The class of bugs that survive CI but explode in production: N+1 queries, race conditions, trust boundary violations, missing error handling on partial failures, tests that test the wrong thing, forgotten enum handlers when new values are added. All of them, with file:line + triggering scenario.
 
-- N+1 queries hiding behind pagination
-- Race conditions in concurrent write paths
-- Trust boundary violations (user input flowing into privileged operations)
-- Missing error handling on partial failures
-- Tests that pass while testing the wrong thing
-- Forgotten enum handlers when new values are added
+2. **Diagnose the structural deficiency.** Bugs cluster around structural weaknesses — a missing validation boundary, shared mutable state without ownership, a trust boundary in the wrong layer. The review identifies the ONE structural crack that breeds the bug cluster. Fix the crack, and a class of bugs disappears — not just the ones caught today, but the ones that would have appeared in the next PR.
 
-Obvious mechanical fixes (dead code, stale comments, missing null checks) are applied automatically. Genuinely ambiguous issues (architecture decisions, security tradeoffs) are surfaced for your call.
+This is the principal contradiction applied to code review: bugs are the many contradictions, and the structural deficiency is the principal contradiction whose existence determines the others.
 
 ---
 

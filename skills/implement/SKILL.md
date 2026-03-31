@@ -167,10 +167,11 @@ For each story i/N:
   1. Record STORY_START_SHA = current HEAD
   2. Codex implements (MCP) → commit(s)
   3. Record STORY_HEAD_SHA = current HEAD
-  4. Claude reviews (fresh Agent) → verdict
+  4. ⛔ MANDATORY: Dispatch fresh Claude Agent reviewer → verdict
      PASS → step 5
      PASS_WITH_CONCERNS → record concerns → step 5
      FAIL → targeted fix (max 2 rounds) → re-review
+     *** DO NOT skip this step. Implementation ≠ completion. ***
   5. Record cross-story context → next story
 ```
 
@@ -188,7 +189,6 @@ CODE_CONDUCT, TEST_CMD) before dispatch.
 ```
 mcp__codex__codex({
   prompt: <filled implementer prompt>,
-  sandbox: "workspace-write",
   approval-policy: "never",
   cwd: <repo root>
 })
@@ -199,10 +199,24 @@ After Codex returns, save the `threadId` for potential targeted fixes.
 2. If `STORY_HEAD_SHA == STORY_START_SHA` and status is DONE → treat as
    BLOCKED (claimed done but made no commits).
 3. If BLOCKED or NEEDS_CONTEXT → escalate to caller.
-4. If DONE_WITH_CONCERNS → log concerns, proceed to review.
-5. Otherwise → proceed to Step B.
+4. If DONE_WITH_CONCERNS → log concerns.
 
-### Step B: Review
+**⛔ MANDATORY GATE — DO NOT ADVANCE TO NEXT STORY**
+
+Implementation complete does NOT mean story complete.
+You MUST now dispatch a fresh Claude Agent reviewer (Step B).
+A story is only complete when the reviewer returns PASS.
+
+```
+Story complete = implement ✓ AND review PASS ✓
+Story complete ≠ implement ✓ alone
+```
+
+Skipping review is the #1 failure mode of this skill. If you are
+about to move to the next story without dispatching a reviewer Agent,
+STOP. You are making a mistake.
+
+### Step B: Review (MANDATORY)
 
 Dispatch a fresh Claude Agent using the prompt template in `reviewer-prompt.md`.
 Fill all placeholders (story number, SHAs, TEST_CMD, spec requirements,
@@ -273,7 +287,6 @@ After all stories pass, dispatch Codex MCP to run the full test suite:
 ```
 mcp__codex__codex({
   prompt: "Run the full test suite: <TEST_CMD>. Report PASS or FAIL with output.",
-  sandbox: "workspace-write",
   approval-policy: "never",
   cwd: <repo root>
 })
@@ -319,6 +332,107 @@ Use `[Implement]` prefix for all status output:
 | Codex crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
 | Agent dispatch failure | Retry once, then BLOCKED |
 
+## Example Workflow
+
+```
+[Implement] Starting — 3 stories, test cmd: npm test
+
+── Story 1/3: "Add user model" ──────────────────────────
+
+[Implement] Story 1/3: recording start SHA...
+  STORY_START_SHA = abc1234
+
+[Implement] Story 1/3: dispatching Codex via MCP...
+  mcp__codex__codex({ prompt: <filled implementer-prompt.md>, ... })
+  Codex returns: DONE (threadId: thread_abc)
+
+[Implement] Story 1/3: checking commits...
+  STORY_HEAD_SHA = def5678
+  abc1234 != def5678 → commits exist ✓  (GATE PASSED)
+
+[Implement] Story 1/3: dispatching fresh Claude Agent reviewer...
+  Agent({ prompt: <filled reviewer-prompt.md> })
+  Reviewer returns: PASS
+
+[Implement] Story 1/3: PASS. Recording context:
+  Story 1: "Add user model"
+    Commits: abc1234..def5678 (2 commits)
+    Files: src/models/user.ts, tests/user.test.ts
+    Concerns: none
+
+── Story 2/3: "Wire API endpoints" ──────────────────────
+
+[Implement] Story 2/3: recording start SHA...
+  STORY_START_SHA = def5678
+
+[Implement] Story 2/3: dispatching Codex via MCP...
+  Codex returns: DONE (threadId: thread_def)
+
+[Implement] Story 2/3: checking commits...
+  STORY_HEAD_SHA = ghi9012
+  def5678 != ghi9012 → commits exist ✓  (GATE PASSED)
+
+[Implement] Story 2/3: dispatching fresh Claude Agent reviewer...
+  Reviewer returns: FAIL
+    - Missing input validation on POST /users (spec requires email format check)
+    - No error response for duplicate usernames
+
+[Implement] Story 2/3: FAIL — targeted fix (round 1/2)...
+  mcp__codex__codex-reply({
+    threadId: thread_def,
+    prompt: "Fix these issues: <reviewer findings verbatim>..."
+  })
+  Codex applies fix, commits.
+
+[Implement] Story 2/3: fix applied. Updating SHA...
+  STORY_HEAD_SHA = jkl3456
+
+[Implement] Story 2/3: re-reviewing with FRESH Claude Agent...
+  Reviewer returns: PASS
+
+[Implement] Story 2/3: PASS (2 rounds). Recording context.
+
+── Story 3/3: "Add auth middleware" ─────────────────────
+
+[Implement] Story 3/3: recording start SHA...
+  STORY_START_SHA = jkl3456
+
+[Implement] Story 3/3: dispatching Codex via MCP...
+  Codex returns: DONE_WITH_CONCERNS ("jwt secret should be env var, currently hardcoded in test fixtures")
+
+[Implement] Story 3/3: checking commits...
+  STORY_HEAD_SHA = mno7890
+  jkl3456 != mno7890 → commits exist ✓  (GATE PASSED)
+
+[Implement] Story 3/3: DONE_WITH_CONCERNS — logging concern, proceeding to review...
+
+[Implement] Story 3/3: dispatching fresh Claude Agent reviewer...
+  Reviewer returns: PASS_WITH_CONCERNS (test fixtures use hardcoded secret)
+
+[Implement] Story 3/3: PASS_WITH_CONCERNS. Appending to concerns.md.
+
+── Phase 3: Cross-Story Regression ──────────────────────
+
+[Implement] All stories complete. Running full test suite...
+  mcp__codex__codex({ prompt: "Run: npm test. Report PASS or FAIL." })
+  Codex returns: PASS (47 tests, 0 failures)
+
+[Implement] DONE_WITH_CONCERNS — 3/3 stories implemented, reviewed, committed. 1 concern recorded.
+```
+
+### What This Shows
+
+| Principle | How the example enforces it |
+|-----------|---------------------------|
+| **Never skip commit check** | Every story shows SHA comparison before review |
+| **Never skip review** | Every story dispatches a fresh Agent reviewer |
+| **Fresh reviewer each time** | Re-review after fix uses a NEW Agent, not the same one |
+| **Targeted fix, not re-implement** | FAIL → `codex-reply` on same thread with surgical instructions |
+| **Sequential stories** | Story 2 starts only after Story 1 is PASS |
+| **Gate enforcement** | Each gate check shown explicitly with ✓ |
+| **Concerns are logged, not ignored** | DONE_WITH_CONCERNS → recorded → review still happens |
+| **Cross-story regression** | Full test suite runs after all stories, not just the last |
+
 ## Completion
 
 Report one of:
@@ -328,12 +442,16 @@ Report one of:
 - **NEEDS_CONTEXT** — missing information needed from user.
 
 <Bad>
+- **ADVANCING TO NEXT STORY WITHOUT DISPATCHING A REVIEWER AGENT** ← #1 failure mode
+- Treating Codex returning DONE as "story complete" — it is NOT, review is still required
+- Skipping review because "Codex's self-review looked good"
+- Skipping review because "the implementation looks straightforward"
+- Skipping review because "we're running low on context"
+- Starting the next story before the current story's review returns PASS
 - Writing code yourself instead of dispatching Codex
 - Reading the diff yourself instead of dispatching a fresh Agent reviewer
 - Running tests yourself instead of letting Codex/reviewer handle it
 - Falling back to "I'll just do it myself" when Codex is slow — report BLOCKED
-- Skipping review because "Codex's self-review looked good"
-- Starting the next story before the current story's review passes
 - Running multiple implementation dispatches in parallel
 - Doing a full re-implementation on FAIL instead of a targeted fix
 - Letting Codex modify tests to make them pass instead of fixing code
