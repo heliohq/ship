@@ -52,9 +52,6 @@ semantic enforcement only, delegating deterministic checks to existing linters.
 If you used `/ship:setup` before:
 1. Run `/ship:setup-infra` to configure tooling and CI/CD
 2. Run `/ship:setup-harness` to discover conventions and generate AGENTS.md
-3. Old `.ship/rules/structural/` and `.ship/rules/rules.json` can be deleted
-4. Old hook entries referencing `enforce-structural.sh` will be replaced by
-   `/ship:harness`
 
 ## [2.0.0] - 2026-03-31
 
