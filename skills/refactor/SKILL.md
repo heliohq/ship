@@ -14,8 +14,11 @@ allowed-tools:
   - Glob
   - Agent
   - AskUserQuestion
-init_command: SHIP_SKILL_NAME=ship-refactor source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ---
+
+```bash
+SHIP_SKILL_NAME=ship-refactor source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
+```
 
 # Ship: Refactor
 
