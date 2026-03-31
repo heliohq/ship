@@ -31,7 +31,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 ## The Basic Workflow
 
-**setup** — Bootstrap a repo for AI-ready development with Ship enforcement. Detects languages and tooling across 14 languages, generates security policy (ship.policy.json) and AI handbook (AGENTS.md). Optional modules install missing tools, configure CI/CD, and set up AI code review.
+**setup** — Bootstrap a repo for AI-ready development with Ship enforcement. Detects languages and tooling across 14 languages, generates AI-driven coding convention rules (.ship/rules/) and AI handbook (AGENTS.md). Optional modules install missing tools, configure CI/CD, and set up AI code review.
 
 **plan** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent Codex challenger for 2 rounds of adversarial review. You see the plan only after it survives falsification.
 
@@ -64,7 +64,9 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 | `/ship:refactor` | *(Coming Soon)* Behavior-preserving code cleanup with baseline comparison |
 | `/ship:qa` | Independent QA evaluation: functional, exploratory, and health testing with L1 evidence |
 | `/ship:handoff` | PR creation with proof bundle, CI fix loop, and review comment resolution |
-| `/ship:setup` | Bootstrap a repo for AI-ready development — detects 14 languages, generates ship.policy.json and AGENTS.md |
+| `/ship:setup` | Bootstrap a repo for AI-ready development — detects 14 languages, generates .ship/rules/ and AGENTS.md |
+| `/ship:harness` | Activate AI harness enforcement — registers rule hooks in .claude/settings.json |
+| `/ship:unharness` | Deactivate AI harness enforcement — removes rule hooks, preserves rule files |
 | `/ship:review` | *(Coming Soon)* Review code for bugs, security issues, and best practices |
 | `/ship:test` | Write and run tests for code changes |
 | `/ship:clean` | *(Coming Soon)* Clean up dead code, unused imports, and unnecessary complexity |

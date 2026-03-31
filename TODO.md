@@ -2,16 +2,19 @@
 
 ## P0: Enterprise Core
 
-- [ ] **CI gate GitHub Action** — PR-level policy verification. Validates: policy.base.json not tampered (checksum), repo policy doesn't relax base rules, AI-generated code passes all policy checks. Prevents local bypass. (`skills/setup/templates/ci-ship-policy.yml`)
-- [ ] **Rules system** — Machine-executable coding standards per org. Import org conventions, enforce during review phase, generate compliance report. Not prompt hints — enforceable rules checked by hooks. (`bin/policy-rules.sh`, `.ship/rules/`)
 - [ ] **Org-level setup** — `ship init --org` generates org config, `ship init --repo` inherits. Batch onboarding for 30+ repos. Onboarding status tracking.
 
 ## P1: Quality & Trust
 
-- [ ] **Bash redirection bypass** — `policy-boundaries.sh` only hooks `Write`/`Edit` tools. Bash `cat >`, `echo >`, `tee` bypass `read_only`/`no_access` rules entirely. `guard-orchestrator.sh` has redirection detection but only activates during `/ship:auto` sessions. Fix: add redirection-to-protected-path detection in `policy-operations.sh` for always-on enforcement. (`bin/policy-operations.sh`)
 - [ ] **Session learning** — Per-project `.ship/learnings.md`. After each debug/review, append what was learned. Inject at SessionStart for future sessions. Minimal viable version, not full instinct system.
 - [ ] **Dependency audit** — Beyond secrets scanning. Check AI-introduced dependencies against known vulnerability DBs. Hook into `npm audit` / `pip audit` / `go vuln`. Add to `quality.pre_commit` or as a separate PostToolUse check.
 - [ ] **Complete stub skills** — `test` (write and run tests), `clean` (dead code removal), `review` (code review). Currently stubs in `skills/`.
+
+## Harness v2 Follow-up
+
+- [ ] **Agent hook cost optimization** — Every Write/Edit triggers Haiku for semantic rules. Investigate debouncing, batching, or scope-based filtering to reduce cost on high-frequency edit sessions.
+- [ ] **Rule evolution** — When the codebase evolves, rules may become stale. Add `/ship:harness-update` skill to re-scan and propose rule changes.
+- [ ] **Register guard-orchestrator.sh and post-compact.sh** — These scripts exist but have no hook registration. Pre-existing gap discovered during Harness v2 migration.
 
 ## P2: Ecosystem
 
@@ -65,8 +68,8 @@
 
 | Decision | Choice | Why |
 |----------|--------|-----|
-| Policy format | JSON (not YAML) | jq-only dependency, no PyYAML/yq needed |
-| Policy location | `.ship/ship.policy.json` | Git-tracked, PR-reviewable |
+| Rule format | JSON (not YAML) | jq-only dependency, no PyYAML/yq needed |
+| Policy location | `.ship/rules/rules.json` | Git-tracked, PR-reviewable |
 | Action model | block / warn / allow | block=absolute, warn=human confirm+audit, allow=unrestricted |
 | Action granularity | Section default + per-rule override | CTO sets defaults, exceptions where needed |
 | Policy self-protection | warn (not block) | AI can propose changes, human approves |

@@ -143,7 +143,7 @@ Bash("mkdir -p .ship/tasks/<task_id>")
 
 Detect languages, lint config, test command. Record `TASK_ID` and `TASK_DIR`.
 
-- If `.ship/ship.policy.json` is missing: suggest `/setup` but do not block.
+- If `.ship/rules/rules.json` is missing: suggest `/setup` but do not block.
 
 Output: `[Ship] Task "<title>" created. Starting design phase...`
 
