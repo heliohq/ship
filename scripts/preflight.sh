@@ -3,32 +3,35 @@ set -u
 
 # Ship preflight — sourced by each skill before execution.
 # Checks CLI install, auth, version updates, and repo context.
-# Usage: source "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh"
 
 _SKILL_NAME="${SHIP_SKILL_NAME:-unknown}"
 
 # --- Ship CLI check ---
 if command -v ship >/dev/null 2>&1; then
-  _CLI_VERSION=$(ship --version 2>/dev/null || echo "unknown")
-  echo "SHIP_CLI: $_CLI_VERSION"
-
-  # Check for updates
-  _LATEST=$(curl -fsSL --max-time 3 https://ship.tech/version.txt 2>/dev/null || true)
-  if [ -n "$_LATEST" ] && [ "$_LATEST" != "$_CLI_VERSION" ]; then
-    echo "SHIP_UPDATE_AVAILABLE: $_LATEST (current: $_CLI_VERSION)"
-    echo "UPDATE_HINT: Run 'curl -fsSL https://ship.tech/install.sh | sh' to update."
-  fi
-
-  # Check auth status
-  if ship auth status >/dev/null 2>&1; then
-    echo "SHIP_AUTH: logged_in"
+  _CLI_VERSION=$(ship --version 2>/dev/null)
+  if [ $? -ne 0 ] || [ -z "$_CLI_VERSION" ]; then
+    echo "SHIP_CLI: broken"
+    echo "ACTION_REQUIRED: Ship CLI is installed but broken. Reinstall: curl -fsSL https://ship.tech/install.sh | sh"
   else
-    echo "SHIP_AUTH: not_logged_in"
-    echo "ACTION_REQUIRED: User must run 'ship auth login' before using /ship:$_SKILL_NAME."
+    echo "SHIP_CLI: $_CLI_VERSION"
+
+    # Check for updates
+    _LATEST=$(curl -fsSL --max-time 3 https://ship.tech/version.txt 2>/dev/null || true)
+    if [ -n "$_LATEST" ] && [ "$_LATEST" != "$_CLI_VERSION" ]; then
+      echo "SHIP_UPDATE: $_LATEST available (current: $_CLI_VERSION). Run: curl -fsSL https://ship.tech/install.sh | sh"
+    fi
+
+    # Check auth status
+    if ship auth status >/dev/null 2>&1; then
+      echo "SHIP_AUTH: logged_in"
+    else
+      echo "SHIP_AUTH: not_logged_in"
+      echo "ACTION_REQUIRED: Run 'ship auth login' before using /ship:$_SKILL_NAME."
+    fi
   fi
 else
   echo "SHIP_CLI: not_installed"
-  echo "ACTION_REQUIRED: Ship CLI not found. Ask user if they want to install via: curl -fsSL https://ship.tech/install.sh | sh"
+  echo "ACTION_REQUIRED: Ship CLI not found. Ask user to install: curl -fsSL https://ship.tech/install.sh | sh"
 fi
 
 # --- Repo context ---
