@@ -108,8 +108,10 @@ digraph refactor {
 Generate task_id:
 ```bash
 TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/bin/task-id.sh "<description>")
-mkdir -p .ship/tasks/$TASK_ID/plan
 ```
+
+Artifacts go to `.ship/tasks/$TASK_ID/plan/`. The Write tool creates
+directories automatically — no mkdir needed.
 
 Output: `[Refactor] Task "<title>" created (task_id: <task_id>).`
 

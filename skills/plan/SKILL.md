@@ -129,15 +129,13 @@ Defects are caught at source, never passed downstream.
 ### Task ID
 
 1. If invoked by ship:auto, the task_id is provided.
-   Create the plan directory if it doesn't exist:
-   ```bash
-   mkdir -p .ship/tasks/<task_id>/plan
-   ```
 2. If invoked standalone, generate `task_id` using the shared script:
    ```bash
    TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/bin/task-id.sh "<description>")
-   mkdir -p .ship/tasks/$TASK_ID/plan
    ```
+
+Artifacts go to `.ship/tasks/<task_id>/plan/`. The Write tool creates
+directories automatically — no mkdir needed.
 
 ### Existing spec.md detection
 
