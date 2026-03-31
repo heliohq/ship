@@ -3,8 +3,9 @@ name: setup
 version: 1.1.0
 description: >
   Bootstrap a repo for AI-ready development with Ship enforcement.
-  Detects languages and tooling across 14 languages, generates security
-  policy (ship.policy.json) and AI handbook (AGENTS.md). Optional modules
+  Detects languages and tooling across 14 languages, generates
+  AI-driven coding convention rules (.ship/rules/) and AI handbook
+  (AGENTS.md). Optional modules
   install missing tools, configure CI/CD, and set up AI code review.
   Use when: setup, init, bootstrap, make repo AI-ready.
 allowed-tools:
@@ -57,7 +58,7 @@ digraph setup {
     "Run selected modules (tools, CI, review)" [shape=box];
     "Generate AGENTS.md" [shape=box];
     "Generate .gitignore + auxiliary" [shape=box];
-    "Generate ship.policy.json (LAST)" [shape=box];
+    "AI Rule Discovery + Generate rules" [shape=box];
     "Commit all core files" [shape=box];
     "STOP: git not available" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
     "Done" [shape=doublecircle];
@@ -69,8 +70,8 @@ digraph setup {
     "User chooses tier (Full / Basic / Custom)" -> "Generate AGENTS.md" [label="Basic"];
     "Run selected modules (tools, CI, review)" -> "Generate AGENTS.md";
     "Generate AGENTS.md" -> "Generate .gitignore + auxiliary";
-    "Generate .gitignore + auxiliary" -> "Generate ship.policy.json (LAST)";
-    "Generate ship.policy.json (LAST)" -> "Commit all core files";
+    "Generate .gitignore + auxiliary" -> "AI Rule Discovery + Generate rules";
+    "AI Rule Discovery + Generate rules" -> "Commit all core files";
     "Commit all core files" -> "Done";
     "Start" -> "STOP: git not available" [label="no git"];
 }
@@ -81,7 +82,7 @@ digraph setup {
 | Role | Who | Why |
 |------|-----|-----|
 | Detector + generator | **You (Claude)** | Read the repo, generate config files |
-| Decision maker | **User** | Choose tier and custom modules |
+| Decision maker | **User** | Choose tier and confirm discovered rules |
 
 No Codex in setup. This is environment configuration, not code
 implementation. There is no "correctness" to adversarially verify —
@@ -90,9 +91,9 @@ the harness either works or it doesn't.
 ## Hard Rules
 
 1. Detect first, never assume. Never invent a default stack.
-2. Only one user interaction (tier choice). Do not ask repeatedly.
+2. Keep user interaction to two gates: tier choice and rule confirmation. Do not ask repeatedly outside those gates.
 3. Execute ONLY the modules the user selected. This is a gate.
-4. Policy is generated LAST — it activates enforcement immediately.
+4. Harness rules are generated LAST — rule files and hooks activate enforcement immediately.
 5. Respect existing config. Show diff and ask before replacing.
 
 ## Quality Gates
@@ -103,7 +104,7 @@ the harness either works or it doesn't.
 | Detect → Choose | At least one language detected | AskUserQuestion for manual config |
 | Choose → Modules | User made a tier selection | Wait for response |
 | Modules → Core | Selected modules committed | Verify commits exist |
-| Core → Done | policy.json + AGENTS.md exist and non-empty | Re-generate |
+| Core → Done | `.ship/rules/rules.json` + `AGENTS.md` exist and non-empty | Re-generate |
 
 ---
 
@@ -165,25 +166,25 @@ Check and store:
 Ask exactly one `AskUserQuestion` after detection. The prompt must show:
 
 - Detection results by language and tool, including `ready` / `missing` / `broken`
-- Which Ship policy gates will not work because required tools are missing or broken
+- Which Ship enforcement gates will not work because required tools are missing or broken
 - Three tiers:
 
 | Tier | Selection |
 |---|---|
-| A | `Full setup (recommended)` — install missing tools, configure CI, generate policy + AGENTS.md |
-| B | `Basic setup` — generate policy + AGENTS.md only, use repo's current toolchain |
-| C | `Custom` — choose modules: `1.[x] Security policy`, `2.[x] AI handbook`, `3.[ ] Install missing tools`, `4.[ ] CI/CD`, `5.[ ] AI Code Review`. Include custom boundaries input |
+| A | `Full setup (recommended)` — install missing tools, configure CI, generate rules + AGENTS.md |
+| B | `Basic setup` — generate rules + AGENTS.md only, use repo's current toolchain |
+| C | `Custom` — choose modules: `1.[x] AI-driven rules`, `2.[x] AI handbook`, `3.[ ] Install missing tools`, `4.[ ] CI/CD`, `5.[ ] AI Code Review`. Include custom boundaries input |
 
 At the bottom include:
 - `Any special notes AI should know about this project? (optional, Enter to skip)`
 
 ## Phase 3: Modules (per tier)
 
-**Why modules run BEFORE policy:** `ship.policy.json` activates
-enforcement hooks the moment it exists. If CI/CD files or tooling
-configs are written after the policy, the policy's own `read_only`
-rules will block setup from completing. Therefore: write all files
-first, generate the policy last.
+**Why modules run BEFORE rules:** structural enforcement becomes active
+when setup writes the generated rules and registers hooks in
+`.claude/settings.json`. If CI/CD files or tooling configs are written
+after that point, the new checks can block setup from completing.
+Therefore: write all files first, generate the rules last.
 
 Tier A runs all modules. Tier B skips all modules. Tier C runs only
 checked modules.
@@ -203,10 +204,10 @@ git add <changed files>
 git commit -m "<conventional commit message>"
 ```
 
-## Phase 4: Core — generate policy and AGENTS.md last
+## Phase 4: Core — generate rules and AGENTS.md last
 
 Always run this phase for every tier. This is the final phase because
-`ship.policy.json` activates enforcement hooks immediately on creation.
+generated rules and registered hooks activate enforcement immediately.
 
 ### Step A: Generate AGENTS.md
 
@@ -222,25 +223,106 @@ Always run this phase for every tier. This is the final phase because
 - Update `.gitignore` to include `.ship/tasks/` and `.ship/audit/`.
 - Add language-specific ignores if not already present.
 
-### Step C: Generate ship.policy.json — LAST
+### Step C: Migrate existing policy (if present)
 
-- Read `templates/ship.policy.json`.
-- Fill `quality.pre_commit` with only `ready` tools.
-  **Each entry MUST be an object** with `command` and `name` keys:
-  ```json
-  {"command": "uv run ruff check .", "name": "linter"}
-  ```
-  Do NOT use plain strings.
-- Fill `quality.require_tests` patterns from detected source/test layout.
-- Merge boundaries from chosen tier and custom boundaries input.
-- If policy already exists, show diff and ask before overwriting.
+If `.ship/ship.policy.json` exists:
+- Read `workflow.phases` from it.
+- Preserve these values for the new `rules.json`.
+- Inform user: "Found existing ship.policy.json. Workflow phase config will be migrated to rules.json. The old file is no longer used and can be safely deleted."
+
+### Step D: AI Rule Discovery
+
+This is the core of Harness v2. Instead of reading a template, analyze
+the project.
+
+#### Step D.1: Infer from code
+
+- Scan directory structure for layering patterns (if any exist).
+- Analyze import/require graphs for dependency boundaries.
+- Sample error handling, validation, logging patterns across files.
+- Detect naming conventions (variables, files, functions).
+- Identify security-sensitive patterns (credential files, env usage).
+- Check existing linter configs for implicit conventions.
+- Assess confidence: intentional convention vs coincidence.
+
+#### Step D.2: Supplement from documentation
+
+- Read `CONTRIBUTING.md`, `STYLE_GUIDE.md`, `ARCHITECTURE.md` if they exist.
+- Extract conventions from linter configs (`.eslintrc`, `ruff.toml`, `tsconfig.json`).
+- Read `CLAUDE.md` / `AGENTS.md` for coded behavioral rules.
+
+#### Step D.3: Present to user for confirmation
+
+Present discovered rules with evidence and confidence:
+
+```text
+Discovered coding conventions. Confirm which to enforce:
+
+Structural rules (deterministic check, deny on violation):
+  ✓ [1] No .env file access (detected: .env* in .gitignore)
+  ✓ [2] bin/*.sh must use set -u (detected: 4/4 scripts comply)
+
+Semantic rules (AI-judged, feedback on violation):
+  ✓ [3] Errors wrapped with AppError (detected: 12/15 files)
+  ✓ [4] API handlers validate input first (detected: 8/8 handlers)
+
+Toggle numbers to enable/disable, describe additional rules, or "done".
+```
+
+Do NOT use templates. Do NOT pre-populate rules. Every rule comes from analysis.
+
+### Step E: Generate rule files
+
+After user confirms:
+- `.ship/rules/rules.json` — index with structural, semantic, and workflow sections; preserve migrated `workflow.phases` when present.
+- `.ship/rules/structural/*.sh` — check scripts (you write these based on analysis).
+- `.ship/rules/semantic/*.md` — convention docs with good/bad examples.
+- `.ship/rules/enforce-structural.sh` — router script.
 - Use `jq` for all JSON manipulation.
 
-### Step D: Commit
+### Step F: Register hooks
+
+Merge two hook entries into `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "bash .ship/rules/enforce-structural.sh",
+          "statusMessage": "Checking structural rules..."
+        }]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "agent",
+          "prompt": "You are a code convention enforcer. Read .ship/rules/rules.json to find all enabled semantic rules. For each applicable rule (check scope against the file being written), read the rule's .md file from .ship/rules/semantic/. Then verify the code in $ARGUMENTS follows those conventions. If violations found, return JSON with hookSpecificOutput.additionalContext describing each violation and how to fix it. If no violations, return nothing.",
+          "model": "claude-haiku-4-5-20251001",
+          "statusMessage": "Reviewing coding conventions..."
+        }]
+      }
+    ]
+  }
+}
+```
+
+If `.claude/settings.json` already exists, merge hooks and preserve existing entries.
+
+### Step G: Optionally generate audit hook
+
+If the project would benefit from audit logging (enterprise,
+compliance-sensitive), add a `PostToolUse` hook calling
+`bash bin/audit-logger.sh`.
+
+### Step H: Commit
 
 ```
-git add AGENTS.md .ship/ .gitignore
-git commit -m "feat: generate ship policy and AGENTS.md"
+git add AGENTS.md .ship/ .claude/settings.json .gitignore
+git commit -m "feat: generate harness rules and AGENTS.md"
 ```
 
 ---
@@ -249,9 +331,15 @@ git commit -m "feat: generate ship policy and AGENTS.md"
 
 ```text
 .ship/
-  ship.policy.json   — security policy + quality gates
+  rules/
+    rules.json             — structural, semantic, and workflow rule index
+    enforce-structural.sh  — structural rule router
+    structural/            — generated deterministic check scripts
+    semantic/              — generated convention docs
   audit/             — audit log directory
   tasks/             — task artifacts (gitignored)
+.claude/
+  settings.json      — merged hook registration
 AGENTS.md            — AI handbook for this repo
 .gitignore           — updated with Ship + language ignores
 .github/workflows/   — CI/CD (if module selected)
@@ -265,13 +353,12 @@ AGENTS.md            — AI handbook for this repo
 - `references/review.md` — AI code review workflow setup
 - `references/runtime-install-guide.md` — platform-specific runtime installation
 - `templates/agents-md.md` — AGENTS.md generation template
-- `templates/ship.policy.json` — policy template
 
 ## Completion
 
 End with an outcome-oriented summary:
 
-- `Security`: policy generated, boundaries active, audit path ready
+- `Security`: structural and semantic rules generated, hooks active, audit path ready
 - `Quality`: detected checks enforced, warnings for anything still missing
 - `CI/CD`: include only if configured
 - `Documentation`: AGENTS.md generated or updated
@@ -281,17 +368,16 @@ End with an outcome-oriented summary:
 
 - Scaffold empty repos beyond `git init`
 - Configure deployment or hosting
-- Modify source code outside setup artifacts
+- Generate rule templates — all rules are discovered from project code
 - Replace existing tool configs because Ship prefers a different stack
 - Install global packages or use `sudo`
 
 <Bad>
 - Assuming a language or tool without detecting it
 - Installing tools the user didn't select (tier gate violation)
-- Generating policy before modules are written (blocks own setup)
+- Generating rules before modules are written (blocks own setup)
 - Replacing existing AGENTS.md or CLAUDE.md without showing diff
-- Using plain strings in pre_commit entries (must be objects)
-- Running modules for Tier B (Basic = policy + AGENTS.md only)
-- Asking the user multiple questions (one tier choice only)
+- Running modules for Tier B (Basic = rules + AGENTS.md only)
+- Asking the user repeated questions outside the tier choice and rule confirmation gates
 - Using sudo or installing global packages
 </Bad>
