@@ -12,6 +12,7 @@ allowed-tools:
   - AskUserQuestion
   - mcp__codex__codex
   - mcp__codex__codex-reply
+init_command: SHIP_SKILL_NAME=ship-plan source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ---
 
 # Ship: Plan

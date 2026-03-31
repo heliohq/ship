@@ -5,6 +5,7 @@ description: >
   Independent QA: starts the application, verifies spec criteria against
   the running product, explores beyond the spec for edge cases, and
   checks baseline health. Reports verdict with L1 evidence.
+init_command: SHIP_SKILL_NAME=ship-qa source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ---
 
 # Ship: QA

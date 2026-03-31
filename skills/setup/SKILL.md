@@ -16,6 +16,7 @@ allowed-tools:
   - Grep
   - Glob
   - AskUserQuestion
+init_command: SHIP_SKILL_NAME=ship-setup source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ---
 
 # Ship: Setup
