@@ -1,9 +1,10 @@
 ---
 name: setup-harness
-version: 1.0.0
+version: 2.1.0
 description: >
   Set up AI harness for a repo. Reads the codebase to discover coding
-  conventions, generates enforceable rules, and registers hooks.
+  conventions that linters can't cover, generates AGENTS.md and
+  CONVENTIONS.md, and registers a semantic enforcement hook.
   Use when: setup harness, init harness, add harness, enforce conventions.
 allowed-tools:
   - Bash
@@ -17,7 +18,8 @@ allowed-tools:
 
 # Ship: Setup Harness
 
-Read the project. Discover its conventions. Generate enforceable rules.
+Read the project. Discover conventions linters can't cover. Make them
+enforceable via AI.
 
 ## Principal Contradiction
 
@@ -27,6 +29,10 @@ Every project has conventions — in error handling, in validation patterns,
 in module boundaries. Most exist only in the team's collective memory or
 scattered across code review comments. Setup-harness makes them explicit,
 machine-readable, and enforceable.
+
+Linters and formatters handle syntax and style. This skill handles
+everything else — the architectural and design patterns that require
+understanding code intent.
 
 ## Core Principle
 
@@ -50,335 +56,277 @@ digraph setup_harness {
     "Phase 1: Survey — directory structure, tech stack, code organization" [shape=box];
     "Identify entry points and key paths" [shape=box];
     "Phase 2: Investigate — trace from entry, 2-3 levels deep" [shape=box];
-    "3-5 core patterns found?" [shape=diamond];
-    "Phase 3: Confirm — present rules with evidence to user" [shape=box];
+    "Conventions found?" [shape=diamond];
+    "Phase 3: Confirm — present conventions with evidence to user" [shape=box];
     "User confirms?" [shape=diamond];
-    "Phase 4: Generate — rules, scripts, hooks" [shape=box];
+    "Phase 4: Generate — AGENTS.md + CONVENTIONS.md + hook" [shape=box];
     "Done" [shape=doublecircle];
 
     "Start" -> "Phase 1: Survey — directory structure, tech stack, code organization";
     "Phase 1: Survey — directory structure, tech stack, code organization" -> "Identify entry points and key paths";
     "Identify entry points and key paths" -> "Phase 2: Investigate — trace from entry, 2-3 levels deep";
-    "Phase 2: Investigate — trace from entry, 2-3 levels deep" -> "3-5 core patterns found?";
-    "3-5 core patterns found?" -> "Phase 3: Confirm — present rules with evidence to user" [label="yes"];
-    "3-5 core patterns found?" -> "Phase 2: Investigate — trace from entry, 2-3 levels deep" [label="no, widen search"];
-    "Phase 3: Confirm — present rules with evidence to user" -> "User confirms?";
-    "User confirms?" -> "Phase 4: Generate — rules, scripts, hooks" [label="done"];
-    "User confirms?" -> "Phase 3: Confirm — present rules with evidence to user" [label="edits"];
-    "Phase 4: Generate — rules, scripts, hooks" -> "Done";
+    "Phase 2: Investigate — trace from entry, 2-3 levels deep" -> "Conventions found?";
+    "Conventions found?" -> "Phase 3: Confirm — present conventions with evidence to user" [label="yes"];
+    "Conventions found?" -> "Phase 2: Investigate — trace from entry, 2-3 levels deep" [label="no, widen search"];
+    "Phase 3: Confirm — present conventions with evidence to user" -> "User confirms?";
+    "User confirms?" -> "Phase 4: Generate — AGENTS.md + CONVENTIONS.md + hook" [label="done"];
+    "User confirms?" -> "Phase 3: Confirm — present conventions with evidence to user" [label="edits"];
+    "Phase 4: Generate — AGENTS.md + CONVENTIONS.md + hook" -> "Done";
 }
 ```
 
 ## Hard Rules
 
-1. Read the code before writing any rules. No exceptions.
-2. Every rule must have file:line evidence from the codebase.
-3. Aim for 3-5 core rules. More is noise, not value.
-4. No templates. No preset rules. Every rule comes from observation.
-5. One user interaction: rule confirmation. Do not ask repeatedly.
-
-## Quality Gates
-
-| Gate | Condition | Fail action |
-|------|-----------|-------------|
-| Survey → Investigate | Entry point identified, tech stack understood | Widen survey |
-| Investigate → Confirm | At least 2 patterns found with evidence | Widen investigation |
-| Confirm → Generate | User said "done" | Wait |
-| Generate → Done | `rules.json` valid, hooks registered | Re-generate |
+1. Read the code before writing any rules.
+2. Every rule must have file:line evidence.
+3. Every convention must be observed in 3+ files to qualify.
+4. Skip conventions already enforced by the project's linter/formatter.
+5. Two user interactions max: convention confirmation (Phase 3) and existing file replacement (Phase 4).
 
 ---
 
-## Phase 1: Survey (概况调查)
+## Phase 1: Survey
 
-**Goal:** Build a mental map of the project in minimal reads.
-**Time budget:** Under 2 minutes. Do NOT read file contents yet.
+Do NOT read file contents yet.
 
 ### Step A: Directory structure
 
-```bash
-find . -type f -not -path './.git/*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*' -not -path '*/venv/*' -not -path '*/.venv/*' | head -200
-```
+List the project's file tree (excluding .git, build output, dependency
+directories, and other generated files). Limit to ~200 files.
 
-From this, answer:
-- What language(s)? (file extensions)
-- How is code organized? (flat, layered, modular, monorepo?)
-- Where is source code vs config vs tests vs docs?
+Record: languages (file extensions), code organization (flat/layered/modular/monorepo), source vs config vs tests vs docs.
 
 ### Step B: Project manifest
 
-Read ONE of these (whichever exists):
-- `package.json` (Node/TS) — scripts, dependencies, type field
-- `go.mod` (Go) — module name, dependencies
-- `pyproject.toml` or `setup.py` (Python) — dependencies, tool config
-- `Cargo.toml` (Rust) — dependencies, features
-- `pom.xml` or `build.gradle` (Java/Kotlin) — dependencies, plugins
+Find and read the project's main manifest file (e.g., package.json,
+go.mod, pyproject.toml, Cargo.toml, or whatever the language uses).
 
-From this, answer:
-- What frameworks? (Express, FastAPI, Gin, React, etc.)
-- What linter/formatter is configured?
-- What test framework?
+Record: frameworks, linter/formatter configured, test framework, build/test/lint/format commands.
 
 ### Step C: Identify entry points
 
-Based on A and B, identify:
-- **Main entry:** `src/index.ts`, `cmd/server/main.go`, `app/main.py`, etc.
-- **Key paths to trace:** Where does a request/command enter and how does it flow?
+Record: main entry file path, key call paths to trace in Phase 2.
 
-Record your findings as a brief mental map. Do NOT present to user yet.
+### Step D: Check existing config
 
-### Step D: Check existing conventions
+Look for any existing linter/formatter config, project documentation,
+and AI instruction files in the repo root and common config locations.
 
-Quick check — do any of these exist?
-- `.eslintrc*`, `ruff.toml`, `.golangci.yml` — linter config (implicit rules)
-- `CONTRIBUTING.md`, `STYLE_GUIDE.md`, `ARCHITECTURE.md` — explicit rules
-- `CLAUDE.md`, `AGENTS.md` — AI-facing rules
-- `.ship/rules/` — existing harness (re-run = update)
-
-If linter config exists, note what it enforces — these don't need
-harness rules (the linter already handles them).
+Record as a list: `<tool/file>: <what it enforces>`. This list is used
+in Phase 2 filtering and Phase 3 "skipped" display.
 
 ---
 
-## Phase 2: Investigate (典型调查)
+## Phase 2: Investigate
 
-**Goal:** Trace from entry points 2-3 levels deep. Find 3-5 core patterns.
-**Time budget:** Under 5 minutes. Read with purpose.
+Trace from entry points 2-3 levels deep. Find conventions that
+linters can't cover.
 
-### What to look for
+### Method
 
-Start at the entry point identified in Phase 1. Read the file. Then
-follow the calls inward, looking for these categories of patterns:
+Start at the entry point. Follow calls inward 2-3 levels. Record any
+pattern repeated across 3+ files.
 
-**1. Error handling** — How does this project handle errors?
-   - Custom error class? Error codes? Error wrapping?
-   - Try/catch patterns? Result types? Error middleware?
-   - Read 3-4 files that handle errors. Is there a consistent pattern?
+Read each file fully. Stop when you stop finding new patterns.
 
-**2. Validation & guards** — How does this project validate input?
-   - Schema validation (zod, pydantic, JSON schema)?
-   - Manual guard clauses? Middleware?
-   - Where in the call chain does validation happen?
+**Fallback prompts** (use only if fewer than 2 patterns found after
+tracing 2-3 levels):
+- Error handling, validation, module boundaries, naming
+- Logging, API contracts, data access, security
 
-**3. Module boundaries** — Are there import restrictions?
-   - Do layers exist (handler → service → repo → db)?
-   - Are there directories that never import from each other?
-   - Is there a clear dependency direction?
+### Filter
 
-**4. Naming & structure** — Are there project-specific conventions?
-   - File naming (kebab-case, PascalCase, snake_case)?
-   - Function/method patterns (handleX, processX, createX)?
-   - Test file conventions (*.test.ts, *_test.go, test_*.py)?
+For each pattern: could the project's existing linter enforce this?
+- Yes → add to the "linter-covered" list (shown in Phase 3, skipped from CONVENTIONS.md)
+- No → this is a harness convention
 
-**5. Security patterns** — How are secrets/auth handled?
-   - Env var access patterns? Config loading?
-   - Auth middleware? Token handling?
-   - Files that should never be written to?
+### Record
 
-### How to read
-
-- Read each file fully, not just the first 50 lines.
-- Follow imports 2-3 levels: entry → handler → service → repo.
-- When you see a pattern repeat in 3+ files, that's a convention.
-- When you see a pattern broken in 1 file out of 10, note the exception.
-- **Stop when you have 3-5 patterns with evidence.** Don't keep reading.
-
-### Record findings
-
-For each pattern found, record:
 ```
-Pattern: <name>
-Type: structural | semantic
+Convention: <name>
 Evidence: <file1:line>, <file2:line>, <file3:line>
-Consistency: <N/M files follow this pattern>
+Consistency: <N files follow / M files checked>
 Description: <one sentence>
 ```
 
 ---
 
-## Phase 3: Confirm (用户确认)
+## Phase 3: Confirm
 
-**Goal:** One interaction. Present findings, get confirmation.
+Use AskUserQuestion:
 
-Present discovered patterns to the user:
+```
+I read your codebase and found these conventions that linters can't cover:
 
-```text
-I read your codebase and found these conventions:
-
-Structural rules (deterministic, deny on violation):
-  ✓ [1] <pattern name>
+  ✓ [1] <name>
         Evidence: <file1:line>, <file2:line> (<N/M files>)
 
-  ✓ [2] <pattern name>
+  ✓ [2] <name>
         Evidence: <file1:line>, <file2:line> (<N/M files>)
 
-Semantic rules (AI-judged, feedback on violation):
-  ✓ [3] <pattern name>
-        Evidence: <file1:line>, <file2:line> (<N/M files>)
+Skipped (linter-covered):
+  - <pattern> — enforced by <tool>
 
-Toggle numbers to enable/disable.
-Describe additional rules you want enforced.
-Type "done" to generate.
+Anything else AI should know about this project? (conventions,
+gotchas, boundaries, or context not visible in the code)
 ```
 
-Key principles:
-- Show evidence for every rule (file:line + consistency ratio)
-- Structural vs semantic classification must be explicit
-- User can add rules the AI didn't discover (free text)
-- One round. Don't re-ask.
+Options:
+- A) Generate as shown
+- B) I want to toggle or edit (specify which numbers and changes)
+- C) Cancel — do not generate anything
+
+If B: apply edits, re-present once with AskUserQuestion. Max two rounds.
+
+If user adds a convention via free text that was not observed in code,
+investigate it: search the codebase for evidence. If evidence found,
+add it. If not, tell the user no evidence was found and ask if they
+still want to include it as a user-defined rule (no file:line evidence).
+
+If user provides additional context (gotchas, boundaries, etc.),
+incorporate it into AGENTS.md (Gotchas, Boundaries, or Architecture
+sections as appropriate) and into CONVENTIONS.md if it describes an
+enforceable convention.
 
 ---
 
-## Phase 4: Generate (生成)
+## Phase 4: Generate
 
-**Goal:** Create enforceable rules and register hooks.
+### Step A: Generate AGENTS.md
 
-### Step A: Generate rule files
+Read `references/agents-md.md` for structure. Fill from Phase 1-2 findings.
+Omit sections with no content. Keep under 200 lines.
 
-For each confirmed rule:
+AGENTS.md includes ALL discovered conventions (linter-covered + AI-judged).
 
-**If structural (deterministic):**
-- Write a check script to `.ship/rules/structural/<rule-id>.sh`
-- Script receives hook input JSON on stdin
-- Exits non-zero with error message on violation
-- Must be deterministic — same input always produces same output
+**If `AGENTS.md` already exists**, use AskUserQuestion:
 
-**If semantic (AI-judged):**
-- Write a convention doc to `.ship/rules/semantic/<rule-id>.md`
-- Include: rule description, correct example (from actual code), incorrect example, scope, rationale
-- Examples must come from the codebase, not invented
+```
+AGENTS.md already exists. Here's what would change:
 
-### Step B: Generate rules.json
+<show diff summary: sections added/changed/removed>
+```
+
+Options:
+- A) Replace with new version
+- B) Merge — add new sections, keep existing content
+- C) Skip — don't touch AGENTS.md
+
+### Step B: Generate CONVENTIONS.md
+
+Write to `.ship/rules/semantic/CONVENTIONS.md`. Only conventions that
+linters can't cover (the ones confirmed in Phase 3).
+
+Format per convention:
+
+```markdown
+## <Convention name>
+Scope: <glob pattern>
+Description: <one sentence>
+Correct (from <file:line>):
+\`\`\`
+<actual code from the codebase>
+\`\`\`
+Incorrect:
+\`\`\`
+<constructed counter-example showing what NOT to do>
+\`\`\`
+Rationale: <one sentence>
+```
+
+- Correct examples must come from the codebase
+- Incorrect examples are constructed counter-examples (not from codebase)
+
+**If `CONVENTIONS.md` already exists**, use AskUserQuestion:
+
+```
+CONVENTIONS.md already exists with <N> conventions.
+```
+
+Options:
+- A) Replace entirely with new conventions
+- B) Merge — add new conventions, keep existing ones
+- C) Skip — don't touch CONVENTIONS.md
+
+### Step C: Register hook
+
+Read `.claude/settings.json` (create `{}` if missing).
+Add this entry to `hooks.PreToolUse` array, preserving existing entries:
 
 ```json
 {
-  "version": 1,
-  "workflow": {
-    "phases": {
-      "plan": "required",
-      "review": "required",
-      "verify": "required",
-      "qa": "optional",
-      "simplify": "optional"
-    }
-  },
-  "structural": [
+  "matcher": "Write|Edit",
+  "hooks": [
     {
-      "id": "<rule-id>",
-      "name": "<rule name>",
-      "description": "<one line>",
-      "script": "structural/<rule-id>.sh",
-      "scope": "<glob pattern>",
-      "enabled": true
-    }
-  ],
-  "semantic": [
-    {
-      "id": "<rule-id>",
-      "name": "<rule name>",
-      "description": "<one line>",
-      "file": "semantic/<rule-id>.md",
-      "scope": "<glob pattern>",
-      "enabled": true
+      "type": "command",
+      "command": "bash ${CLAUDE_PLUGIN_ROOT}/bin/check-conventions.sh",
+      "statusMessage": "Reviewing coding conventions..."
     }
   ]
 }
 ```
 
-### Step C: Generate enforce-structural.sh
+The script is part of the ship plugin (`bin/check-conventions.sh`). It:
+1. Reads hook input JSON from stdin
+2. Checks if the file matches any scope in CONVENTIONS.md
+3. Sends the code + conventions to `claude -p` (Haiku, print mode)
+4. Exit 0 = pass, exit 2 = violation (stderr has details)
 
-Router script that reads `rules.json`, matches file scopes, runs
-applicable structural check scripts. This script is project-specific —
-write it based on the project's language and patterns. No template.
+Skip if an identical hook entry already exists.
 
-### Step D: Register hooks
+### Step D: Update .gitignore
 
-Read `.claude/settings.json` (create `{}` if missing).
-Merge these PreToolUse hook entries, preserving existing hooks:
+Add `.ship/tasks/` and `.ship/audit/` if not present.
+Do NOT gitignore `.ship/rules/`.
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [{
-          "type": "command",
-          "command": "bash .ship/rules/enforce-structural.sh",
-          "statusMessage": "Checking structural rules..."
-        }]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [{
-          "type": "agent",
-          "prompt": "You are a code convention enforcer. Read .ship/rules/rules.json to find all enabled semantic rules. For each applicable rule (check scope against the file being written), read the rule's .md file from .ship/rules/semantic/. Then verify the code in $ARGUMENTS follows those conventions. If violations found, return JSON with hookSpecificOutput.additionalContext describing each violation and how to fix it. If no violations, return nothing.",
-          "model": "claude-haiku-4-5-20251001",
-          "statusMessage": "Reviewing coding conventions..."
-        }]
-      }
-    ]
-  }
-}
+If `.claude/` is fully gitignored, change to:
+```
+.claude/*
+!.claude/settings.json
 ```
 
-### Step E: Update .gitignore
-
-Ensure `.ship/tasks/` and `.ship/audit/` are gitignored.
-Do NOT gitignore `.ship/rules/` — it must be team-shared.
-
-### Step F: Commit
+### Step E: Commit
 
 ```bash
-git add .ship/rules/ .claude/settings.json .gitignore
-git commit -m "feat(harness): generate coding convention rules
+git add AGENTS.md .ship/rules/semantic/CONVENTIONS.md .claude/settings.json .gitignore
+git commit -m "feat(harness): generate AGENTS.md and coding conventions
 
-<N> structural + <M> semantic rules discovered from codebase analysis.
-Enforcement hooks registered in .claude/settings.json."
+AGENTS.md: AI handbook with commands, repo map, and conventions.
+CONVENTIONS.md: <N> conventions for semantic enforcement hook."
 ```
 
 ---
 
-## Artifacts
-
-```text
-.ship/
-  rules/
-    rules.json             — rule index (structural + semantic + workflow)
-    enforce-structural.sh  — structural rule router
-    structural/            — deterministic check scripts
-    semantic/              — convention docs with examples
-.claude/
-  settings.json            — hook registration
-```
-
 ## Completion
 
-```text
+After commit, output:
+
+```
 [Harness] Setup complete.
 
-Rules discovered: N structural + M semantic
-  1. <rule name> (structural) — <evidence summary>
-  2. <rule name> (semantic) — <evidence summary>
+AGENTS.md: <generated | merged | skipped>
+CONVENTIONS.md: <N> conventions
+  1. <name> — <evidence summary>
+  2. <name> — <evidence summary>
   ...
-
-Hooks registered in .claude/settings.json.
-Toggle enforcement: /ship:harness (on) · /ship:unharness (off)
+Skipped (linter-covered): <M> patterns
+Hook: registered in .claude/settings.json
 ```
+
+---
 
 ## What This Skill Does NOT Do
 
-- Install tools, configure CI, or set up code review (use /ship:setup for infra)
-- Generate AGENTS.md (separate concern)
-- Use templates or preset rules
+- Install linters, formatters, or pre-commit hooks (use /ship:setup-infra)
+- Generate shell scripts or structural check scripts
 - Read the entire codebase (targeted investigation only)
-- Generate more than 5 rules in one pass (use /ship:harness-update to add more later)
 
 <Bad>
 - Writing rules without reading the code first
 - Generating rules from templates or presets
-- Reading every file in the project (context overload)
-- Producing more than 5 rules (noise over signal)
-- Asking the user multiple questions (one confirmation gate only)
-- Generating a rule without file:line evidence
-- Classifying a rule as structural when it requires semantic judgment
+- Reading every file in the project
+- Including a convention observed in fewer than 3 files
+- Generating a convention without file:line evidence
+- Duplicating a pattern the linter already enforces
+- Asking the user more than twice
 </Bad>
