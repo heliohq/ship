@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "author": {
     "name": "Ship",
-    "url": "https://ship.tech"
+    "url": "https://www.ship.tech"
   },
-  "homepage": "https://ship.tech",
+  "homepage": "https://www.ship.tech",
   "repository": "https://github.com/tryship/ship",
   "license": "MIT",
   "keywords": [

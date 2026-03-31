@@ -114,5 +114,5 @@ Ship is built on ideas from:
 
 ## Links
 
-- Website: https://ship.tech
+- Website: https://www.ship.tech
 - Repository: https://github.com/tryship/ship

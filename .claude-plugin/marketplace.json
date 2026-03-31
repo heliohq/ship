@@ -1,9 +1,9 @@
 {
-  "name": "ship.tech",
+  "name": "ship-tech",
   "description": "Marketplace for the Ship agent harness plugin",
   "owner": {
     "name": "Ship",
-    "url": "https://ship.tech"
+    "url": "https://www.ship.tech"
   },
   "plugins": [
     {

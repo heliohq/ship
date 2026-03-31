@@ -63,7 +63,7 @@ digraph auto {
     "Bootstrap (init task dir, detect tooling)" [shape=box];
     "Design (ship:plan)" [shape=box];
     "User approves plan?" [shape=diamond];
-    "Implement (ship:implement)" [shape=box];
+    "Implement (ship:dev)" [shape=box];
     "Review (code review)" [shape=box];
     "Review clean?" [shape=diamond];
     "Verify (tests + lint + spec)" [shape=box];
@@ -80,17 +80,17 @@ digraph auto {
     "Bootstrap (init task dir, detect tooling)" -> "Design (ship:plan)";
     "Design (ship:plan)" -> "User approves plan?";
     "User approves plan?" -> "Design (ship:plan)" [label="revise"];
-    "User approves plan?" -> "Implement (ship:implement)" [label="approved"];
-    "Implement (ship:implement)" -> "Review (code review)";
+    "User approves plan?" -> "Implement (ship:dev)" [label="approved"];
+    "Implement (ship:dev)" -> "Review (code review)";
     "Review (code review)" -> "Review clean?";
-    "Review clean?" -> "Implement (ship:implement)" [label="findings, fix"];
+    "Review clean?" -> "Implement (ship:dev)" [label="findings, fix"];
     "Review clean?" -> "Verify (tests + lint + spec)" [label="clean"];
     "Verify (tests + lint + spec)" -> "Verify passed?";
-    "Verify passed?" -> "Implement (ship:implement)" [label="fail, retry ≤3"];
+    "Verify passed?" -> "Implement (ship:dev)" [label="fail, retry ≤3"];
     "Verify passed?" -> "QA (ship:qa)" [label="pass"];
     "Verify passed?" -> "STOP: BLOCKED — escalate to user" [label="retries exhausted"];
     "QA (ship:qa)" -> "QA passed?";
-    "QA passed?" -> "Implement (ship:implement)" [label="fail, retry ≤2"];
+    "QA passed?" -> "Implement (ship:dev)" [label="fail, retry ≤2"];
     "QA passed?" -> "Simplify (behavior-preserving cleanup)" [label="pass"];
     "QA passed?" -> "STOP: BLOCKED — escalate to user" [label="retries exhausted"];
     "Simplify (behavior-preserving cleanup)" -> "Simplify broke tests?";
@@ -106,7 +106,7 @@ digraph auto {
 |------|-----|-----|
 | Orchestrator | **You (Claude)** | Read-only coordinator, no code/tests |
 | Design | **ship:plan** (subagent) | Adversarial planning with Codex |
-| Implementation | **ship:implement** (subagent) | Codex MCP implements, Claude reviews |
+| Implementation | **ship:dev** (subagent) | Codex MCP implements, Claude reviews |
 | Code review | **ship:review** (subagent) | Staff-engineer review: find all bugs + diagnose structural deficiencies |
 | Verification | **Agent** (subagent, runs TEST_CMD + lint, writes verify.md) | Keeps orchestrator artifact-free |
 | QA | **ship:qa** (subagent) | Independent testing against running app |
