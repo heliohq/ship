@@ -322,14 +322,14 @@ Add this entry to `hooks.PreToolUse` array, preserving existing entries:
   "hooks": [
     {
       "type": "command",
-      "command": "bash ${CLAUDE_PLUGIN_ROOT}/bin/check-conventions.sh",
+      "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-conventions.sh",
       "statusMessage": "Reviewing coding conventions..."
     }
   ]
 }
 ```
 
-The script is part of the ship plugin (`bin/check-conventions.sh`). It:
+The script is part of the ship plugin (`scripts/check-conventions.sh`). It:
 1. Reads hook input JSON from stdin
 2. Checks if the file matches any scope in CONVENTIONS.md
 3. Sends the code + conventions to `claude -p` (Haiku, print mode)

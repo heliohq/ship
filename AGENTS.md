@@ -5,15 +5,15 @@
 | Action | Command |
 |--------|---------|
 | Validate JSON | `jq . <file>` |
-| Lint shell | `shellcheck bin/*.sh` (if installed) |
-| Test hooks | `echo '<json>' \| bash bin/<hook>.sh` |
+| Lint shell | `shellcheck scripts/*.sh` (if installed) |
+| Test hooks | `echo '<json>' \| bash scripts/<hook>.sh` |
 | Reload plugin | `/reload-plugins` in Claude Code |
 
 ## Repository Map
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `bin/` | Shell scripts | Workflow hooks (stop-gate) and utilities (task-id) |
+| `scripts/` | Shell scripts | Workflow hooks (stop-gate) and utilities (task-id) |
 | `hooks/` | `hooks.json` | Plugin-level hook registration (Stop only) |
 | `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:plan, etc.) |
 | `skills/setup/templates/` | Config templates | CI, Dependabot, labeler, AGENTS.md template |
@@ -47,7 +47,7 @@ Two independent layers:
 - Use `set -u` in every new shell script
 - Exit 0 silently when config files don't exist (graceful degradation)
 - Use Conventional Commits
-- Test hooks by piping JSON stdin: `echo '{"cwd":"/path","tool_name":"Edit",...}' | bash bin/hook.sh`
+- Test hooks by piping JSON stdin: `echo '{"cwd":"/path","tool_name":"Edit",...}' | bash scripts/hook.sh`
 
 ### Never Do
 - Use `eval` on config values (use `bash -c` instead)

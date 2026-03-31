@@ -107,7 +107,7 @@ digraph refactor {
 
 Generate task_id:
 ```bash
-TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/bin/task-id.sh "<description>")
+TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/task-id.sh "<description>")
 ```
 
 Artifacts go to `.ship/tasks/$TASK_ID/plan/`. The Write tool creates

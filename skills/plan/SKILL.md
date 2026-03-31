@@ -131,7 +131,7 @@ Defects are caught at source, never passed downstream.
 1. If invoked by ship:auto, the task_id is provided.
 2. If invoked standalone, generate `task_id` using the shared script:
    ```bash
-   TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/bin/task-id.sh "<description>")
+   TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/task-id.sh "<description>")
    ```
 
 Artifacts go to `.ship/tasks/<task_id>/plan/`. The Write tool creates
