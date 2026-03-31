@@ -18,6 +18,8 @@ allowed-tools:
   - AskUserQuestion
 ---
 
+## Preamble (run first)
+
 ```bash
 SHIP_SKILL_NAME=ship-setup source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ```

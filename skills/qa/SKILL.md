@@ -7,6 +7,8 @@ description: >
   checks baseline health. Reports verdict with L1 evidence.
 ---
 
+## Preamble (run first)
+
 ```bash
 SHIP_SKILL_NAME=ship-qa source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ```
