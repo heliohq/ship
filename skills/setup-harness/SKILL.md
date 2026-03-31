@@ -157,7 +157,7 @@ tracing 2-3 levels):
 ### Filter
 
 For each pattern: could the project's existing linter enforce this?
-- Yes → add to the "linter-covered" list (shown in Phase 3, skipped from CONVENTIONS.md)
+- Yes → skip silently. Don't include in findings or output.
 - No → this is a harness convention
 
 ### Record
@@ -186,9 +186,6 @@ I read your codebase and found these conventions that linters can't cover:
   ✓ [2] <name>
         Evidence: <file1:line>, <file2:line> (<N/M files>)
 
-Skipped (linter-covered):
-  - <pattern> — enforced by <tool>
-
 Anything else AI should know about this project? (conventions,
 gotchas, boundaries, or context not visible in the code)
 ```
@@ -210,9 +207,6 @@ I detected a monorepo and investigated active sub-projects:
   Not investigated (inactive):
     - app/ (0 commits)
     - shipcli-ts/ (0 commits)
-
-Skipped (linter-covered):
-  - <pattern> — enforced by <tool>
 
 Anything else AI should know? Want me to investigate any inactive sub-project?
 ```
@@ -243,7 +237,7 @@ enforceable convention.
 Read `references/agents-md.md` for structure. Fill from Phase 1-2 findings.
 Omit sections with no content. Keep under 200 lines per file.
 
-AGENTS.md includes ALL discovered conventions (linter-covered + AI-judged).
+AGENTS.md includes ALL discovered conventions.
 
 **Single repo:** generate or update root `AGENTS.md`.
 
@@ -367,7 +361,6 @@ CONVENTIONS.md: <N> conventions
   1. <name> — <evidence summary>
   2. <name> — <evidence summary>
   ...
-Skipped (linter-covered): <M> patterns
 Hook: registered in .claude/settings.json
 ```
 
@@ -381,7 +374,6 @@ Sub-projects investigated: <list>
 Not investigated: <list>
 
 CONVENTIONS.md: <total N> conventions across <M> sub-projects
-Skipped (linter-covered): <K> patterns
 Hook: registered in .claude/settings.json
 ```
 
@@ -399,6 +391,6 @@ Hook: registered in .claude/settings.json
 - Reading every file in the project
 - Including a convention observed in fewer than 3 files
 - Generating a convention without file:line evidence
-- Duplicating a pattern the linter already enforces
+- Including a pattern the linter already enforces
 - Asking the user more than twice
 </Bad>
