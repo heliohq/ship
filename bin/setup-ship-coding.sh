@@ -48,12 +48,24 @@ started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 $TASK_DESCRIPTION
 EOF
 
-# ── 3. ENSURE .ship/ IS GITIGNORED ────────────────────────────
+# ── 3. ENSURE .ship/ SUBDIRS ARE GITIGNORED ──────────────────
+# .ship/rules/ must be tracked (team-shared), so only ignore
+# .ship/tasks/ and .ship/audit/.
 if [ -d "$CWD/.git" ]; then
   GITIGNORE="$CWD/.gitignore"
-  if [ ! -f "$GITIGNORE" ] || ! grep -qxF ".ship/" "$GITIGNORE" 2>/dev/null; then
-    echo ".ship/" >> "$GITIGNORE"
+
+  # Migrate old broad ignore if present
+  if [ -f "$GITIGNORE" ] && grep -qxF '.ship/' "$GITIGNORE"; then
+    TMPFILE=$(mktemp)
+    grep -vxF '.ship/' "$GITIGNORE" > "$TMPFILE"
+    mv "$TMPFILE" "$GITIGNORE"
   fi
+
+  for ENTRY in ".ship/tasks/" ".ship/audit/"; do
+    if [ ! -f "$GITIGNORE" ] || ! grep -qxF "$ENTRY" "$GITIGNORE" 2>/dev/null; then
+      echo "$ENTRY" >> "$GITIGNORE"
+    fi
+  done
 fi
 
 # ── 4. DETECT LANGUAGES ───────────────────────────────────────
