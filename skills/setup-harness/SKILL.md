@@ -96,21 +96,38 @@ directories, and other generated files). Limit to ~200 files.
 
 Record: languages (file extensions), code organization (flat/layered/modular/monorepo), source vs config vs tests vs docs.
 
-### Step B: Project manifest
+### Step B: Monorepo detection
 
-Find and read the project's main manifest file (e.g., package.json,
-go.mod, pyproject.toml, Cargo.toml, or whatever the language uses).
+If Step A reveals multiple sub-projects (each with their own manifest
+file, separate language, or independent directory structure), this is
+a monorepo.
 
-Record: frameworks, linter/formatter configured, test framework, build/test/lint/format commands.
+For monorepos, identify sub-projects and their recent activity:
 
-### Step C: Identify entry points
+```bash
+# Count commits per top-level directory in the last 30 days
+git log --since="30 days ago" --name-only --pretty=format: | \
+  grep -v '^$' | cut -d/ -f1-2 | sort | uniq -c | sort -rn | head -10
+```
 
-Record: main entry file path, key call paths to trace in Phase 2.
+Record each sub-project: path, language, manifest file, commit count.
 
-### Step D: Check existing config
+### Step C: Project manifest
 
-Look for any existing linter/formatter config, project documentation,
-and AI instruction files in the repo root and common config locations.
+**Single repo:** read the main manifest file.
+**Monorepo:** read the manifest for each active sub-project.
+
+Record per sub-project: frameworks, linter/formatter, test framework, commands.
+
+### Step D: Identify entry points
+
+**Single repo:** record main entry file and key call paths.
+**Monorepo:** record entry point per active sub-project.
+
+### Step E: Check existing config
+
+Look for linter/formatter config, project documentation, and AI
+instruction files in the repo root and in each sub-project directory.
 
 Record as a list: `<tool/file>: <what it enforces>`. This list is used
 in Phase 2 filtering and Phase 3 "skipped" display.
@@ -121,6 +138,9 @@ in Phase 2 filtering and Phase 3 "skipped" display.
 
 Trace from entry points 2-3 levels deep. Find conventions that
 linters can't cover.
+
+**Monorepo:** investigate each active sub-project independently.
+Each sub-project may have different conventions.
 
 ### Method
 
@@ -143,6 +163,7 @@ For each pattern: could the project's existing linter enforce this?
 ### Record
 
 ```
+Sub-project: <path or "root"> (monorepo only)
 Convention: <name>
 Evidence: <file1:line>, <file2:line>, <file3:line>
 Consistency: <N files follow / M files checked>
@@ -155,6 +176,7 @@ Description: <one sentence>
 
 Use AskUserQuestion:
 
+**Single repo:**
 ```
 I read your codebase and found these conventions that linters can't cover:
 
@@ -169,6 +191,30 @@ Skipped (linter-covered):
 
 Anything else AI should know about this project? (conventions,
 gotchas, boundaries, or context not visible in the code)
+```
+
+**Monorepo:**
+```
+I detected a monorepo and investigated active sub-projects:
+
+  [go-services/] (N commits in 30 days)
+    ✓ [1] <name>
+          Evidence: <file1:line>, <file2:line> (<N/M files>)
+    ✓ [2] <name>
+          Evidence: ...
+
+  [frontend/] (N commits in 30 days)
+    ✓ [3] <name>
+          Evidence: ...
+
+  Not investigated (inactive):
+    - app/ (0 commits)
+    - shipcli-ts/ (0 commits)
+
+Skipped (linter-covered):
+  - <pattern> — enforced by <tool>
+
+Anything else AI should know? Want me to investigate any inactive sub-project?
 ```
 
 Options:
@@ -195,11 +241,19 @@ enforceable convention.
 ### Step A: Generate AGENTS.md
 
 Read `references/agents-md.md` for structure. Fill from Phase 1-2 findings.
-Omit sections with no content. Keep under 200 lines.
+Omit sections with no content. Keep under 200 lines per file.
 
 AGENTS.md includes ALL discovered conventions (linter-covered + AI-judged).
 
-**If `AGENTS.md` already exists**, use AskUserQuestion:
+**Single repo:** generate or update root `AGENTS.md`.
+
+**Monorepo:** update each sub-project's local `AGENTS.md` with that
+sub-project's conventions. If a local AGENTS.md doesn't exist, create it.
+Root AGENTS.md gets repo-wide conventions only (commit format, shared
+tooling, cross-project boundaries). Sub-project-specific conventions
+go in the sub-project's AGENTS.md.
+
+**If an `AGENTS.md` already exists**, use AskUserQuestion:
 
 ```
 AGENTS.md already exists. Here's what would change:
@@ -211,6 +265,9 @@ Options:
 - A) Replace with new version
 - B) Merge — add new sections, keep existing content
 - C) Skip — don't touch AGENTS.md
+
+For monorepos, ask once per file that needs changes (batch into one
+AskUserQuestion if possible).
 
 ### Step B: Generate CONVENTIONS.md
 
@@ -301,6 +358,7 @@ CONVENTIONS.md: <N> conventions for semantic enforcement hook."
 
 After commit, output:
 
+**Single repo:**
 ```
 [Harness] Setup complete.
 
@@ -310,6 +368,20 @@ CONVENTIONS.md: <N> conventions
   2. <name> — <evidence summary>
   ...
 Skipped (linter-covered): <M> patterns
+Hook: registered in .claude/settings.json
+```
+
+**Monorepo:**
+```
+[Harness] Setup complete.
+
+Sub-projects investigated: <list>
+  [go-services/] AGENTS.md: <merged>, <N> conventions
+  [frontend/] AGENTS.md: <generated>, <N> conventions
+Not investigated: <list>
+
+CONVENTIONS.md: <total N> conventions across <M> sub-projects
+Skipped (linter-covered): <K> patterns
 Hook: registered in .claude/settings.json
 ```
 
