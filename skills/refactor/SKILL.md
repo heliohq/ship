@@ -1,15 +1,15 @@
 ---
 name: ship-refactor
-version: 0.4.0
+version: 2.0.0
 description: >
-  Diagnose structural misalignment, write a refactor spec, then hand off
-  to auto for execution. Use when adding or changing features feels harder
-  than it should — concept boundaries that no longer match usage, change
-  directions that cut across modules, hidden coupling, or AI-generated
-  code that lacks intentional structure.
+  Make code better — simpler, less duplication, clearer structure.
+  Detects code smells, applies Fowler techniques, verifies each change.
+  Surgical mode for local cleanup, structural mode for cross-file issues.
 allowed-tools:
   - Bash
   - Read
+  - Write
+  - Edit
   - Grep
   - Glob
   - Agent
@@ -24,36 +24,29 @@ SHIP_SKILL_NAME=ship-refactor source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 
 # Ship: Refactor
 
-Diagnose the structural crack, write a spec, hand off to auto.
+You are a staff engineer who makes code better. Not later. Now.
 
-Refactor's only job is diagnosis — understanding WHY the current
-structure causes friction. Everything else (plan, implement, review,
-verify, QA, handoff) is auto's job. The diagnosis is written to
-`plan/spec.md`, the same artifact auto reads. No special mode,
-no separate directory, no pipeline changes.
+Users say "refactor this" and expect fewer lines, less duplication, clearer
+logic, better structure. They don't want a document — they want the code
+to improve. Diagnose, fix, verify. In that order.
 
 ## Principal Contradiction
 
-**The code's structural boundaries vs the change patterns they must serve.**
+**The code's current structure vs the change patterns it actually faces.**
 
-Structure fails not because code "looks messy" but because its boundaries
-force unnecessary coupling, indirection, or cross-cutting when the team
-works on real tasks. The adversary is the gap between how code is organized
-and how it is actually used. Diagnosis reveals the gap; restructuring
-closes it.
+Code that was fine when written becomes a liability when the change pattern
+shifts. Functions grow. Logic duplicates. Modules accrete unrelated concerns.
+The refactor skill resolves this by applying the right technique to the right
+smell — simplify where it's complex, extract where it's tangled, consolidate
+where it's duplicated, delete where it's dead.
 
 ## Core Principle
 
 ```
-CLASSIFY FIRST, THEN DIAGNOSE AT THE RIGHT DEPTH.
-DIAGNOSIS IS THE ONLY THING REFACTOR DOES.
-EVERYTHING ELSE IS AUTO'S JOB.
+MAKE THE CODE BETTER, NOT JUST DIFFERENT.
+SIMPLIFY FIRST. RESTRUCTURE ONLY WHEN NEEDED.
+VERIFY AFTER EVERY CHANGE.
 ```
-
-Not every refactor needs deep diagnosis. A user who says "extract auth
-from UserService" already has the answer. A user who says "this code
-is a mess" needs help finding the question. Match diagnosis depth to
-what the user actually needs.
 
 ## Process Flow
 
@@ -62,340 +55,165 @@ digraph refactor {
     rankdir=TB;
 
     "Start" [shape=doublecircle];
-    "Setup (create task dir)" [shape=box];
-    "Classify input" [shape=diamond];
-    "Directive: validate + write spec" [shape=box];
-    "Area: focused diagnosis" [shape=box];
-    "Pain/Vague: full diagnosis" [shape=box];
-    "Write plan/spec.md" [shape=box];
-    "Hand off to auto" [shape=doublecircle];
-    "STOP: NEEDS_CONTEXT" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
+    "Detect scope + scan for smells" [shape=box];
+    "Classify" [shape=diamond];
+    "Redirect (not a refactor)" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
+    "Surgical: micro-plan + fix smells" [shape=box];
+    "Structural: write card + execute" [shape=box];
+    "Verify after each batch" [shape=diamond];
+    "Report metrics" [shape=doublecircle];
 
-    "Start" -> "Setup (create task dir)";
-    "Setup (create task dir)" -> "Classify input";
-    "Classify input" -> "Directive: validate + write spec" [label="user gave\nclear action"];
-    "Classify input" -> "Area: focused diagnosis" [label="user pointed\nto area"];
-    "Classify input" -> "Pain/Vague: full diagnosis" [label="user has pain\nor vague feeling"];
-    "Directive: validate + write spec" -> "Write plan/spec.md";
-    "Area: focused diagnosis" -> "Write plan/spec.md";
-    "Pain/Vague: full diagnosis" -> "Write plan/spec.md";
-    "Pain/Vague: full diagnosis" -> "STOP: NEEDS_CONTEXT" [label="no crack found"];
-    "Write plan/spec.md" -> "Hand off to auto";
+    "Start" -> "Detect scope + scan for smells";
+    "Detect scope + scan for smells" -> "Classify";
+    "Classify" -> "Redirect (not a refactor)" [label="perf/bug/feature"];
+    "Classify" -> "Surgical: micro-plan + fix smells" [label="local smells"];
+    "Classify" -> "Structural: write card + execute" [label="cross-file structure"];
+    "Surgical: micro-plan + fix smells" -> "Verify after each batch";
+    "Structural: write card + execute" -> "Verify after each batch";
+    "Verify after each batch" -> "Report metrics" [label="pass"];
+    "Verify after each batch" -> "Surgical: micro-plan + fix smells" [label="fail: revert batch, try next smell"];
 }
 ```
 
-## Roles
-
-| Role | Who | Why |
-|------|-----|-----|
-| Diagnostician | **You (Claude)** | Requires holistic understanding — reading code, tracing dependencies, synthesizing structural argument |
-| Everything else | **Auto** | Plan, implement, review, verify, QA, handoff — all solved problems |
-
 ## Hard Rules
 
-1. Classify before diagnosing. Match depth to input.
-2. Every claim in the diagnosis must be backed by code evidence you read.
-3. The spec must include "behavior must not change" as an acceptance criterion.
-4. Do not implement, review, or verify. Hand off to auto.
-5. Do not create `refactor/` directories. Write to `plan/spec.md`.
+1. Read the code before diagnosing. Every smell must cite file:line.
+2. Verify after every batch of changes. Tests, typecheck, or lint — whatever the repo has. If nothing: warn the user.
+3. If verification fails twice on the same change: revert and skip it. Do not force it.
+4. **Never change external behavior.** Same inputs, same outputs, same status codes, same return shapes, same validation rules. This is the most important rule.
+5. **Never rewrite a function's internal logic.** You may delete unused functions, extract parts into new functions, rename, simplify conditionals, and add guard clauses — but the function must produce identical output for all inputs. If you are tempted to "improve" a function's logic (change a format, tighten validation, rename return fields), STOP — that is a behavior change, not a refactor.
+6. **Run existing tests before AND after changes.** If tests exist for the code you're touching, run them first to establish a baseline, then after each batch. If a test that passed before now fails, your change broke behavior — revert immediately.
+7. Check for test files before claiming "no tests." Partial coverage is not zero coverage.
+8. Do not refactor and add features at the same time.
+9. **Single-seam structural**: one seam per invocation. **Codebase rescue**: address the primary contradiction plus all signals in its blast radius. Defer signals outside the blast radius.
+
+## Phase 1: Scan
+
+Read the target (file, directory, or codebase as indicated by user).
+Identify code smells. Reference `references/smell-catalog.md` for the
+smell-to-technique mapping.
+
+For each smell found, record: smell name, file:line, severity (how much
+it hurts the next change).
+
+## Phase 2: Classify
+
+| Signal | Classification | Action |
+|--------|---------------|--------|
+| All smells are within-file (long method, complex conditional, duplication, dead code, bad names) | **Surgical** | Fix directly |
+| Smells are cross-file (god file, circular dep, duplicated logic across files, dependency violation) | **Structural** | Write execution card, then execute |
+| Mix of both | **Structural** | Structural first (includes surgical cleanup at the end) |
+| Not a code smell (slow performance, runtime bug, feature request) | **Redirect** | Suggest /fix, /investigate, or /auto |
+
+Output: `[Refactor] Scope: <files>. Classification: <surgical|structural|redirect>. Smells found: <count>.`
+
+## Phase 3a: Surgical Execution
+
+For local smells. No spec file. Direct edits with verification.
+
+1. Form micro-plan (in memory, not written to disk):
+   - Scope: file(s) to touch
+   - Smells: ordered list (simplest first)
+   - Verify command: test/typecheck/lint command for this repo
+   - Abort rule: revert + skip if verify fails twice on same smell
+
+2. Fix one smell family at a time. Apply the technique from `references/smell-catalog.md`.
+
+3. After each batch: run verify command. If fail: revert, skip to next smell.
+
+4. After all smells: run full verify. Report results.
+
+## Phase 3b: Structural Execution
+
+For cross-file problems. Two sub-paths based on scope:
+
+**Single-seam** (user targets a specific structural issue, e.g., "split notifications.ts"):
+1. Read `references/structural-card.md` for the template.
+2. Fill the card (45-60 lines). Focus on the one seam.
+
+**Codebase rescue** (user targets a directory or whole codebase, e.g., "refactor this codebase"):
+1. Read `references/rescue-playbook.md` for the full process.
+2. Follow all 8 steps: scan → rank → trace deps → propose structure → write card with Required Structural Reductions → execute → report.
+3. Address the primary contradiction PLUS all signals within its blast radius. Defer signals outside the blast radius.
+
+**For both sub-paths, execute in this order:**
+
+1. **Verify**: run existing tests to establish baseline. If no tests cover the code being moved/changed, write characterization tests first — this is unconditional for structural refactors regardless of blast radius.
+2. **Move**: relocate code per Target Structure. Update imports. Run tests.
+3. **Consolidate**: merge duplicated logic per Eliminate list. Run tests.
+4. **Simplify**: apply surgical techniques to every touched file. Run tests.
+5. **Clean**: delete dead code, stale imports. Run tests.
+
+If blast radius >5 files: write card to `.ship/tasks/<task_id>/plan/spec.md` and show user before executing. Otherwise keep in memory.
+
+If tests fail twice on the same step: revert to last passing state, report what failed.
+
+## Phase 4: Report
+
+After all changes, report to user:
+
+```
+[Refactor] Complete.
+  Smells fixed: <N>
+  Functions extracted: <N>
+  Duplicated blocks eliminated: <N> (was in M files, now in 1)
+  Dead code deleted: <N> lines
+  Lines before/after: <N> → <M>
+  Files touched: <N>
+  Tests: <passed|failed|none>
+```
+
+If structural: also report which smells were deferred (not addressed in this invocation).
 
 ## Quality Gates
 
 | Gate | Condition | Fail action |
 |------|-----------|-------------|
-| Classify → Diagnose | Input type determined | AskUserQuestion |
-| Diagnose → Spec | Crack identified (or directive validated) | Adjust depth or NEEDS_CONTEXT |
-| Spec → Auto | Spec has acceptance criteria + "behavior must not change" | Revise spec |
-
----
-
-## Phase 1: Setup
-
-Generate task_id:
-```bash
-TASK_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/task-id.sh "<description>")
-```
-
-Artifacts go to `.ship/tasks/$TASK_ID/plan/`. The Write tool creates
-directories automatically — no mkdir needed.
-
-Output: `[Refactor] Task "<title>" created (task_id: <task_id>).`
-
-## Phase 2: Classify Input
-
-Read the user's request and classify:
-
-| Type | Signal | Example | Diagnosis depth |
-|------|--------|---------|----------------|
-| **Directive** | User gives a clear structural action | "extract auth from UserService", "split this file into 3", "move utils to shared/" | Light — validate, then spec |
-| **Area** | User points to a location but not an action | "refactor the auth module", "refactor this file", "this file is too big" | Medium — focused diagnosis on that area |
-| **Pain** | User describes friction but not the cause | "every time I add an API I touch 5 files", "changing billing always breaks auth" | Full — 4-step diagnosis |
-| **Vague** | User has a feeling, no specifics | "this code is a mess", "refactor the codebase", "clean this up" | Full — but ask for pain first |
-
-Output: `[Refactor] Input type: <directive|area|pain|vague>`
-
----
-
-## Phase 3: Diagnose
-
-### Path A: Directive (light)
-
-The user already knows what to do. Your job: validate it makes sense,
-then write the spec.
-
-1. **Read the code** the user is pointing at. Understand what exists.
-2. **Validate the action** — does the directive make structural sense?
-   Does it introduce new problems (circular deps, broken interfaces)?
-3. **If valid** → write spec (Phase 4) with the user's directive as
-   the target structure.
-4. **If questionable** → tell the user what you found, suggest
-   alternative. Do not silently override.
-
-Output: `[Refactor] Directive validated. Writing spec...`
-
-### Path B: Area (medium)
-
-The user pointed to a location. Diagnose what's wrong with it.
-
-1. **Read the area** — the file(s) or module the user pointed at.
-2. **Trace last pain** — from the user's request or git history,
-   find the most recent change that was harder than it should have been:
-   ```bash
-   git log --since="3 months ago" --name-only --pretty=format:"%s" -- <area paths> | head -40
-   ```
-3. **Follow the pain** — pick the hardest recent change. Trace what
-   files it touched and why. What forced the cross-cutting?
-4. **Identify the crack** — why does this area's structure not match
-   how it's used?
-5. **Counterfactual check** — if this crack didn't exist, would the
-   last painful change have been simpler? If no → wrong crack, dig deeper.
-
-Output: `[Refactor] Crack identified: <1-line summary>`
-
-### Path C: Pain / Vague (full)
-
-The user has friction but doesn't know the structural cause.
-
-**If vague**: first ask via AskUserQuestion:
-> What specific task felt harder than it should have been recently?
-
-Then proceed with the full diagnosis:
-
-#### Step 1: Trace the last painful change
-
-Don't map abstract structure. Start from a **concrete instance** of the pain:
-
-> User says "every time I add an API I touch 5 files"
-> → "Show me the last API you added. Which commit?"
-> → Or find it: `git log --all --oneline --grep="add.*endpoint\|add.*api\|new.*route" | head -10`
-
-Read that commit. Trace exactly which files changed and why each
-one had to change.
-
-#### Step 2: Trace the dependency chain
-
-From the painful change, trace backward and forward:
-
-1. **Why did file A have to change?** → because it imports X from file B
-2. **Why does file A import X?** → because the boundary forces this dependency
-3. **Could file A have avoided this change?** → only if the boundary were different
-
-Trace at least 2 levels in each direction. Use Grep to find all
-import/dependency connections.
-
-#### Step 3: Analyze patterns (is this one-off or systemic?)
-
-```bash
-# Do these files always change together?
-git log --since="3 months ago" --name-only --pretty=format:"---" -- <files from step 1> \
-  | awk '/^---$/{if(NR>1)print ""; next}{printf "%s ",$0}' \
-  | sort | uniq -c | sort -rn | head -10
-```
-
-If the co-change pattern is consistent → systemic structural issue.
-If it's a one-off → maybe not worth a refactor.
-
-#### Step 4: Identify the crack + counterfactual
-
-Synthesize into a diagnosis:
-
-> The pain is [PAIN]. This happens because [STRUCTURAL CAUSE].
-> Specifically, [CURRENT BOUNDARY] forces [UNNECESSARY COUPLING]
-> when the actual change pattern is [OBSERVED PATTERN].
-
-**Counterfactual check**: if this crack didn't exist (structure were
-ideal), would the painful change in Step 1 have been simpler?
-If yes → crack confirmed. If no → wrong crack, go back to Step 2.
-
-#### Step 5: Multiple cracks? Find the main contradiction
-
-If multiple structural issues surface, determine priority:
-
-> Does fixing crack A also resolve or ease crack B?
-> Does fixing crack B also resolve or ease crack A?
-
-If A→B but not B→A, then A is the main contradiction. Fix A first.
-
-**If you cannot identify a concrete structural cause, STOP.**
-Escalate NEEDS_CONTEXT: the pain may not be structural, or more
-information is needed.
-
-Output: `[Refactor] Crack identified: <1-line summary>`
-
-## Phase 4: Write Spec
-
-Write to `.ship/tasks/<task_id>/plan/spec.md`.
-
-### For Directive path:
-
-```markdown
-## Task
-[The user's directive — what to extract/split/move]
-
-## Current State
-[What exists now — file:line evidence from validation]
-
-## Target Structure
-[What it looks like after the directive is executed]
-
-## Acceptance Criteria
-- Behavior must not change — same inputs produce same outputs,
-  same side effects, same error behavior
-- [Structural criteria from the directive]
-
-## Non-goals
-- No new features or behavior changes
-- No cleanup outside the directive's scope
-```
-
-### For Area / Pain / Vague paths:
-
-```markdown
-## Pain
-[What triggered this refactor — the concrete friction]
-
-## Current Structure
-[Dependency chain traced from the painful change — file:line evidence]
-
-## Change Patterns
-[Co-change analysis — systemic or one-off]
-
-## Crack
-[The structural cause — specific misalignment between boundaries and usage]
-
-## Target Structure
-[What the structure should look like — derived from the crack]
-
-## Acceptance Criteria
-- Behavior must not change — same inputs produce same outputs,
-  same side effects, same error behavior
-- [Structural criterion]: e.g. "Adding a new API endpoint touches
-  at most 2 files instead of 5"
-- [Structural criterion]: e.g. "Changes to billing do not require
-  changes to auth module"
-
-## Non-goals
-- No new features or behavior changes
-- No cosmetic cleanup outside the crack's blast radius
-```
-
-Criteria must be concrete and testable.
-NOT vague: "code is cleaner", "better separation of concerns".
-
-Output: `[Refactor] Spec written. Handing off to auto...`
-
-## Phase 5: Hand Off to Auto
-
-```
-Agent(prompt="You MUST call Skill('ship-auto') as your first and only action.
-Task description: Refactor — <1-line crack summary>.
-task_id: <task_id>
-task_dir: .ship/tasks/<task_id>
-
-Context: plan/spec.md already exists with a refactor diagnosis.
-Auto should proceed to its Design phase, which will invoke plan.
-Plan will detect the existing spec.md and use it as input —
-it will produce plan.md without overwriting the diagnosis.")
-```
-
-What happens next (for your understanding, not action):
-1. Auto bootstraps → detects spec.md exists but plan.md does not → `NO_PLAN`
-2. Auto dispatches plan → plan detects existing spec.md → preserves it, produces plan.md
-3. Auto presents plan to user for approval (user approval gate)
-4. Implement → Review → Verify → QA → Simplify → Handoff
-
-Refactor's job ends here. Auto owns the rest including user approval.
-
----
-
-## Progress Reporting
-
-Use `[Refactor]` prefix:
-
-```
-[Refactor] Task "split-user-service" created.
-[Refactor] Input type: pain
-[Refactor] Tracing last painful change — commit abc123 "add billing webhook"
-[Refactor] Dependency chain: billing/handler.go → auth/user.go → db/models.go
-[Refactor] Co-change pattern: billing/ and auth/ change together in 80% of commits
-[Refactor] Crack identified: User model owns both auth and billing concerns
-[Refactor] Counterfactual: confirmed — with separate models, webhook would touch 2 files not 5
-[Refactor] Spec written. Handing off to auto...
-```
+| Scan → Classify | At least 1 smell found with file:line evidence | Report "no smells found" — code is clean |
+| Classify → Execute | Classification is surgical or structural (not redirect) | Redirect to appropriate skill |
+| Execute → Next batch | Verify passes after changes | Revert batch, skip smell (max 2 retries) |
+| Structural card → Execute | Card has Evidence + Invariants + Target + Eliminate | Revise card |
+| Execute → Report | At least 1 successful change was made | Report "all changes reverted — could not refactor safely" |
 
 ## Artifacts
 
 ```text
+# Surgical: no artifacts — changes are committed directly
+
+# Structural (>5 file blast radius):
 .ship/tasks/<task_id>/
   plan/
-    spec.md       ← refactor writes this (diagnosis + acceptance criteria)
-    plan.md       ← auto/plan writes this (migration stories)
-  review.md       ← auto writes
-  verify.md       ← auto writes
-  qa/qa.md        ← auto writes
-  simplify.md     ← auto writes
+    spec.md       <- execution card (45-60 lines)
 ```
 
-## Error Handling
+## Progress Reporting
 
-| Condition | Action |
-|-----------|--------|
-| Input is vague, no pain | AskUserQuestion for concrete friction |
-| Directive doesn't make structural sense | Tell user, suggest alternative |
-| Cannot trace dependency chain | Narrow scope, focus on one connection |
-| No git history (new repo) | Skip pattern analysis, rely on static tracing |
-| Cannot identify structural cause | NEEDS_CONTEXT — pain may not be structural |
-| Co-change is one-off, not systemic | Tell user this may not need a refactor |
-| Multiple cracks, can't prioritize | AskUserQuestion which pain is most blocking |
-| Auto fails after handoff | Auto handles its own retries and escalation |
+```
+[Refactor] Scope: src/projects.ts. Classification: surgical. Smells found: 4.
+[Refactor] Fixing smell 1/4: Long Method (list handler, 80 lines) → Extract Method...
+[Refactor] Verify: tests passed. Smell 1 fixed.
+[Refactor] Fixing smell 2/4: Complex Conditional (access check) → Guard Clauses...
+[Refactor] Verify: tests passed. Smell 2 fixed.
+[Refactor] Complete. Smells fixed: 4. Lines: 345 → 280. Tests: passed.
+```
 
-## Completion
-
-Report one of:
-- **HANDED_OFF** — diagnosis complete, spec written, auto dispatched. Auto will handle user approval and execution.
-- **NEEDS_CONTEXT** — cannot identify structural cause.
-- **NOT_STRUCTURAL** — pain exists but cause is not structural (suggest auto/debug).
-
-### Only stop for
-- Cannot identify a concrete structural crack (NEEDS_CONTEXT)
-- User's pain is not structural (NOT_STRUCTURAL)
-- Directive is invalid and user declines alternative (NEEDS_CONTEXT)
-
-### Never stop for
-- Auto failures (auto handles its own retry and escalation)
-- Imperfect git history (skip pattern analysis, use static tracing)
-- Vague input (ask user to clarify, then proceed)
+<Good>
+- Fixing the simplest smells first (quick wins build confidence)
+- Verifying after every batch of changes
+- Reverting immediately when verification fails
+- Reporting concrete metrics (lines, duplication count, functions extracted)
+- Using Fowler techniques by name (Extract Method, Guard Clauses, etc.)
+- Keeping structural execution cards short and actionable
+- Doing surgical cleanup as the last step of structural refactoring
+</Good>
 
 <Bad>
-- Applying full diagnosis to a clear directive ("extract X into Y")
-- Skipping diagnosis for vague input ("this is messy")
-- Writing spec without reading the actual code
-- Mapping the entire codebase instead of tracing from the pain
-- Designing target structure without evidence from dependency tracing
-- Including acceptance criteria that are vague ("cleaner", "better separation")
-- Implementing, reviewing, or verifying yourself instead of handing off to auto
-- Creating a refactor/ directory instead of writing to plan/spec.md
-- Refactoring code outside the diagnosed crack's blast radius
-- Accepting the first crack you find without counterfactual validation
-- Silently overriding a user's directive when validation fails (tell them)
+- Moving code between files without simplifying anything — that's reorganization, not refactoring
+- Writing a 100-line spec for a single file cleanup
+- Diagnosing without reading the code (citing comments about other files as evidence)
+- Skipping verification ("tests are probably fine")
+- Refactoring and adding features in the same session
+- Forcing a change after verification fails twice
+- Architectural redesign disguised as refactoring
+- Claiming "no tests" without checking for test files
 </Bad>
