@@ -39,13 +39,13 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **dev** — Executes implementation stories from a plan. Codex implements each story, Claude reviews spec compliance and code correctness. Stories run sequentially.
 
-**review** — Review code for bugs, security issues, and best practices. Use when reviewing PRs, checking code quality, or analyzing changes before merging.
+**review** — Find every bug in the diff — spec violations, runtime errors, race conditions, missing error handling — then diagnose the structural deficiency that breeds them. No style or formatting nits.
 
 **qa** — Starts the application, builds a rubric from the spec, and tests every acceptance criterion against the running product. Independence contract: cannot read review.md, verify.md, or plan.md. Only L1 evidence (direct observation) counts for MUST criteria. Reports verdict with fix guidance.
 
 **handoff** — Creates a PR with proof bundle (test results, lint, coverage, QA verdict, spec compliance). Then enters the post-PR loop: poll CI, fix failures, address review comments, resolve merge conflicts. Doesn't stop until the PR is merge-ready or retries are exhausted.
 
-**refactor** — Behavior-preserving code cleanup: extraction, renaming, dead-code removal, legacy-path retirement, structural simplification.
+**refactor** — Diagnose structural cracks from concrete pain, then fix directly. Surgical (within-file) or structural (cross-file) execution — code changes, not documents.
 
 Skills trigger automatically based on what you're doing. The harness enforces the workflow — you don't need to remember the process.
 
@@ -56,10 +56,10 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 | `/ship:auto` | Full pipeline orchestrator: plan → dev → review → verify → QA → simplify → handoff |
 | `/ship:plan` | Adversarial pre-coding planning with Codex challenger (2-round convergence) |
 | `/ship:dev` | Execute implementation stories from a plan — Codex implements, Claude reviews |
-| `/ship:review` | Review code for bugs, security issues, and best practices |
+| `/ship:review` | Find every bug in the diff, then diagnose the structural deficiency that breeds them |
 | `/ship:qa` | Independent QA evaluation: functional, exploratory, and health testing with L1 evidence |
 | `/ship:handoff` | PR creation with proof bundle, CI fix loop, and review comment resolution |
-| `/ship:refactor` | Behavior-preserving code cleanup with baseline comparison |
+| `/ship:refactor` | Diagnose structural cracks and fix directly — surgical or structural execution |
 | `/ship:setup` | Bootstrap infra + discover conventions, generate AGENTS.md + CONVENTIONS.md, register enforcement hook |
 
 ## Installation

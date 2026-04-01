@@ -1,6 +1,6 @@
 {
   "name": "ship-tech",
-  "description": "ShipAI plugin marketplace",
+  "description": "ShipAI plugin registry",
   "owner": {
     "name": "Ship",
     "url": "https://www.ship.tech"

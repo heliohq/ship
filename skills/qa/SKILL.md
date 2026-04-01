@@ -5,6 +5,14 @@ description: >
   Independent QA: starts the application, verifies spec criteria against
   the running product, explores beyond the spec for edge cases, and
   checks baseline health. Reports verdict with L1 evidence.
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Glob
+  - Grep
+  - Agent
+  - AskUserQuestion
 ---
 
 ## Preamble (run first)

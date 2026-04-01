@@ -10,7 +10,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff, then diagnose the structural deficiency that breeds them. Bugs are symptoms — the structural crack is the disease. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a proof bundle, then enters the fix loop: CI failures, review comments, merge conflicts. Doesn't stop until the PR is merge-ready or retries are exhausted. |
-| [`/ship:refactor`](#refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Writes a refactor spec, then hands off to auto for execution. |
+| [`/ship:refactor`](#refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Diagnoses and fixes directly — surgical (within-file) or structural (cross-file) execution. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | One command. Detects your stack, installs missing tools, configures CI/CD, discovers coding conventions, generates AGENTS.md and CONVENTIONS.md, registers enforcement. |
 
 ---
@@ -387,7 +387,7 @@ Bad refactoring starts with "this module is too big" or "we should use the repos
 
 ### What it produces
 
-A refactor spec — not code. The spec describes the pain, the current structure, the crack, the target structure, and acceptance criteria. Then it hands off to `auto`, which produces the plan, implements it, reviews it, tests it, and ships it.
+Code changes, not documents. Diagnoses the pain, traces to the structural crack, then fixes directly. Surgical execution for within-file smells, structural execution (with an execution card) for cross-file issues.
 
 ### Example
 
