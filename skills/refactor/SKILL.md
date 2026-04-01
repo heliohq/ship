@@ -1,5 +1,5 @@
 ---
-name: ship-refactor
+name: refactor
 version: 2.0.0
 description: >
   Make code better — simpler, less duplication, clearer structure.
@@ -19,7 +19,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_SKILL_NAME=ship-refactor source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
+SHIP_SKILL_NAME=refactor source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ```
 
 # Ship: Refactor

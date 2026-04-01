@@ -1,5 +1,5 @@
 ---
-name: ship-review
+name: review
 version: 0.1.0
 description: >
   Staff-engineer code review: find every bug in the diff — spec violations,
@@ -18,7 +18,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_SKILL_NAME=ship-review source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
+SHIP_SKILL_NAME=review source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ```
 
 # Ship: Review

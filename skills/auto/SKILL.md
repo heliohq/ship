@@ -1,5 +1,5 @@
 ---
-name: ship-auto
+name: auto
 version: 0.4.0
 description: >
   Full pipeline orchestrator: plan → implement → review → verify → QA → simplify → handoff.
@@ -17,7 +17,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_SKILL_NAME=ship-auto source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
+SHIP_SKILL_NAME=auto source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 ```
 
 # Ship: Auto
@@ -155,7 +155,7 @@ Bash("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remote
 ```
 Record as `BASE_BRANCH`. Use this value wherever `<base>` appears in later phases.
 
-- If `.ship/rules/semantic/CONVENTIONS.md` is missing: suggest `/ship:ship-setup` but do not block.
+- If `.ship/rules/semantic/CONVENTIONS.md` is missing: suggest `/ship:setup` but do not block.
 
 Output: `[Ship] Task "<title>" created. Starting design phase...`
 
@@ -189,7 +189,7 @@ exists (e.g. from a prior refactor diagnosis) and preserve it, producing
 only plan.md. If spec.md does not exist, plan produces both.
 
 ```
-Agent(prompt="Call Skill('ship-plan'). Params: repo=<repo>, task=<description>, task_id=<id>, artifact_dir=.ship/tasks/<task_id>/plan/")
+Agent(prompt="Call Skill('plan'). Params: repo=<repo>, task=<description>, task_id=<id>, artifact_dir=.ship/tasks/<task_id>/plan/")
 ```
 
 **After return:** verify both `spec.md` and `plan.md` exist and are non-empty. If incomplete → escalate BLOCKED.
@@ -220,7 +220,7 @@ Options:
 Record pre-dispatch HEAD SHA.
 
 ```
-Agent(prompt="Call Skill('ship-dev'). Params: task_dir=.ship/tasks/<task_id>, spec=.ship/tasks/<task_id>/plan/spec.md, plan=.ship/tasks/<task_id>/plan/plan.md")
+Agent(prompt="Call Skill('dev'). Params: task_dir=.ship/tasks/<task_id>, spec=.ship/tasks/<task_id>/plan/spec.md, plan=.ship/tasks/<task_id>/plan/plan.md")
 ```
 
 **After return:** verify HEAD advanced. If unchanged → escalate BLOCKED.
@@ -234,7 +234,7 @@ catches story-level issues; this catches cross-story bugs and
 diagnoses the structural deficiencies that breed them.
 
 ```
-Agent(prompt="Call Skill('ship-review'). Params: spec=.ship/tasks/<task_id>/plan/spec.md, task_id=<task_id>, task_dir=.ship/tasks/<task_id>, base_branch=<base>")
+Agent(prompt="Call Skill('review'). Params: spec=.ship/tasks/<task_id>/plan/spec.md, task_id=<task_id>, task_dir=.ship/tasks/<task_id>, base_branch=<base>")
 ```
 
 **After return:** read `.ship/tasks/<task_id>/review.md`.
@@ -267,7 +267,7 @@ Agent(prompt="Run the following and write results to .ship/tasks/<task_id>/verif
   QA's own skip logic.
 
 ```
-Agent(prompt="Call Skill('ship-qa'). Params: spec=<spec_path>, diff_cmd='git diff main...HEAD', output=.ship/tasks/<task_id>/qa/qa.md, rubric_output=.ship/tasks/<task_id>/qa/rubric.md")
+Agent(prompt="Call Skill('qa'). Params: spec=<spec_path>, diff_cmd='git diff main...HEAD', output=.ship/tasks/<task_id>/qa/qa.md, rubric_output=.ship/tasks/<task_id>/qa/rubric.md")
 ```
 
 **After return:**
@@ -298,7 +298,7 @@ Agent(prompt="Call Skill('simplify').
 ## Phase 9: Handoff
 
 ```
-Agent(prompt="Call Skill('ship-handoff'). Params: repo=<repo>, task_dir=.ship/tasks/<task_id>, base_branch=<base>")
+Agent(prompt="Call Skill('handoff'). Params: repo=<repo>, task_dir=.ship/tasks/<task_id>, base_branch=<base>")
 ```
 
 ---
