@@ -126,7 +126,7 @@ digraph refactor {
 | Diagnose -> Investigate | Primary contradiction identified with code evidence | Adjust depth, narrow scope, or report NEEDS_CONTEXT / NOT_STRUCTURAL |
 | Investigate -> Target | Dependency graph of affected code traced, data/control flow understood | Re-read code, trace further |
 | Target -> Spec | Every proposed module passes the Boundary Test (applied inline during drafting) | Revise target structure |
-| Spec -> Auto | Contract includes all 10 sections; preserved behaviors cite file:line; missing tests stated in both preserved behaviors and constraints | Revise spec |
+| Spec -> Auto | Contract includes all 12 sections; preserved behaviors cite file:line; test coverage stated; Required Structural Reductions has at least one "Eliminate" entry; Migration Stories follow move→consolidate→cleanup order | Revise spec |
 
 ---
 
@@ -363,6 +363,28 @@ For every row, fill all five columns. If you cannot write `Changes When` as exac
 |--------|------|--------------|--------------|------------|
 | [file/module] | [single responsibility] | [exactly one independent reason this file changes] | [adjacent concerns explicitly excluded] | [same/lower-layer deps only] |
 
+## Required Structural Reductions
+Every structural signal found in diagnosis MUST be classified into exactly one of these three categories. No signal may be left unclassified.
+
+| Signal | Action | Detail |
+|--------|--------|--------|
+| [e.g., duplicated access control in 3 files] | **Eliminate** / **Defer** / **Out of scope** | [if Eliminate: target end state, e.g., "3 copies → 1 shared function". If Defer: why. If Out of scope: why.] |
+
+- **Eliminate**: resolved in this refactor. The corresponding migration story MUST include consolidation or deletion, not just moving code.
+- **Defer**: intentionally not addressed yet, with a concrete reason (e.g., "no test coverage for this path, too risky to change now").
+- **Out of scope**: not a structural issue (e.g., performance, cosmetic).
+
+If every signal is Defer or Out of scope, reconsider whether this refactor is worth doing.
+
+## Migration Stories
+Execution must follow this order. Each story is independently testable.
+
+1. **Move ownership**: create the seam, relocate code to new modules per the Target Module Map.
+2. **Consolidate**: merge duplicated logic into the new owner. Every signal marked "Eliminate" with duplication must be resolved in this story.
+3. **Clean up**: delete dead code, remove stale imports, remove empty re-exports made obsolete by the move.
+
+If risk is high (no tests, large blast radius), Story 1 alone may be shipped as a standalone PR. But the spec must still contain Stories 2-3 as planned follow-ups — do not silently drop them.
+
 ## What Gets Easier After
 - [The next likely change touches fewer files]
 - [A future feature gains a clean seam]
@@ -375,8 +397,9 @@ For every row, fill all five columns. If you cannot write `Changes When` as exac
 
 ## Non-goals
 - No new features or behavior changes
-- No cosmetic cleanup outside the diagnosed area
 - No boundary changes unrelated to the primary contradiction
+- No performance optimization unless classified as "Eliminate" in Required Structural Reductions
+- Cleanup of diagnosed signals (duplication, dead code) is IN scope — only cosmetic cleanup of undiagnosed code is excluded
 ```
 
 Criteria must be concrete and testable.
@@ -485,4 +508,7 @@ Report one of:
 - Implementing, reviewing, or verifying yourself instead of handing off to auto
 - Creating a `refactor/` directory instead of writing to `plan/spec.md`
 - Expanding the refactor beyond the primary contradiction
+- Moving code between files without eliminating any diagnosed duplication or dead code — that is reorganization, not refactoring
+- Classifying every structural signal as "Defer" or "Out of scope" — if nothing is worth eliminating, the refactor is not worth doing
+- Combining move + consolidate + cleanup into a single atomic step instead of ordered stories
 </Bad>
