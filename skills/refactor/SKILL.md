@@ -85,7 +85,7 @@ digraph refactor {
 6. **Run existing tests before AND after changes.** If tests exist for the code you're touching, run them first to establish a baseline, then after each batch. If a test that passed before now fails, your change broke behavior — revert immediately.
 7. Check for test files before claiming "no tests." Partial coverage is not zero coverage.
 8. Do not refactor and add features at the same time.
-9. One structural seam per invocation. If multiple structural problems exist, fix the highest-leverage one and note the rest.
+9. **Single-seam structural**: one seam per invocation. **Codebase rescue**: address the primary contradiction plus all signals in its blast radius. Defer signals outside the blast radius.
 
 ## Phase 1: Scan
 
@@ -125,26 +125,28 @@ For local smells. No spec file. Direct edits with verification.
 
 ## Phase 3b: Structural Execution
 
-For cross-file problems. Write an execution card, then execute it.
+For cross-file problems. Two sub-paths based on scope:
 
+**Single-seam** (user targets a specific structural issue, e.g., "split notifications.ts"):
 1. Read `references/structural-card.md` for the template.
+2. Fill the card (45-60 lines). Focus on the one seam.
 
-2. Fill the card (45-60 lines). Key sections:
-   - Evidence: every smell with file:line
-   - Invariants: max 5 critical behaviors that must not change
-   - Target Structure: Module | Owns | Changes When
-   - Eliminate: what duplication/dead code to remove
+**Codebase rescue** (user targets a directory or whole codebase, e.g., "refactor this codebase"):
+1. Read `references/rescue-playbook.md` for the full process.
+2. Follow all 8 steps: scan → rank → trace deps → propose structure → write card with Required Structural Reductions → execute → report.
+3. Address the primary contradiction PLUS all signals within its blast radius. Defer signals outside the blast radius.
 
-3. If blast radius >5 files: write card to `.ship/tasks/<task_id>/plan/spec.md` and show user before executing. Otherwise keep in memory.
+**For both sub-paths, execute in this order:**
 
-4. Execute in order:
-   a. **Verify**: run existing tests. If none and blast radius >5 files, write characterization tests first.
-   b. **Move**: relocate code per Target Structure. Update imports. Run tests.
-   c. **Consolidate**: merge duplicated logic per Eliminate list. Run tests.
-   d. **Simplify**: apply surgical techniques to every touched file. Run tests.
-   e. **Clean**: delete dead code, stale imports. Run tests.
+1. **Verify**: run existing tests to establish baseline. If none and blast radius >5 files, write characterization tests first.
+2. **Move**: relocate code per Target Structure. Update imports. Run tests.
+3. **Consolidate**: merge duplicated logic per Eliminate list. Run tests.
+4. **Simplify**: apply surgical techniques to every touched file. Run tests.
+5. **Clean**: delete dead code, stale imports. Run tests.
 
-5. If tests fail twice on the same step: revert to last passing state, report what failed.
+If blast radius >5 files: write card to `.ship/tasks/<task_id>/plan/spec.md` and show user before executing. Otherwise keep in memory.
+
+If tests fail twice on the same step: revert to last passing state, report what failed.
 
 ## Phase 4: Report
 
