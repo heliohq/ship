@@ -10,7 +10,8 @@ _SKILL_NAME="${SHIP_SKILL_NAME:-unknown}"
 # Settings file: .claude/ship.local.md (YAML frontmatter)
 # Supported settings:
 #   auto_login: true|false  — skip confirmation prompt on login
-_SETTINGS_FILE="${PWD}/.claude/ship.local.md"
+_REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+_SETTINGS_FILE="${_REPO_ROOT}/.claude/ship.local.md"
 _AUTO_LOGIN="false"
 if [ -f "$_SETTINGS_FILE" ]; then
   _FM=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$_SETTINGS_FILE")
@@ -42,7 +43,7 @@ if command -v ship >/dev/null 2>&1; then
       _EMAIL=$(printf '%s' "$_AUTH_JSON" | jq -r '.email // empty')
       _DAYS=$(printf '%s' "$_AUTH_JSON" | jq -r '.days_remaining // empty')
       [ -n "$_EMAIL" ] && echo "SHIP_USER: $_EMAIL"
-      if [ -n "$_DAYS" ] && [ "$_DAYS" -le 7 ]; then
+      if [ -n "$_DAYS" ] && [ "$_DAYS" -le 3 ]; then
         echo "SHIP_TOKEN_EXPIRY: ${_DAYS} days — consider re-authenticating"
       fi
     else

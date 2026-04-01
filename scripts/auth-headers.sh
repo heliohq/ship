@@ -17,7 +17,12 @@ _CRED_FILE="$_CONFIG_DIR/credentials.json"
 # Check if config.yaml specifies a different credentials file
 if [ -f "$_CONFIG_DIR/config.yaml" ]; then
   _CUSTOM_CRED=$(sed -n 's/^[[:space:]]*credentials:[[:space:]]*//p' "$_CONFIG_DIR/config.yaml" | head -1)
-  [ -n "$_CUSTOM_CRED" ] && _CRED_FILE="$_CONFIG_DIR/$_CUSTOM_CRED"
+  if [ -n "$_CUSTOM_CRED" ]; then
+    case "$_CUSTOM_CRED" in
+      /*) _CRED_FILE="$_CUSTOM_CRED" ;;
+      *)  _CRED_FILE="$_CONFIG_DIR/$_CUSTOM_CRED" ;;
+    esac
+  fi
 fi
 
 # No credentials file → empty headers
@@ -36,7 +41,11 @@ fi
 # Check expiry
 _EXPIRES=$(jq -r '.expires_at // empty' "$_CRED_FILE")
 if [ -n "$_EXPIRES" ]; then
-  _EXP_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${_EXPIRES%%.*}" "+%s" 2>/dev/null || echo "0")
+  # Strip fractional seconds and timezone suffix, parse as UTC
+  _TS="${_EXPIRES%%.*}"
+  _TS="${_TS%%Z}"
+  _TS="${_TS%%+*}"
+  _EXP_EPOCH=$(TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%S" "$_TS" "+%s" 2>/dev/null || echo "0")
   _NOW_EPOCH=$(date "+%s")
   if [ "$_EXP_EPOCH" -gt 0 ] && [ "$_NOW_EPOCH" -gt "$_EXP_EPOCH" ]; then
     echo '{}'
