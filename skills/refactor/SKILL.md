@@ -271,7 +271,7 @@ Record your findings — they become the evidence for the target module map.
 Turn the diagnosis + dependency graph into a file/module map. Apply the Boundary Test to each module **as you draft it**, not afterward:
 
 1. Name concrete modules or files.
-2. For each module, state one distinct reason-to-change. If you can name two independent features that would both modify this module for unrelated reasons, it is too broad — split it. A module named "repository" or "utils" that serves multiple unrelated domains (e.g., users + projects + reports) is always too broad.
+2. For each module, state one distinct reason-to-change. If you can name two independent features that would both modify this module for unrelated reasons, it is too broad — split it. **The module name is irrelevant** — "service", "manager", "handler", "helper" are just as suspect as "repository" or "utils". Test each module: would two unrelated infrastructure changes (e.g., switching email provider AND changing notification DB schema) both require editing this module? If yes, it bundles independent concerns regardless of its name.
 3. Verify dependency direction: no module in a lower layer (data, infrastructure) depends on a module in a higher layer (presentation, routing). Data flows down through parameters, not up through imports.
 4. Keep the change minimal enough that auto can migrate incrementally.
 
@@ -279,7 +279,7 @@ Turn the diagnosis + dependency graph into a file/module map. Apply the Boundary
 
 Every proposed module must pass all four:
 
-1. **Distinct reason-to-change** - can you name exactly one type of change this module owns? If two unrelated features would both modify it, split it. Anti-pattern: a single "repository" or "utils" module that owns queries/helpers for multiple unrelated domains (users, projects, billing) — changing the user schema should not require opening the same file as changing billing logic.
+1. **Distinct reason-to-change** - can you name exactly one type of change this module owns? If two unrelated features would both modify it, split it. **The name does not matter — the behavior does.** A module called "notification-service" that owns both email transport AND in-app DB writes is just as wrong as a module called "repository" that owns queries for users+projects+billing. Test: would changing the email provider require opening the same file as changing the notification DB schema? If yes, split it.
 2. **Understandable from the outside** - can someone understand what it owns without reading internals?
 3. **Correct dependency direction** - does this module only depend on modules at the same or lower level? A data-access module must not import from a routing module.
 4. **Cheaper next change** - does this boundary reduce files touched for the next likely change?
@@ -342,6 +342,14 @@ Use this format:
 ## Structural Signals Found
 - [Concrete evidence, preferably with file:line references]
 - [God file / duplication / fan-in / mixed ownership / shared mutable state / dead code]
+
+## Dependency Graph
+[This section MUST appear before Target Module Map. Record the investigation findings here.]
+- **Imports:** [which files import which, with specific export names]
+- **Call flow:** [function A in file X calls function B in file Y]
+- **Data flow:** [where data enters, how it transforms, where it exits]
+- **Layers:** [which code is presentation, business logic, data access, infrastructure]
+- **Direction violations:** [any low-level module importing from high-level, or "none found"]
 
 ## Target Module Map
 | Module | Owns | Depends On |
@@ -477,7 +485,7 @@ Report one of:
 <Bad>
 - **PROPOSING A TARGET STRUCTURE WITHOUT TRACING THE DEPENDENCY GRAPH FIRST** - the #1 failure mode
 - Citing code comments about other files as evidence without reading those files
-- Proposing a module where two unrelated features would both need to modify it (too broad)
+- Proposing a module where two unrelated features would both need to modify it — regardless of what the module is named ("service", "manager", "handler" are just as suspect as "repository" or "utils")
 - Letting a low-level module (data access) depend on a high-level module (HTTP/routing) — dependency inversion
 - Applying the Boundary Test as a post-hoc gate instead of inline during drafting
 - Omitting "no test suite" from Critical Behaviors when tests are missing
