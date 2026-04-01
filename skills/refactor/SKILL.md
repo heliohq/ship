@@ -1,6 +1,6 @@
 ---
 name: ship-refactor
-version: 0.6.0
+version: 0.8.0
 description: >
   Diagnose structural misalignment, write a refactor contract, then hand off
   to auto for execution. Use when adding or changing features feels harder
@@ -31,7 +31,7 @@ Refactor's only job is diagnosis and contract writing - understanding WHY
 the current structure makes the next change harder than it should be, then
 declaring the boundary change required to fix that. Everything else (plan,
 implement, review, verify, QA, handoff) is auto's job. The diagnosis is
-written to `plan/spec.md`, the same artifact auto reads. No special mode,
+written to `.ship/tasks/<task_id>/plan/spec.md`, the same artifact auto reads. No special mode,
 no separate directory, no parallel pipeline.
 
 ## Principal Contradiction
@@ -126,7 +126,7 @@ digraph refactor {
 | Diagnose -> Investigate | Primary contradiction identified with code evidence | Adjust depth, narrow scope, or report NEEDS_CONTEXT / NOT_STRUCTURAL |
 | Investigate -> Target | Dependency graph of affected code traced, data/control flow understood | Re-read code, trace further |
 | Target -> Spec | Every proposed module passes the Boundary Test (applied inline during drafting) | Revise target structure |
-| Spec -> Auto | Contract includes all 9 sections; preserved behaviors cite file:line; missing tests stated in both preserved behaviors and constraints | Revise spec |
+| Spec -> Auto | Contract includes all 10 sections; preserved behaviors cite file:line; missing tests stated in both preserved behaviors and constraints | Revise spec |
 
 ---
 
@@ -268,7 +268,7 @@ Record your findings — they become the evidence for the target module map.
 Turn the diagnosis + dependency graph into a file/module map. Apply the Boundary Test to each module **as you draft it**, not afterward:
 
 1. Name concrete modules or files.
-2. For each module, state one distinct reason-to-change. If you can name two independent features that would both modify this module for unrelated reasons, it is too broad — split it. **The module name is irrelevant** — "service", "manager", "handler", "helper" are just as suspect as "repository" or "utils". Test each module: would two unrelated infrastructure changes (e.g., switching email provider AND changing notification DB schema) both require editing this module? If yes, it bundles independent concerns regardless of its name.
+2. For each module, state one distinct reason-to-change and fill the `Changes When` column in the target map. If you cannot state it as exactly one trigger, split the module. **The module name is irrelevant** — "service", "manager", "handler" are just as suspect as "repository" or "utils". Test: would two unrelated changes (e.g., changing the payment gateway AND changing project access rules) both require editing this module? If yes, split it.
 3. Verify dependency direction: no module in a lower layer (data, infrastructure) depends on a module in a higher layer (presentation, routing). Data flows down through parameters, not up through imports.
 4. Keep the change minimal enough that auto can migrate incrementally.
 
@@ -276,14 +276,20 @@ Turn the diagnosis + dependency graph into a file/module map. Apply the Boundary
 
 Every proposed module must pass all four:
 
-1. **Distinct reason-to-change** - can you name exactly one type of change this module owns? If two unrelated features would both modify it, split it. **The name does not matter — the behavior does.** A module called "notification-service" that owns both email transport AND in-app DB writes is just as wrong as a module called "repository" that owns queries for users+projects+billing. Test: would changing the email provider require opening the same file as changing the notification DB schema? If yes, split it.
+1. **Distinct reason-to-change** - can you fill the `Changes When` column with exactly one trigger? If two unrelated changes would both modify this module, split it. **The name does not matter — the behavior does.** Test: pick two plausible future changes in different product areas. Would both require editing this module? If yes, it bundles independent concerns.
 2. **Understandable from the outside** - can someone understand what it owns without reading internals?
 3. **Correct dependency direction** - does this module only depend on modules at the same or lower level? A data-access module must not import from a routing module.
 4. **Cheaper next change** - does this boundary reduce files touched for the next likely change?
 
 If a boundary only forwards complexity elsewhere, inverts the dependency direction, or bundles unrelated domains into one module, reject it and revise.
 
-**Second-pass check:** After drafting the full target map, re-read each module's "Owns" column. For any module that lists 2+ activities joined by "and" or commas, ask: would changing one activity force you to understand the other? If not, they belong in separate modules. This catches broad modules that slip through on the first pass.
+**Second-pass check:** After drafting the full target map, re-read each module's "Owns" and "Changes When" columns. For any module that lists 2+ activities joined by "and" or commas, ask: would changing one activity force you to understand the other? If not, they belong in separate modules.
+
+**Automatic-fail shapes** — if any row matches, split it or justify in one sentence why those concerns always change together:
+- A module owning both route handlers and persistence logic
+- A module owning both transport/infrastructure and content/templates
+- A module owning CRUD + access policy + reporting for the same domain
+- A module owning queries or helpers for multiple unrelated domains
 
 #### Step 7: Decide outcome
 
@@ -351,10 +357,11 @@ Use this format:
 - **Direction violations:** [any low-level module importing from high-level, or "none found"]
 
 ## Target Module Map
-| Module | Owns | Depends On |
-|--------|------|------------|
-| [file/module] | [clear responsibility] | [upstream deps only] |
-| [file/module] | [clear responsibility] | [upstream deps only] |
+For every row, fill all five columns. If you cannot write `Changes When` as exactly one trigger, split the module before continuing.
+
+| Module | Owns | Changes When | Must Not Own | Depends On |
+|--------|------|--------------|--------------|------------|
+| [file/module] | [single responsibility] | [exactly one independent reason this file changes] | [adjacent concerns explicitly excluded] | [same/lower-layer deps only] |
 
 ## What Gets Easier After
 - [The next likely change touches fewer files]
