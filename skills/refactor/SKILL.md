@@ -88,7 +88,7 @@ digraph refactor {
     "Directive: validate + enumerate preserved behavior" -> "Boundary test on every proposed module";
     "Feature-prep: trace blocker + minimal prerequisite refactor" -> "Boundary test on every proposed module";
     "Rescue: scan signals + rank + propose target skeleton" -> "Boundary test on every proposed module";
-    "Rescue: scan signals + rank + propose target skeleton" -> "STOP: NEEDS_CONTEXT" [label="no structural crack found"];
+    "Rescue: scan signals + rank + propose target skeleton" -> "STOP: NEEDS_CONTEXT" [label="no structural contradiction found"];
     "Not-structural: redirect to auto/debug" -> "STOP: NOT_STRUCTURAL";
     "Boundary test on every proposed module" -> "Write plan/spec.md contract" [label="pass"];
     "Boundary test on every proposed module" -> "STOP: NEEDS_CONTEXT" [label="target still fuzzy"];
@@ -259,7 +259,7 @@ If a boundary only forwards complexity elsewhere, reject it and revise.
 
 #### Step 6: Decide outcome
 
-- **Structural crack confirmed** -> write the contract in Phase 4.
+- **Structural contradiction confirmed** -> write the contract in Phase 4.
 - **Pain is real but not structural** -> report `NOT_STRUCTURAL`.
 - **No credible target skeleton yet** -> report `NEEDS_CONTEXT`.
 
