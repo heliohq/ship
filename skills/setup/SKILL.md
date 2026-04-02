@@ -149,7 +149,7 @@ Check and store:
 - `.gitignore`
 - `.github/workflows/*.yml`
 - `.github/dependabot.yml`
-- Pre-commit config (`.ship/hooks/`, `.husky/`, `.pre-commit-config.yaml`, `lint-staged` in package.json, `core.hooksPath`)
+- Pre-commit config (`.ship/hooks/`, `core.hooksPath`; also detect legacy: `.husky/`, `.pre-commit-config.yaml`, `lint-staged`)
 
 ## Phase 2: Choose (1 user decision)
 
@@ -220,7 +220,9 @@ Only add pre-commit wiring, not new tools (unless Install Tools
 module was also selected).
 
 If the project already uses `.husky/` or `.pre-commit-config.yaml`,
-ask the user before migrating to `.ship/hooks/`.
+migrate to `.ship/hooks/`: port the existing hook commands into the
+generated script, then remove the legacy config. Ask the user before
+removing legacy files.
 
 After each module, commit atomically:
 ```
