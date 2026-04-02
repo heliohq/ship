@@ -2,10 +2,11 @@
 name: setup
 version: 1.0.0
 description: >
-  Bootstrap repo infrastructure and AI harness in one command. Detects languages
-  and tooling across 14 languages, installs missing tools, configures CI/CD,
-  pre-commit hooks, AI code review, then discovers coding conventions, generates
-  AGENTS.md and CONVENTIONS.md, and registers a semantic enforcement hook.
+  Bootstrap repo infrastructure and AI harness. Detects languages and tooling,
+  installs missing tools, configures CI/CD and pre-commit hooks, discovers
+  semantic constraints from code and git history, generates AGENTS.md and
+  CONVENTIONS.md, and sets up hookify safety rules. Audits existing harness
+  for staleness if one already exists.
   Use when: setup, init, bootstrap, setup harness, setup infra, install tools,
   configure CI, add pre-commit, enforce conventions.
 allowed-tools:
