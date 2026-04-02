@@ -149,7 +149,7 @@ Check and store:
 - `.gitignore`
 - `.github/workflows/*.yml`
 - `.github/dependabot.yml`
-- Pre-commit config (`.husky/`, `.pre-commit-config.yaml`, `lint-staged` in package.json)
+- Pre-commit config (`.ship/hooks/`, `.husky/`, `.pre-commit-config.yaml`, `lint-staged` in package.json, `core.hooksPath`)
 
 ## Phase 2: Choose (1 user decision)
 
@@ -180,31 +180,47 @@ Options:
 | Module | Reference |
 |---|---|
 | Install Tools | `references/tooling.md` |
-| Pre-commit Hooks | configure lint-staged + husky (JS/TS), pre-commit (Python), or equivalent for detected language |
+| Pre-commit Hooks | generate hook scripts in `.ship/hooks/`, set `core.hooksPath`, works across all worktrees |
 | CI/CD | `references/ci.md` |
 | Dependabot | generate `.github/dependabot.yml` |
 | AI Code Review | `references/review.md` |
 
 ### Pre-commit hook configuration
 
-For each detected language, set up pre-commit to run lint + format:
+Generate hook scripts in `.ship/hooks/` and set `core.hooksPath` so
+hooks work across all worktrees and branches without per-worktree setup.
 
-**JS/TS:** `lint-staged` + `husky`
-```json
-// package.json
-"lint-staged": {
-  "*.{ts,tsx,js,jsx}": ["oxlint --fix", "prettier --write"],
-  "*.{json,md,yml}": ["prettier --write"]
-}
+```bash
+mkdir -p .ship/hooks
+git config core.hooksPath .ship/hooks
 ```
 
-**Python:** `.pre-commit-config.yaml` with ruff
-**Go:** `.pre-commit-config.yaml` with golangci-lint + gofmt
-**Rust:** `.pre-commit-config.yaml` with clippy + rustfmt
+Generate `.ship/hooks/pre-commit` with lint + format commands for
+each detected language. The script must be executable (`chmod +x`).
+
+**JS/TS:**
+```bash
+#!/usr/bin/env bash
+# Run lint-staged if available, otherwise run linter + formatter directly
+if command -v npx &>/dev/null && grep -q '"lint-staged"' package.json 2>/dev/null; then
+  npx lint-staged
+else
+  npx oxlint --fix $(git diff --cached --name-only --diff-filter=ACM -- '*.ts' '*.tsx' '*.js' '*.jsx')
+  npx prettier --write $(git diff --cached --name-only --diff-filter=ACM -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.md' '*.yml')
+  git add $(git diff --cached --name-only --diff-filter=ACM)
+fi
+```
+
+**Python:** run `ruff check --fix` + `ruff format` on staged `.py` files
+**Go:** run `golangci-lint run` + `gofmt -w` on staged `.go` files
+**Rust:** run `cargo clippy --fix` + `cargo fmt` on staged `.rs` files
 
 Use whatever linter/formatter the project already has configured.
 Only add pre-commit wiring, not new tools (unless Install Tools
 module was also selected).
+
+If the project already uses `.husky/` or `.pre-commit-config.yaml`,
+ask the user before migrating to `.ship/hooks/`.
 
 After each module, commit atomically:
 ```
@@ -460,7 +476,7 @@ Skip if an identical hook entry already exists.
 ### Step D: Update .gitignore
 
 Add `.ship/tasks/` and `.ship/audit/` to `.gitignore` if not present.
-Do NOT gitignore `.ship/rules/`.
+Do NOT gitignore `.ship/rules/` or `.ship/hooks/`.
 Update with language-specific ignores if not already present.
 
 If user chose project shared hook (Step C option A) and `.claude/` is
@@ -475,7 +491,7 @@ fully gitignored, change to:
 Stage all generated files:
 
 ```bash
-git add AGENTS.md .ship/rules/semantic/CONVENTIONS.md .gitignore
+git add AGENTS.md .ship/rules/semantic/CONVENTIONS.md .ship/hooks/ .gitignore
 # Only if project shared hook was chosen:
 git add .claude/settings.json
 git commit -m "feat(setup): generate AGENTS.md and coding conventions
@@ -531,7 +547,7 @@ Harness:
 .github/
   workflows/       — CI/CD (if module selected)
   dependabot.yml   — dependency updates (if module selected)
-.husky/ or .pre-commit-config.yaml — pre-commit hooks (if module selected)
+.ship/hooks/          — pre-commit hooks (if module selected), shared via core.hooksPath
 .gitignore         — updated with language ignores
 AGENTS.md          — AI handbook with conventions
 .ship/rules/semantic/CONVENTIONS.md — semantic enforcement rules
