@@ -244,6 +244,48 @@ fi
 Add project-specific deterministic checks based on Phase 5 findings
 (e.g., protected file paths, forbidden SQL patterns, etc.).
 
+#### Optional: Hookify real-time rules
+
+Check if the hookify plugin is available:
+```bash
+ls .claude/plugins/*/hookify 2>/dev/null || \
+  grep -r '"hookify"' ~/.claude/plugins/installed_plugins.json 2>/dev/null || \
+  echo "HOOKIFY_NOT_FOUND"
+```
+
+If hookify is available, generate hookify rules for each deterministic
+finding from Phase 5. These provide real-time PreToolUse blocking —
+catching mistakes BEFORE the AI executes, not after commit.
+
+For each deterministic rule, write a file to `.claude/hookify.ship-<name>.local.md`:
+
+```markdown
+---
+name: ship-<rule-name>
+enabled: true
+event: file
+conditions:
+  - field: file_path
+    operator: regex_match
+    pattern: <pattern from Phase 5>
+action: block
+---
+
+<message explaining why this is blocked>
+```
+
+Examples:
+
+| Phase 5 finding | Hookify rule |
+|----------------|-------------|
+| Don't edit .env files | `event: file`, match `file_path` on `\.env$`, action: block |
+| Don't run DROP TABLE | `event: bash`, match `command` on `DROP\s+TABLE`, action: block |
+| Protected files list | `event: file`, match `file_path` on protected paths, action: warn |
+
+Hookify rules are an early-warning layer. Pre-commit hook remains
+the safety net. If hookify is not installed, skip this step — the
+pre-commit hook alone provides sufficient protection.
+
 #### Section 2: Lint + format
 
 Use the linter/formatter the project already has configured. The
@@ -718,9 +760,11 @@ Harness:
   hooks/           — pre-commit hooks (if module selected), shared via core.hooksPath
   rules/CONVENTIONS.md — semantic enforcement rules
   scripts/check-conventions.sh — convention checker (if hook registered)
+.claude/
+  settings.json    — hook registration (if project shared chosen)
+  hookify.ship-*.local.md — real-time PreToolUse rules (if hookify installed)
 .gitignore         — comprehensive, based on detected tech stack
 AGENTS.md          — AI handbook with conventions (per sub-project in monorepos)
-.claude/settings.json — hook registration (if project shared chosen)
 ```
 
 ## Reference Files
