@@ -18,6 +18,8 @@ allowed-tools:
   - AskUserQuestion
 ---
 
+# Ship: Setup
+
 ## Preamble (run first)
 
 ```bash
@@ -29,45 +31,6 @@ SHIP_SKILL_NAME=setup source ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh
 If `SHIP_AUTH: not_logged_in`: AskUserQuestion — "Ship requires authentication to use all skills. Login now? (A: Yes / B: Not now)". A → run `ship auth login`, verify with `ship auth status --json`, proceed if logged_in, stop if failed. B → stop.
 If `SHIP_AUTO_LOGIN: true`: skip AskUserQuestion, run `ship auth login` directly.
 If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
-
-# Ship: Setup
-
-One command. Repo goes from bare tooling to fully configured infrastructure
-with AI-enforced coding conventions. Idempotent.
-
-## Process Flow
-
-```dot
-digraph setup {
-    rankdir=TB;
-
-    "Start" [shape=doublecircle];
-    "Part 1: Infra — detect languages, tools, existing config" [shape=box];
-    "Present detection results to user" [shape=box];
-    "User chooses modules" [shape=diamond];
-    "Run selected modules" [shape=box];
-    "Part 2: Harness — survey directory structure, tech stack" [shape=box];
-    "Investigate — trace from entry, 2-3 levels deep" [shape=box];
-    "Conventions found?" [shape=diamond];
-    "Confirm conventions with user" [shape=box];
-    "Generate AGENTS.md + CONVENTIONS.md + hook" [shape=box];
-    "Commit" [shape=box];
-    "Done" [shape=doublecircle];
-
-    "Start" -> "Part 1: Infra — detect languages, tools, existing config";
-    "Part 1: Infra — detect languages, tools, existing config" -> "Present detection results to user";
-    "Present detection results to user" -> "User chooses modules";
-    "User chooses modules" -> "Run selected modules";
-    "Run selected modules" -> "Part 2: Harness — survey directory structure, tech stack";
-    "Part 2: Harness — survey directory structure, tech stack" -> "Investigate — trace from entry, 2-3 levels deep";
-    "Investigate — trace from entry, 2-3 levels deep" -> "Conventions found?";
-    "Conventions found?" -> "Confirm conventions with user" [label="yes"];
-    "Conventions found?" -> "Investigate — trace from entry, 2-3 levels deep" [label="no, widen search"];
-    "Confirm conventions with user" -> "Generate AGENTS.md + CONVENTIONS.md + hook";
-    "Generate AGENTS.md + CONVENTIONS.md + hook" -> "Commit";
-    "Commit" -> "Done";
-}
-```
 
 ## Hard Rules
 
@@ -203,54 +166,12 @@ Generate `.ship/hooks/pre-commit` with two sections:
 
 The script must be executable (`chmod +x`).
 
-#### Section 1: Safety checks
-
-Generate checks from Phase 5 deterministic findings. Common examples:
-
-```bash
-#!/usr/bin/env bash
-set -e
-STAGED=$(git diff --cached --name-only --diff-filter=ACM)
-
-# Block secrets and sensitive files
-if echo "$STAGED" | grep -qE '\.env$|\.env\.local$|credentials\.json$|\.pem$'; then
-  echo "ERROR: Sensitive file staged. Remove it from the commit." >&2
-  exit 1
-fi
-
-# Check for hardcoded secrets in staged content
-if git diff --cached -U0 | grep -qiE '(password|secret|api_key)\s*=\s*["\x27][^"\x27]+["\x27]'; then
-  echo "WARNING: Possible hardcoded secret detected. Review before committing." >&2
-  exit 1
-fi
-```
-
-Add project-specific deterministic checks based on Phase 5 findings
-(e.g., protected file paths, forbidden SQL patterns, etc.).
-
-#### Section 2: Lint + format
-
-Use the linter/formatter the project already has configured. The
-examples below are defaults when no existing tool is detected:
-
-**JS/TS** (example — use the project's actual linter/formatter):
-```bash
-if command -v npx &>/dev/null && grep -q '"lint-staged"' package.json 2>/dev/null; then
-  npx lint-staged
-else
-  npx oxlint --fix $(echo "$STAGED" | grep -E '\.(ts|tsx|js|jsx)$')
-  npx prettier --write $(echo "$STAGED" | grep -E '\.(ts|tsx|js|jsx|json|md|yml)$')
-  git add $(echo "$STAGED" | grep -E '\.(ts|tsx|js|jsx|json|md|yml)$')
-fi
-```
-
-**Python** (example): `ruff check --fix` + `ruff format` on staged `.py` files
-**Go** (example): `golangci-lint run` + `gofmt -w` on staged `.go` files
-**Rust** (example): `cargo clippy --fix` + `cargo fmt` on staged `.rs` files
-**Shell** (example): `shellcheck` on staged `.sh` files (if shellcheck is available)
-
-Only add lint/format wiring, not new tools (unless Install Tools
-module was also selected).
+The script has two sections:
+1. **Safety checks** — grep/regex from Phase 5 deterministic findings
+   (secrets, protected files, forbidden patterns)
+2. **Lint + format** — run the project's detected linter/formatter
+   on staged files. Use `lint-staged` if configured. Only add wiring,
+   not new tools (unless Install Tools was also selected).
 
 If the project already uses `.husky/` or `.pre-commit-config.yaml`,
 migrate to `.ship/hooks/`: port the existing hook commands into the
@@ -383,83 +304,21 @@ For each finding, apply this test:
 
 Examples of what goes WHERE:
 
-| Finding | Where | Why |
-|---------|-------|-----|
-| .env files must not be edited | hookify rule + pre-commit | regex on file_path |
-| Don't modify RLS policies | hookify rule + pre-commit | regex on content |
-| Protected files list | hookify rule + pre-commit | regex on file_path |
-| Don't run DROP TABLE | hookify rule | regex on command |
-| Don't remove auth checks to fix errors | CONVENTIONS.md | needs semantic understanding |
-| This API has rate limit constraints | CONVENTIONS.md | model can't infer from code |
-| Legacy module X is being migrated | CONVENTIONS.md | model would build on it |
-| Price stored in cents not dollars | CONVENTIONS.md | model might "fix" it |
-
-### Record
-
-```
-Sub-project: <path or "root"> (monorepo only)
-Type: semantic | deterministic
-Rule: <name>
-Source: <code | git-history | user>
-Evidence: <file1:line>, <file2:line>, <file3:line> (if from code)
-          <commit-hash: summary> (if from git history)
-Description: <one sentence>
-Why: <what breaks if violated>
-```
+Deterministic examples: protect .env files, block DROP TABLE, protected file paths.
+Semantic examples: don't remove auth to fix errors, price in cents not dollars, legacy module migration.
 
 ---
 
 ## Phase 6: Confirm
 
-Use AskUserQuestion. Present findings separated by type.
+Use AskUserQuestion. Present safety rules and semantic rules separately.
+Ask if user has additional constraints not visible in the code.
 
-Hooks are handled automatically: hookify enforces deterministic rules
-in real-time, the ship plugin injects semantic rules at session start,
-pre-commit hook provides commit-time safety net. No user choice needed.
+Options: A) Generate as shown, B) Edit, C) Cancel.
+Max two rounds of edits.
 
-**Single repo:**
-```
-I investigated your codebase and git history. Here's what I found:
-
-SAFETY RULES (real-time block via hookify + commit-time via pre-commit):
-  ✓ [D1] <name> — <what it blocks>
-  ✓ [D2] <name> — <what it blocks>
-
-SEMANTIC RULES (injected at session start, model follows throughout):
-  ✓ [S1] <name>
-        Why: <what breaks if violated>
-        Evidence: <source — code file:line or git commit hash>
-  ✓ [S2] <name>
-        Why: <what breaks if violated>
-        Evidence: <source>
-
-All rules are enforced automatically — no configuration needed.
-
-Anything else AI should know about this project? Things that look
-safe to change but aren't, constraints not visible in the code,
-ongoing migrations, domain-specific traps?
-```
-
-**Monorepo:** same format, grouped by sub-project.
-
-Options:
-- A) Generate as shown
-- B) I want to toggle or edit (specify which numbers and changes)
-- C) Cancel — do not generate anything
-
-If B: apply edits, re-present once with AskUserQuestion. Max two rounds.
-
-If user adds a convention via free text that was not observed in code,
-investigate it: search the codebase for evidence. If evidence found,
-add it with file:line evidence. If not, tell the user no evidence was
-found and ask if they still want to include it as a user-defined rule.
-User-defined rules are allowed but must be labeled as such (see Phase 7
-Step B format).
-
-If user provides additional context (gotchas, boundaries, etc.),
-incorporate it into AGENTS.md (Gotchas, Boundaries, or Architecture
-sections as appropriate) and into `.ship/rules/CONVENTIONS.md` if it
-describes an enforceable convention.
+If user adds a convention without code evidence, search for it first.
+If no evidence found, include as `Source: user-defined`.
 
 ---
 
@@ -518,35 +377,17 @@ Why: <what breaks — bug, security issue, data loss, etc.>
 Source: <observed from code | git-history commit:hash | user-defined>
 ```
 
-Examples of good CONVENTIONS.md rules:
+Example:
 
 ```markdown
 ## Do not simplify auth flows to fix errors
 Scope: src/auth/**
-Constraint: Never remove or bypass authentication/authorization checks
-  to resolve runtime errors. Fix the root cause instead.
-Why: Removing auth checks creates security vulnerabilities. AI agents
-  are known to delete validation logic to make errors go away.
+Constraint: Never remove or bypass auth checks to resolve runtime errors.
+Why: AI agents are known to delete validation logic to make errors go away.
 Source: observed from code
-
-## Price is stored in cents
-Scope: src/billing/**
-Constraint: All monetary values are integers representing cents, not
-  floating-point dollars. Do not "fix" this to use decimals.
-Why: Floating-point arithmetic causes rounding errors in financial
-  calculations. This is an intentional design choice.
-Source: user-defined
-
-## Legacy payments module is being migrated
-Scope: src/payments/v1/**
-Constraint: Do not add new features or dependencies to v1 payments.
-  All new payment logic goes in src/payments/v2/.
-Why: v1 is scheduled for removal. New dependencies delay the migration.
-Source: git-history commit:abc123
 ```
 
-Do NOT include style rules (naming, formatting, import order). The
-model already follows project style by reading the code.
+Do NOT include style rules — the model follows style by reading code.
 
 **If `.ship/rules/CONVENTIONS.md` already exists**, use AskUserQuestion:
 
@@ -579,12 +420,11 @@ real-time layer, not the only layer.
 
 #### Generate rule files
 
-For each deterministic finding from Phase 5, write a hookify rule
-file to `.claude/hookify.ship-<name>.local.md`:
+For each deterministic finding, write `.claude/hookify.ship-<name>.local.md`:
 
 ```markdown
 ---
-name: ship-<rule-name>
+name: ship-protect-env
 enabled: true
 event: file
 conditions:
@@ -594,43 +434,16 @@ conditions:
 action: block
 ---
 
-Do not edit .env files directly. Use .env.example for templates
-and set actual values via environment variables.
+Do not edit .env files directly.
 ```
 
-For bash-level rules:
+Use `event: bash` for command-level rules. Hookify auto-discovers
+`.claude/hookify.*.local.md` files — no restart needed.
 
-```markdown
----
-name: ship-no-drop-table
-enabled: true
-event: bash
-conditions:
-  - field: command
-    operator: regex_match
-    pattern: DROP\s+TABLE
-action: block
----
+Also mirror these checks in `.ship/hooks/pre-commit` as a safety net.
 
-DROP TABLE is blocked. Use migrations to modify database schema.
-```
-
-Hookify automatically picks up `.claude/hookify.*.local.md` files —
-no restart or registration needed. Rules take effect immediately.
-
-Also add the same checks to `.ship/hooks/pre-commit` as a commit-time
-safety net (covers manual edits outside AI tools).
-
-#### Semantic convention enforcement
-
-The ship plugin's SessionStart hook automatically injects
-`.ship/rules/CONVENTIONS.md` into the conversation context at the
-start of every session. The model reads these constraints once and
-follows them throughout the session — no per-edit checking needed.
-
-This is cheaper (no Haiku API calls), faster (zero latency on edits),
-and more effective (the model knows the rules before writing, not after).
-If CONVENTIONS.md doesn't exist, the hook silently does nothing.
+Semantic rules (CONVENTIONS.md) are injected at session start by the
+ship plugin's SessionStart hook — no per-edit checking needed.
 
 ### Step D: Update .gitignore
 
@@ -664,77 +477,33 @@ duplicate or reorder existing rules.
 
 ### Step E: Commit
 
-Stage all files generated in previous steps. Do not hardcode file
-paths — stage whatever was actually created or modified:
-
-```bash
-# Stage all generated/modified files. Examples:
-git add AGENTS.md .ship/ .gitignore
-# For monorepos, also stage sub-project AGENTS.md files:
-# git add go-services/AGENTS.md frontend/AGENTS.md
-# If project shared hook was chosen:
-# git add .claude/settings.json
-# If hook was skipped, do not stage .ship/scripts/
-git commit -m "feat(setup): generate AGENTS.md and coding conventions
-
-AGENTS.md: AI handbook with commands, repo map, and conventions.
-.ship/rules/CONVENTIONS.md: <N> conventions for semantic enforcement hook."
-```
+Stage all generated/modified files and commit with a conventional
+commit message summarizing what was generated.
 
 ---
 
 ## Completion
 
-**Single repo:**
+Always output this format:
+
 ```
 [Setup] Complete.
 
 Infrastructure:
   - <module name> — <what was done>
-  ...
 
 Harness:
   AGENTS.md: <generated | merged | skipped>
-  .ship/rules/CONVENTIONS.md: <N> conventions
-    1. <name> — <evidence summary>
-    2. <name> — <evidence summary>
-    ...
-  Hook: <registered in <chosen location> | skipped>
-```
+  CONVENTIONS.md: <N> semantic rules
+  Hookify: <N> safety rules generated
+  Pre-commit: <configured | skipped>
 
-**Monorepo:**
-```
-[Setup] Complete.
-
-Infrastructure:
-  - <module name> — <what was done>
-  ...
-
-Harness:
-  Sub-projects investigated: <list>
-    [go-services/] AGENTS.md: <merged>, <N> conventions
-    [frontend/] AGENTS.md: <generated>, <N> conventions
-  Not investigated: <list>
-
-  .ship/rules/CONVENTIONS.md: <total N> conventions across <M> sub-projects
-  Hook: <registered in <chosen location> | skipped>
-```
-
----
-
-## Artifacts
-
-```text
-.github/
-  workflows/       — CI/CD workflow (if CI/CD module selected)
-  dependabot.yml   — dependency updates (if Dependabot module selected)
-.ship/
-  hooks/           — pre-commit hooks (if module selected), shared via core.hooksPath
-  rules/CONVENTIONS.md — semantic rules (AI judgment via ship plugin)
-.claude/
-  hookify.ship-*.local.md — deterministic safety rules (real-time via hookify)
-.gitignore         — comprehensive, based on detected tech stack
-AGENTS.md          — AI handbook with conventions (per sub-project in monorepos)
+  Semantic rules:
+    1. <name> — <why>
+    2. <name> — <why>
+  Safety rules:
+    1. <name> — <what it blocks>
+    2. <name> — <what it blocks>
 ```
 
 ## Reference Files
@@ -747,23 +516,10 @@ AGENTS.md          — AI handbook with conventions (per sub-project in monorepo
 - `references/runtime-install-guide.md` — platform-specific runtime installation
 - `references/harness-audit.md` — harness freshness audit (Phase 3.5)
 
-## What This Skill Does NOT Do
-
-- Configure deployment or hosting
-- Install global packages or use `sudo`
-- Replace existing tool configs without asking
-- Read the entire codebase (targeted investigation only)
-
 <Bad>
-- Assuming a language or tool without detecting it
-- Installing tools the user didn't select
-- Replacing existing config without showing diff
-- Writing rules without reading the code first
-- Generating rules from templates or presets
-- Reading every file in the project
-- Putting style rules (naming, formatting) in CONVENTIONS.md
-- Putting deterministic checks (grep-able) in CONVENTIONS.md instead of pre-commit hook
-- Including a pattern the linter already enforces
-- Running Dependabot generation inside the CI/CD module
+- Putting style rules in CONVENTIONS.md
+- Putting grep-able checks in CONVENTIONS.md instead of hookify/pre-commit
+- Generating rules from templates without reading code
+- Running Dependabot inside CI/CD module
 - Overwriting existing core.hooksPath without asking
 </Bad>
