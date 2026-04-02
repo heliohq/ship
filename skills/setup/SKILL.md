@@ -141,7 +141,7 @@ also selected.
 |---|---|
 | Install Tools | `references/tooling.md` |
 | Pre-commit Hooks | generate hook scripts in `.ship/hooks/`, set `core.hooksPath`, works across all worktrees |
-| CI/CD | `references/ci.md` (generate workflow only, skip Dependabot/labeler sections unless those modules are also selected) |
+| CI/CD | `references/ci.md` (generate workflow only, skip Dependabot section unless module 4 is also selected) |
 | Dependabot | `references/ci.md` (Dependabot section only) |
 | AI Code Review | `references/review.md` |
 
@@ -194,9 +194,9 @@ Options:
 - B) Regenerate everything from scratch
 - C) Skip — don't touch existing harness
 
-If A: update only the stale parts, preserve everything that's still
-accurate. Proceed to Phase 4-7 to discover any NEW conventions not
-yet covered.
+If A: fix stale claims in existing files. Then proceed to Phase 4-7
+to discover additional constraints not yet documented — these are
+added alongside the existing accurate rules, not replacing them.
 
 If B: treat as full init — proceed to Phase 4 as if no harness exists.
 
@@ -221,6 +221,7 @@ git log --since="30 days ago" --name-only --pretty=format: | \
 ```
 
 Record each sub-project: path, language, manifest file, commit count.
+Note: monorepos will get per-sub-project AGENTS.md files in Phase 7.
 
 ### Step B: Identify entry points
 
@@ -317,7 +318,9 @@ Read `references/agents-md.md` for structure. Fill from Phase 4-6
 findings (survey, investigation, and user-provided context).
 Omit sections with no content. Keep under 200 lines per file.
 
-AGENTS.md includes ALL discovered conventions.
+AGENTS.md documents project structure, commands, and architecture.
+It should reference CONVENTIONS.md for semantic rules and mention
+that hookify rules exist for deterministic safety checks.
 
 **Single repo:** generate or update root `AGENTS.md`.
 
@@ -438,7 +441,7 @@ variables, etc. Cover all detected languages and tools thoroughly.
 .ship/audit/
 ```
 
-Do NOT gitignore `.ship/rules/`, `.ship/hooks/`, or `.ship/scripts/`.
+Do NOT gitignore `.ship/rules/` or `.ship/hooks/`.
 
 **Always include Claude Code rules:**
 ```

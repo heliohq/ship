@@ -1,7 +1,7 @@
 # Module: CI/CD Configuration
 
-Purpose: Generate GitHub Actions CI workflow. Dependabot and labeler are
-separate modules — only generate them if the user selected those modules.
+Purpose: Generate GitHub Actions CI workflow. Dependabot is a separate
+module — only generate it if the user selected module 4.
 
 ## Process
 
@@ -18,7 +18,7 @@ Generate `.github/workflows/ci.yml` dynamically from Phase 1 detection results:
 - Use the actual commands detected in Phase 1 (or installed in the tooling module). Do not hardcode commands.
 - Use the standard `actions/setup-*` actions for each language runtime (e.g., `actions/setup-node@v4`, `actions/setup-python@v5`, `actions/setup-go@v5`).
 - If the repo is multi-language, combine jobs into one workflow file.
-- Reference `references/toolchain-matrix.md` for the verify commands per tool.
+- Reference `references/toolchain-matrix.md` for each language's linter, formatter, type checker, and test runner commands.
 
 ### 3. Commit
 
