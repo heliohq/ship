@@ -430,7 +430,7 @@ Why: <what breaks if violated>
 Use AskUserQuestion. Present findings separated by type.
 
 Hooks are handled automatically: hookify enforces deterministic rules
-in real-time, the ship plugin enforces semantic rules via Haiku,
+in real-time, the ship plugin injects semantic rules at session start,
 pre-commit hook provides commit-time safety net. No user choice needed.
 
 **Single repo:**
@@ -441,7 +441,7 @@ SAFETY RULES (real-time block via hookify + commit-time via pre-commit):
   ✓ [D1] <name> — <what it blocks>
   ✓ [D2] <name> — <what it blocks>
 
-SEMANTIC RULES (AI judgment via ship plugin, checked on Write/Edit):
+SEMANTIC RULES (injected at session start, model follows throughout):
   ✓ [S1] <name>
         Why: <what breaks if violated>
         Evidence: <source — code file:line or git commit hash>
@@ -637,13 +637,16 @@ no restart or registration needed. Rules take effect immediately.
 Also add the same checks to `.ship/hooks/pre-commit` as a commit-time
 safety net (covers manual edits outside AI tools).
 
-#### Semantic convention hook
+#### Semantic convention enforcement
 
-The ship plugin's hooks.json already registers a PreToolUse hook
-that runs `check-conventions.sh` on Write/Edit. This script reads
-`.ship/rules/CONVENTIONS.md` and uses Haiku for semantic checking.
-No manual registration needed — it activates automatically when
-CONVENTIONS.md exists.
+The ship plugin's SessionStart hook automatically injects
+`.ship/rules/CONVENTIONS.md` into the conversation context at the
+start of every session. The model reads these constraints once and
+follows them throughout the session — no per-edit checking needed.
+
+This is cheaper (no Haiku API calls), faster (zero latency on edits),
+and more effective (the model knows the rules before writing, not after).
+If CONVENTIONS.md doesn't exist, the hook silently does nothing.
 
 ### Step D: Update .gitignore
 
