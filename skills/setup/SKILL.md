@@ -157,20 +157,13 @@ mkdir -p .ship/hooks
 git config core.hooksPath .ship/hooks
 ```
 
-Generate `.ship/hooks/pre-commit` with two sections:
+Generate `.ship/hooks/pre-commit` to run lint + format on staged files.
+Use `lint-staged` if configured, otherwise call the detected tools
+directly. Only add wiring, not new tools (unless Install Tools was
+also selected). The script must be executable (`chmod +x`).
 
-1. **Deterministic safety checks** — grep/regex rules from Phase 5
-   (type: deterministic). These catch things mechanically.
-2. **Lint + format** — run the project's linter/formatter on staged files.
-
-The script must be executable (`chmod +x`).
-
-The script has two sections:
-1. **Lint + format** — run the project's detected linter/formatter
-   on staged files. Use `lint-staged` if configured. Only add wiring,
-   not new tools (unless Install Tools was also selected).
-2. **Safety checks** — grep/regex from Phase 5 deterministic findings
-   (secrets, protected files, forbidden patterns).
+Deterministic safety checks (secrets, protected files, forbidden
+patterns) are handled by hookify rules in Phase 7C, not here.
 
 If the project already uses `.husky/` or `.pre-commit-config.yaml`,
 migrate to `.ship/hooks/`: port the existing hook commands into the
