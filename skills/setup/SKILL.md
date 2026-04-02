@@ -477,16 +477,32 @@ Skip if an identical hook entry already exists.
 
 ### Step D: Update .gitignore
 
-Add `.ship/tasks/` and `.ship/audit/` to `.gitignore` if not present.
-Do NOT gitignore `.ship/rules/` or `.ship/hooks/`.
-Update with language-specific ignores if not already present.
+Generate a comprehensive `.gitignore` based on everything detected in
+Phase 1 (languages, package managers, toolchains, IDEs, build tools).
 
-If user chose project shared hook (Step C option A) and `.claude/` is
-fully gitignored, change to:
+Use your knowledge of each detected technology to add the standard
+ignore patterns — caches, build output, virtual environments, IDE
+config, OS files, dependency directories, log files, environment
+variables, etc. Cover all detected languages and tools thoroughly.
+
+**Always include these Ship-specific rules:**
+```
+# Ship runtime (tasks and audit are ephemeral)
+.ship/tasks/
+.ship/audit/
+```
+
+Do NOT gitignore `.ship/rules/`, `.ship/hooks/`, or `.ship/scripts/`.
+
+**Always include Claude Code rules:**
 ```
 .claude/*
 !.claude/settings.json
 ```
+
+**For existing repos:** read the current `.gitignore`, identify gaps
+based on detected tech stack, and append missing sections. Do not
+duplicate or reorder existing rules.
 
 ### Step E: Commit
 
