@@ -283,6 +283,76 @@ git commit -m "<conventional commit message>"
 
 # Part 2: Harness
 
+## Phase 3.5: Harness Audit (only if harness already exists)
+
+Before generating anything, check if the project already has harness
+files. If it does, audit them for freshness before deciding what to do.
+
+### Step A: Detect existing harness
+
+```bash
+[ -f AGENTS.md ] && echo "AGENTS.md: exists" || echo "AGENTS.md: missing"
+[ -f .ship/rules/CONVENTIONS.md ] && echo "CONVENTIONS.md: exists" || echo "CONVENTIONS.md: missing"
+[ -f DEVELOPMENT.md ] && echo "DEVELOPMENT.md: exists" || echo "DEVELOPMENT.md: missing"
+[ -f README.md ] && echo "README.md: exists" || echo "README.md: missing"
+```
+
+If no harness files exist → skip to Phase 4 (full init).
+
+### Step B: Audit existing harness
+
+For each harness file that exists, verify its claims against the code:
+
+1. **Extract claims** — file paths, module names, commands, directory
+   structure, tool references mentioned in the doc
+2. **Verify each claim:**
+   - Referenced file paths → do they still exist? (`ls` / `stat`)
+   - Commands (e.g., `pnpm test`, `cargo build`) → do they match
+     package.json scripts / Makefile / etc.?
+   - Architecture descriptions (e.g., "src/services/ handles business
+     logic") → does the directory still exist? Does the description
+     match what's actually in there?
+   - Tool references → are those tools still in the project's deps?
+3. **Classify findings:**
+   - `stale`: referenced path/command/tool no longer exists
+   - `contradicted`: code does something different from what docs say
+   - `accurate`: claim still holds
+
+### Step C: Present audit results
+
+Use AskUserQuestion:
+
+```
+Your project already has harness files. I audited them against
+the current code:
+
+AGENTS.md: <N> claims checked
+  ✗ [stale] References src/renderer/ — directory moved to src/contexts/workspace/
+  ✗ [stale] Says "run pnpm lint" — actual command is "pnpm lint:fix"
+  ✓ [accurate] Architecture description of Main/Preload/Renderer boundaries
+  ...
+
+CONVENTIONS.md: <N> rules checked
+  ✗ [stale] Rule scoped to src/payments/v1/ — directory deleted
+  ✓ [accurate] Auth flow constraint still holds
+  ...
+
+<M> stale claims found, <K> still accurate.
+```
+
+Options:
+- A) Fix stale claims and keep accurate ones (recommended)
+- B) Regenerate everything from scratch
+- C) Skip — don't touch existing harness
+
+If A: update only the stale parts, preserve everything that's still
+accurate. Proceed to Phase 4-7 to discover any NEW conventions not
+yet covered.
+
+If B: treat as full init — proceed to Phase 4 as if no harness exists.
+
+If C: skip Part 2 entirely.
+
 ## Phase 4: Survey
 
 Do NOT read file contents yet. Reuse language/structure data from Part 1.
