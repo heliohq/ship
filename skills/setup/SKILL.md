@@ -35,22 +35,6 @@ If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 One command. Repo goes from bare tooling to fully configured infrastructure
 with AI-enforced coding conventions. Idempotent.
 
-## Principal Contradiction
-
-**Missing tooling slows development vs installing tools the project didn't
-choose.** And: **The project's implicit conventions vs. mechanically
-enforceable rules.**
-
-Setup detects what exists and fills gaps, then discovers conventions that
-linters can't cover and makes them enforceable via AI.
-
-## Core Principles
-
-```
-DETECT FIRST, NEVER ASSUME, RESPECT EXISTING CONFIG.
-NO INVESTIGATION, NO RIGHT TO SPEAK. READ THE CODE BEFORE WRITING ANY RULES.
-```
-
 ## Process Flow
 
 ```dot
