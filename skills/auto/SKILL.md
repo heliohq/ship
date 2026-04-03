@@ -90,7 +90,7 @@ digraph auto {
 | Simplify | **simplify** (standalone skill) — behavior-preserving cleanup |
 | Handoff | **/ship:handoff** — PR creation, GitHub check loop, and fix loop |
 
-## Hard Rules
+## Red Flag
 
 1. All code changes go through subagents. You may read code for investigation.
 2. State file writes use Bash (`cat > file`). All other artifacts are produced by subagents.
@@ -99,6 +99,10 @@ digraph auto {
 5. Report progress after every phase transition.
 6. Never dispatch subagents in background.
 7. Each skill owns its own intra-phase logic. Auto owns inter-phase flow and retry loops.
+8. The phase-owning dispatched agent advances `.ship/ship-auto.local.md` on success. Auto verifies the state change; it does not advance phase on the child's behalf.
+9. Do not write code yourself instead of delegating.
+10. Do not hardcode `main` instead of using `BASE_BRANCH`.
+11. Do not give up on a phase instead of fixing and retrying.
 
 ---
 
@@ -164,7 +168,25 @@ Output: `[Ship] Task "<title>" created. Starting design phase...`
 
 ### Step C: Resume
 
-Read `phase` from state file frontmatter → jump directly to that phase.
+Read `phase` from state file frontmatter and jump directly to that phase
+or fix loop:
+
+- `design` → Phase 2
+- `dev` → Phase 3
+- `review` → Phase 4
+- `review_fix` → Phase 4 review-fix loop
+- `qa` → Phase 5
+- `qa_fix` → Phase 5 QA-fix loop
+- `simplify` → Phase 6
+- `handoff` → Phase 7
+
+For `review_fix` resume, read `.ship/tasks/<TASK_ID>/review.md` and use
+its latest findings as the fix input if the prior Agent return is not in
+memory.
+
+For `qa_fix` resume, read the latest failing report in
+`.ship/tasks/<TASK_ID>/qa/` and use it as the fix input if the prior
+Agent return is not in memory.
 
 Update `session_id` in state file to current session (so this session owns the task).
 
@@ -176,9 +198,21 @@ Output: `[Ship] Resuming task "<task_id>" — phase: <phase>`
 
 ```
 Agent(prompt="Call Skill('design').
+  This is the design phase only. Do not implement code in this phase.
+  Read the existing code and produce the planning artifacts needed for implementation.
+  Use the request below as planning context for `spec.md` and `plan.md` only.
   You are invoked by /ship:auto — do NOT ask the user questions. Treat
   any escalated items as blocked and say what is missing.
-  Task description: <description from state file body>
+  Success means `.ship/tasks/<TASK_ID>/plan/spec.md` and `.ship/tasks/<TASK_ID>/plan/plan.md`
+  both exist, are non-empty, and match the current branch and HEAD.
+  On success, update `.ship/ship-auto.local.md` to `phase: dev` before returning.
+  If design is blocked or incomplete, do not advance the state file.
+  In your return, say whether design is complete or blocked, how many stories or tasks
+  the plan contains, and where the artifacts were written.
+  Planning request:
+  ---
+  <description from state file body>
+  ---
   task_id: <TASK_ID>
   Artifacts go to: .ship/tasks/<TASK_ID>/plan/
   Current branch: <BRANCH>
@@ -189,7 +223,7 @@ Agent(prompt="Call Skill('design').
 - Response clearly indicates design is complete → proceed
 - Response indicates blocked or needs context → re-dispatch with more context (max 2 rounds)
 
-**State update:** set `phase: dev` in `.ship/ship-auto.local.md`.
+**Verify state update:** confirm `.ship/ship-auto.local.md` now says `phase: dev`.
 
 Output: `[Ship] Design complete — <N> stories identified. Starting dev...`
 
@@ -199,8 +233,20 @@ Record pre-dispatch HEAD SHA.
 
 ```
 Agent(prompt="Call Skill('dev').
+  This is the implementation phase only.
+  Use the inputs below as implementation context.
+  Implement against the provided spec and plan.
+  Make the necessary code changes, run the most relevant verification you can inside this phase,
+  and summarize any residual concerns that should carry forward.
+  Do not redo design, review, QA, simplify, or handoff in this phase.
   You are invoked by /ship:auto — do NOT ask the user questions.
   If you cannot find TEST_CMD or need context, say clearly what context is missing.
+  Success means the implementation is complete on the current branch and ready for review.
+  On success, update `.ship/ship-auto.local.md` to `phase: review` before returning.
+  If implementation is blocked or incomplete, do not advance the state file.
+  In your return, say whether implementation is complete or blocked, which stories or tasks
+  were completed, what verification ran, and any concerns worth carrying forward.
+  Implementation context:
   task_dir: .ship/tasks/<TASK_ID>
   spec: .ship/tasks/<TASK_ID>/plan/spec.md
   plan: .ship/tasks/<TASK_ID>/plan/plan.md
@@ -216,7 +262,7 @@ Agent(prompt="Call Skill('dev').
 | Clearly indicates blocked | Re-dispatch with fix instructions (max 2) |
 | Clearly indicates needs context | Investigate and re-dispatch (max 2) |
 
-**State update:** set `phase: review` in `.ship/ship-auto.local.md`.
+**Verify state update:** confirm `.ship/ship-auto.local.md` now says `phase: review`.
 
 Output: `[Ship] Dev complete. Starting review...`
 
@@ -224,8 +270,18 @@ Output: `[Ship] Dev complete. Starting review...`
 
 ```
 Agent(prompt="Call Skill('review').
+  This is the review phase only.
+  Review the active change scope against the provided spec and write actionable findings.
+  Do not implement fixes in this phase.
   You are invoked by /ship:auto (pipeline mode) — do NOT ask the user
   questions. If you cannot read the diff or spec, do a diff-only review.
+  Write the review artifact to the path below and summarize the verdict in your return.
+  On success with a clean review, update `.ship/ship-auto.local.md` to `phase: qa` before returning.
+  If findings remain, update `.ship/ship-auto.local.md` to `phase: review_fix` before returning.
+  If the review is blocked, do not advance the state file.
+  In your return, say whether the review is clean, blocked, or has findings, and summarize
+  the highest-severity findings when present.
+  Review context:
   task_id: <TASK_ID>
   task_dir: .ship/tasks/<TASK_ID>
   spec: .ship/tasks/<TASK_ID>/plan/spec.md
@@ -237,31 +293,44 @@ Agent(prompt="Call Skill('review').
 
 | Response shape | Action |
 |----------------|--------|
-| Clearly indicates the review is clean | proceed |
-| Includes findings or bug summaries | enter review-fix loop (below) |
+| Clearly indicates the review is clean | verify `phase: qa`, then proceed |
+| Includes findings or bug summaries | verify `phase: review_fix`, then enter review-fix loop |
 | Clearly indicates the review is blocked or not reviewable | re-dispatch with adjusted context (max 2 rounds) |
 
 ### Review-fix loop
 
 ```
 loop:
-  1. Set phase: dev
-  2. Dispatch ship:dev to fix the bugs (pass bug details from review Agent return):
+  1. Verify `.ship/ship-auto.local.md` now says `phase: review_fix`
+  2. If resuming and the prior review Agent return is unavailable, read
+     `.ship/tasks/<TASK_ID>/review.md` and use its latest findings as the fix input
+  3. Dispatch ship:dev to fix the bugs (pass bug details from review Agent return):
      Agent(prompt="Call Skill('dev').
+       This is the implementation fix phase only.
+       Apply only the review findings below to the existing implementation.
+       Keep the fix scope targeted to those findings and rerun the most relevant verification
+       for the changed area before returning.
+       Do not redo design, review, QA, simplify, or handoff in this phase.
        You are invoked by /ship:auto — fix mode.
-       These bugs were found by code review. Fix them.
-       Bugs: <bug details from review Agent return>
+       On success, update `.ship/ship-auto.local.md` to `phase: review` before returning.
+       If the fixes are blocked or incomplete, do not advance the state file.
+       In your return, say which findings were fixed, what verification ran, and whether any
+       concerns remain for the next review pass.
+       Review findings to fix:
+       ---
+       <bug details from review Agent return>
+       ---
+       Implementation context:
        task_dir: .ship/tasks/<TASK_ID>
        spec: .ship/tasks/<TASK_ID>/plan/spec.md
        base_branch: <BASE_BRANCH>...")
-  3. Set phase: review
-  4. Re-dispatch ship:review (same prompt as above)
-  5. Read the review response directly:
+  4. Verify `.ship/ship-auto.local.md` now says `phase: review`
+  5. Re-dispatch ship:review (same prompt as above)
+  6. Read the review response directly:
      - No bugs found → break, proceed
      - Findings listed → next round
+     - Review blocked → stop the loop and investigate or re-dispatch with better context
 ```
-
-**State update:** set `phase: qa` in `.ship/ship-auto.local.md`.
 
 Output: `[Ship] Review clean. Starting QA...`
 
@@ -269,7 +338,17 @@ Output: `[Ship] Review clean. Starting QA...`
 
 ```
 Agent(prompt="Call Skill('qa').
+  This is the QA phase only.
+  Test the existing implementation against the provided spec and current changes.
+  Produce evidence-backed reports in the QA output directory and summarize the verdict for Auto.
+  Do not implement fixes in this phase.
   You are invoked by /ship:auto — do NOT ask the user questions.
+  On PASS or SKIP, update `.ship/ship-auto.local.md` to `phase: simplify` before returning.
+  On FAIL, update `.ship/ship-auto.local.md` to `phase: qa_fix` before returning.
+  On BLOCKED, do not advance the state file.
+  In your return, say PASS, SKIP, FAIL, or BLOCKED, what criteria were verified, and where
+  the QA reports were written.
+  QA context:
   task_dir: .ship/tasks/<TASK_ID>
   spec: .ship/tasks/<TASK_ID>/plan/spec.md
   base_branch: <BASE_BRANCH>
@@ -280,31 +359,45 @@ Agent(prompt="Call Skill('qa').
 
 | Response shape | Action |
 |---------------|--------|
-| Clearly indicates PASS | proceed |
-| Clearly indicates SKIP | proceed |
-| Clearly indicates FAIL or BLOCKED | enter QA-fix loop (below) |
+| Clearly indicates PASS | verify `phase: simplify`, then proceed |
+| Clearly indicates SKIP | verify `phase: simplify`, then proceed |
+| Clearly indicates FAIL | verify `phase: qa_fix`, then enter QA-fix loop |
+| Clearly indicates BLOCKED | re-dispatch with adjusted context or investigate (max 2 rounds) |
 
 ### QA-fix loop
 
 ```
 loop:
-  1. Set phase: dev
-  2. Dispatch ship:dev to fix (pass issue details from QA Agent return):
+  1. Verify `.ship/ship-auto.local.md` now says `phase: qa_fix`
+  2. If resuming and the prior QA Agent return is unavailable, read the latest
+     failing report in `.ship/tasks/<TASK_ID>/qa/` and use it as the fix input
+  3. Dispatch ship:dev to fix (pass issue details from QA Agent return):
      Agent(prompt="Call Skill('dev').
+       This is the implementation fix phase only.
+       Apply only the QA issues below to the existing implementation.
+       Keep the fix scope targeted to those issues and rerun the most relevant verification
+       for the changed area before returning.
+       Do not redo design, review, QA, simplify, or handoff in this phase.
        You are invoked by /ship:auto — fix mode.
-       QA found these issues. Fix them.
-       Issues: <issue details from QA Agent return>
+       On success, update `.ship/ship-auto.local.md` to `phase: qa` before returning.
+       If the fixes are blocked or incomplete, do not advance the state file.
+       In your return, say which QA issues were fixed, what verification ran, and whether any
+       concerns remain for the next QA pass.
+       QA issues to fix:
+       ---
+       <issue details from QA Agent return>
+       ---
+       Implementation context:
        task_dir: .ship/tasks/<TASK_ID>
        spec: .ship/tasks/<TASK_ID>/plan/spec.md
        base_branch: <BASE_BRANCH>...")
-  3. Set phase: qa
-  4. Re-dispatch ship:qa with --recheck
-  5. Read the QA response directly:
+  4. Verify `.ship/ship-auto.local.md` now says `phase: qa`
+  5. Re-dispatch ship:qa with --recheck
+  6. Read the QA response directly:
      - PASS/SKIP → break, proceed
-     - FAIL/BLOCKED → next round
+     - FAIL → next round
+     - BLOCKED → stop the loop and investigate or re-dispatch with better context
 ```
-
-**State update:** set `phase: simplify` in `.ship/ship-auto.local.md`.
 
 Output: `[Ship] QA passed. Running simplify...`
 
@@ -318,7 +411,16 @@ Record as `PRE_SIMPLIFY_SHA`.
 
 ```
 Agent(prompt="Call Skill('simplify').
-  Scope: only files changed in this task (git diff <BASE_BRANCH>...HEAD --name-only).
+  This is the simplify phase only.
+  Do behavior-preserving cleanup within the task scope below.
+  Prefer simplifications that reduce duplication, clarify structure, or remove incidental
+  complexity without changing observable behavior.
+  Do not add features, re-plan the task, or start handoff in this phase.
+  On success, update `.ship/ship-auto.local.md` to `phase: handoff` before returning.
+  If simplify is blocked, do not advance the state file.
+  In your return, say whether code changed, which files changed, and what simplification
+  work was performed.
+  Simplify scope: only files changed in this task (git diff <BASE_BRANCH>...HEAD --name-only).
   Output: .ship/tasks/<TASK_ID>/simplify.md")
 ```
 
@@ -326,18 +428,31 @@ Agent(prompt="Call Skill('simplify').
 - Nothing changed → proceed.
 - Code changed → verify simplify didn't break tests:
   ```
-  Agent(prompt="Run the test command for this repo and report whether tests pass or fail.")
+  Agent(prompt="This is the post-simplify verification step only.
+    Run the repo's test command for the current tree and report PASS or FAIL.
+    If the command fails, summarize the failing check or error at a high level.
+    Do not modify files, advance phase state, or make workflow decisions in this step.")
   ```
   - PASS → proceed.
   - FAIL → revert to `PRE_SIMPLIFY_SHA`, proceed anyway.
 
-**State update:** set `phase: handoff` in `.ship/ship-auto.local.md`.
+**Verify state update:** confirm `.ship/ship-auto.local.md` now says `phase: handoff`.
 
 ## Phase 7: Handoff (ship:handoff)
 
 ```
 Agent(prompt="Call Skill('handoff').
-  You are invoked by /ship:auto — do NOT ask the user questions
+  This is the handoff phase only.
+  Ship the current implementation on the provided branch.
+  Verify what is needed, commit the relevant changes, push, create or update the PR,
+  and keep working the CI and review loop until the PR is ready.
+  Do not redo design, review, or QA in this phase.
+  You are invoked by /ship:auto — do NOT ask the user questions.
+  On success, delete `.ship/ship-auto.local.md` before returning.
+  If handoff is not ready or blocked, leave the state file in place.
+  In your return, say whether handoff is complete, include the PR URL when available,
+  summarize the current check status, and call out any remaining blockers.
+  Handoff context:
   task_id: <TASK_ID>
   task_dir: .ship/tasks/<TASK_ID>
   base_branch: <BASE_BRANCH>
@@ -351,7 +466,7 @@ Agent(prompt="Call Skill('handoff').
 | Clearly indicates checks are green and includes PR URL | done |
 | Clearly indicates failure or not ready | Re-dispatch handoff — it owns its own CI fix loop (max 3 rounds) |
 
-**State update (DONE):** delete `.ship/ship-auto.local.md`.
+**Verify cleanup:** confirm `.ship/ship-auto.local.md` has been deleted.
 
 Output: `[Ship] PR checks green: <url>`
 
@@ -384,34 +499,34 @@ Output: `[Ship] PR checks green: <url>`
 ── Phase 2: Design ────────────────────────────────────────
 
 [Ship] Dispatching /ship:design...
-  Agent(prompt="Call Skill('design'). task_id: add-dark-mode-toggle ...")
+  Agent(prompt="Call Skill('design'). This is the design phase only. Read the existing code and produce `spec.md` and `plan.md`. On success, update `.ship/ship-auto.local.md` to `phase: dev` before returning. In your return, summarize story count and artifact paths. Planning request: add dark mode toggle ...")
 
   Agent returns:
   Design complete.
   3 stories identified — toggle component, CSS variables, persistence.
   Artifacts written to .ship/tasks/add-dark-mode-toggle/plan/spec.md and plan.md.
 
-[Ship] State update: phase → dev
+[Ship] Verified state update: phase → dev
 [Ship] Design complete — 3 stories identified. Starting dev...
 
 ── Phase 3: Dev ───────────────────────────────────────────
 
 [Ship] Recording HEAD SHA: abc1234
 [Ship] Dispatching /ship:dev...
-  Agent(prompt="Call Skill('dev'). task_dir: .ship/tasks/add-dark-mode-toggle ...")
+  Agent(prompt="Call Skill('dev'). This is the implementation phase only. Implement against the provided spec and plan, run relevant verification, and summarize residual concerns. On success, update `.ship/ship-auto.local.md` to `phase: review` before returning. Implementation context: task_dir: .ship/tasks/add-dark-mode-toggle ...")
 
   Agent returns:
   Implementation complete.
   3/3 stories complete, tests pass.
   Files changed: src/components/ThemeToggle.tsx, src/styles/themes.css, src/hooks/useTheme.ts.
 
-[Ship] State update: phase → review
+[Ship] Verified state update: phase → review
 [Ship] Dev complete. Starting review...
 
 ── Phase 4: Review ────────────────────────────────────────
 
 [Ship] Dispatching /ship:review...
-  Agent(prompt="Call Skill('review'). base_branch: main ...")
+  Agent(prompt="Call Skill('review'). This is the review phase only. Review the active change scope against the spec, write actionable findings, and summarize the verdict. On success with a clean review, update `.ship/ship-auto.local.md` to `phase: qa` before returning. If findings remain, update `.ship/ship-auto.local.md` to `phase: review_fix` before returning. Review context: base_branch: main ...")
 
   Agent returns:
   Found 2 bugs:
@@ -421,27 +536,27 @@ Output: `[Ship] PR checks green: <url>`
 
 [Ship] 2 bugs found. Entering review-fix loop...
 
-[Ship] State update: phase → dev (fix mode)
+[Ship] Verified state update: phase → review_fix
 [Ship] Dispatching /ship:dev to fix review bugs...
-  Agent(prompt="Call Skill('dev'). fix mode. Bugs: P1, P2 ...")
+  Agent(prompt="Call Skill('dev'). This is the implementation fix phase only. Apply only the listed review findings, rerun relevant verification, and summarize what was fixed. On success, update `.ship/ship-auto.local.md` to `phase: review` before returning. Review findings to fix: P1, P2 ...")
 
   Agent returns:
   Fixed both bugs. Tests pass.
 
-[Ship] State update: phase → review
+[Ship] Verified state update: phase → review
 [Ship] Re-dispatching /ship:review...
 
   Agent returns:
   No bugs found.
   Review written to .ship/tasks/add-dark-mode-toggle/review.md
 
-[Ship] State update: phase → qa
+[Ship] Verified state update: phase → qa
 [Ship] Review clean. Starting QA...
 
 ── Phase 5: QA ────────────────────────────────────────────
 
 [Ship] Dispatching /ship:qa...
-  Agent(prompt="Call Skill('qa'). base_branch: main ...")
+  Agent(prompt="Call Skill('qa'). This is the QA phase only. Test the current implementation against the spec, write evidence-backed reports, and summarize PASS, SKIP, FAIL, or BLOCKED. On PASS or SKIP, update `.ship/ship-auto.local.md` to `phase: simplify` before returning. On FAIL, update `.ship/ship-auto.local.md` to `phase: qa_fix` before returning. QA context: base_branch: main ...")
 
   Agent returns:
   FAIL — dark mode toggle doesn't persist after hard refresh (localStorage not set).
@@ -449,51 +564,54 @@ Output: `[Ship] PR checks green: <url>`
 
 [Ship] QA failed. Entering QA-fix loop...
 
-[Ship] State update: phase → dev (fix mode)
+[Ship] Verified state update: phase → qa_fix
 [Ship] Dispatching /ship:dev to fix QA issues...
   Agent(prompt="Call Skill('dev'). fix mode.
-    Issues: localStorage not set on toggle ...")
+    This is the implementation fix phase only.
+    Apply only the listed QA issues, rerun relevant verification, and summarize what was fixed.
+    On success, update `.ship/ship-auto.local.md` to `phase: qa` before returning.
+    QA issues to fix: localStorage not set on toggle ...")
 
   Agent returns:
   Added localStorage.setItem in useTheme hook.
 
-[Ship] State update: phase → qa
+[Ship] Verified state update: phase → qa
 [Ship] Re-dispatching /ship:qa with --recheck...
-  Agent(prompt="Call Skill('qa'). --recheck ...")
+  Agent(prompt="Call Skill('qa'). This is the QA phase only. Re-test the implementation, refresh the QA reports, and summarize the updated verdict. On PASS or SKIP, update `.ship/ship-auto.local.md` to `phase: simplify` before returning. On FAIL, update `.ship/ship-auto.local.md` to `phase: qa_fix` before returning. QA context: --recheck ...")
 
   Agent returns:
   PASS — all 4 criteria pass, toggle persists across hard refresh.
   Report written to .ship/tasks/add-dark-mode-toggle/qa/browser-report.md.
 
-[Ship] State update: phase → simplify
+[Ship] Verified state update: phase → simplify
 [Ship] QA passed. Running simplify...
 
 ── Phase 6: Simplify ──────────────────────────────────────
 
 [Ship] Recording PRE_SIMPLIFY_SHA: def5678
 [Ship] Dispatching simplify...
-  Agent(prompt="Call Skill('simplify'). Scope: git diff main...HEAD ...")
+  Agent(prompt="Call Skill('simplify'). This is the simplify phase only. Perform behavior-preserving cleanup within task scope, summarize whether code changed, and list the simplifications made. On success, update `.ship/ship-auto.local.md` to `phase: handoff` before returning. Simplify scope: git diff main...HEAD ...")
 
   Agent returns:
   Simplified useTheme hook — extracted shared logic.
   Notes written to .ship/tasks/add-dark-mode-toggle/simplify.md.
 
 [Ship] Simplify made changes. Running tests...
-  Agent(prompt="Run npm test and report PASS or FAIL...")
+  Agent(prompt="This is the post-simplify verification step only. Run npm test for the current tree, report PASS or FAIL, and summarize the failing check if it fails...")
   → PASS
 
-[Ship] State update: phase → handoff
+[Ship] Verified state update: phase → handoff
 
 ── Phase 7: Handoff ───────────────────────────────────────
 
 [Ship] Dispatching /ship:handoff...
-  Agent(prompt="Call Skill('handoff'). base_branch: main ...")
+  Agent(prompt="Call Skill('handoff'). This is the handoff phase only. Verify what is needed, push the branch, create or update the PR, and work the CI loop until ready. On success, delete `.ship/ship-auto.local.md` before returning. In your return, include the PR URL and current check status. Handoff context: base_branch: main ...")
 
   Agent returns:
   PR #42 checks are green:
   https://github.com/user/repo/pull/42
 
-[Ship] Deleting state file.
+[Ship] Verified state file cleanup.
 [Ship] PR checks green: https://github.com/user/repo/pull/42
 ```
 
@@ -501,15 +619,9 @@ Output: `[Ship] PR checks green: <url>`
 
 | Principle | How the example enforces it |
 |-----------|---------------------------|
-| **State file tracks phase** | Every phase transition updates the state file |
+| **State file tracks phase** | The phase-owning child updates the state file and Auto verifies it |
 | **Agent return is the contract** | Orchestrator reads the subagent response directly instead of parsing a result trailer |
-| **Fix loops go back to dev** | Review bugs → phase set to dev → dev fixes → phase set to review |
+| **Fix loops stay honest** | Review and QA move into `review_fix` or `qa_fix`, then the fix worker moves state back on success |
 | **Simplify is safe** | SHA recorded before, tests run after, revert if broken |
 | **No code writes** | Orchestrator dispatches Agents for all code changes |
 | **Always ship** | Pipeline flows start to finish without stopping |
-
-## Red Flag
-- Writing code yourself instead of delegating
-- Hardcoding `main` instead of using BASE_BRANCH
-- Giving up on a phase instead of fixing and retrying
-- Dispatching subagents in background
