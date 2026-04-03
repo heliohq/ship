@@ -67,7 +67,7 @@ digraph auto {
 
     "Start" [shape=doublecircle];
     "Bootstrap (init task dir, detect tooling)" [shape=box];
-    "Design (/ship:plan)" [shape=box];
+    "Design (/ship:design)" [shape=box];
     "User approves plan?" [shape=diamond];
     "Implement (/ship:dev)" [shape=box];
     "Review (code review)" [shape=box];
@@ -83,9 +83,9 @@ digraph auto {
     "STOP: BLOCKED — escalate to user" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
 
     "Start" -> "Bootstrap (init task dir, detect tooling)";
-    "Bootstrap (init task dir, detect tooling)" -> "Design (/ship:plan)";
-    "Design (/ship:plan)" -> "User approves plan?";
-    "User approves plan?" -> "Design (/ship:plan)" [label="revise"];
+    "Bootstrap (init task dir, detect tooling)" -> "Design (/ship:design)";
+    "Design (/ship:design)" -> "User approves plan?";
+    "User approves plan?" -> "Design (/ship:design)" [label="revise"];
     "User approves plan?" -> "Implement (/ship:dev)" [label="approved"];
     "Implement (/ship:dev)" -> "Review (code review)";
     "Review (code review)" -> "Review clean?";
@@ -111,7 +111,7 @@ digraph auto {
 | Role | Who | Why |
 |------|-----|-----|
 | Orchestrator | **You (Claude)** | Read-only coordinator, no code/tests |
-| Design | **/ship:plan** (subagent) | Adversarial planning with Codex |
+| Design | **/ship:design** (subagent) | Adversarial planning with Codex |
 | Implementation | **/ship:dev** (subagent) | Codex MCP implements, Claude reviews |
 | Code review | **/ship:review** (subagent) | Staff-engineer review: find all bugs + diagnose structural deficiencies |
 | Verification | **Agent** (subagent, runs TEST_CMD + lint, writes verify.md) | Keeps orchestrator artifact-free |
@@ -195,7 +195,7 @@ exists (e.g. from a prior refactor diagnosis) and preserve it, producing
 only plan.md. If spec.md does not exist, plan produces both.
 
 ```
-Agent(prompt="Call Skill('plan'). Params: repo=<repo>, task=<description>, task_id=<id>, artifact_dir=.ship/tasks/<task_id>/plan/")
+Agent(prompt="Call Skill('design'). Params: repo=<repo>, task=<description>, task_id=<id>, artifact_dir=.ship/tasks/<task_id>/plan/")
 ```
 
 **After return:** verify both `spec.md` and `plan.md` exist and are non-empty. If incomplete → escalate BLOCKED.
