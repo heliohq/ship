@@ -15,6 +15,7 @@
 |-----------|----------|---------|
 | `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start) and utilities (task-id, preflight, auth-headers) |
 | `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, Stop) |
+| `.codex/` | `INSTALL.md`, `hooks.json` | Codex install docs and repo-local Codex hook registration |
 | `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:design, etc.) |
 | `skills/setup/` | Setup skill | Infra bootstrap + convention discovery, AGENTS.md + CONVENTIONS.md generation |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata for ShipAI |
@@ -31,6 +32,7 @@ Two independent layers:
 
 **Workflow layer (opt-in via /ship:auto):** Fires only during ship-coding sessions.
 - `stop-gate.sh` — blocks session exit while `.ship/ship-auto.local.md` is active
+- Claude Code loads it through plugin `hooks/hooks.json`; Codex loads the same script via repo-local `.codex/hooks.json`
 
 ## Code Style
 

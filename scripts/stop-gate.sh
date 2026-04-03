@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -u
 # Ship auto stop gate — prevents the orchestrator from exiting while
 # a /ship:auto pipeline is active.

@@ -3,6 +3,8 @@
 # Injects .ship/rules/CONVENTIONS.md into conversation context.
 # If no CONVENTIONS.md exists, outputs nothing (no-op).
 
+set -u
+
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CONVENTIONS_FILE="$REPO_ROOT/.ship/rules/CONVENTIONS.md"
 
@@ -22,13 +24,6 @@ else
   exit 0
 fi
 
-cat << EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": ${CONTEXT}
-  }
-}
-EOF
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": %s\n  }\n}\n' "$CONTEXT"
 
 exit 0

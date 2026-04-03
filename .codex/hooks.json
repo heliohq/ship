@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/scripts/session-start.sh\"",
+            "statusMessage": "Loading Ship conventions"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/scripts/stop-gate.sh\"",
+            "statusMessage": "Checking Ship auto state",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

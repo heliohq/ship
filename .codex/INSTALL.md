@@ -39,7 +39,9 @@ codex_hooks = true
 ```
 
 - `multi_agent` — enables subagent dispatch for skills like `implement` and `plan`
-- `codex_hooks` — enables Ship's session and bash policy hooks (when available)
+- `codex_hooks` — enables Codex's hook runtime so Ship can load repo-local hooks from `.codex/hooks.json`
+
+With `codex_hooks = true`, Codex automatically discovers `.codex/hooks.json` in the checked-out repo. That manifest reuses Ship's existing `scripts/session-start.sh` and `scripts/stop-gate.sh`.
 
 ## Verify
 
