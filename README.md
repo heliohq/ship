@@ -37,7 +37,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **auto** — The full pipeline. Bootstraps a task directory, invokes design, then runs dev → review → QA → simplify → handoff autonomously. State tracked in `.ship/ship-auto.local.md` — stop-gate hook blocks exit while active. Every phase is a fresh subagent dispatch.
 
-**dev** — Executes implementation stories from a plan. A peer implementer writes each story, a fresh independent reviewer checks spec compliance and code correctness, and stories run sequentially.
+**dev** — Executes implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave.
 
 **review** — Find every bug in the diff — spec violations, runtime errors, race conditions, missing error handling — then diagnose the structural deficiency that breeds them. No style or formatting nits.
 

@@ -6,7 +6,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 |-------|------|--------------|
 | [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
 | [`/ship:design`](#design) | **Adversarial Designer** | The host agent and a peer agent independently investigate the codebase and produce specs in parallel. Divergences are resolved by code evidence and debate. The merged spec feeds an executable TDD plan validated by a peer drill. |
-| [`/ship:dev`](#dev) | **Implementation Engine** | Executes stories from a plan. A peer implementer writes code, a fresh independent reviewer checks it, and stories run sequentially; review must pass before the next one starts. |
+| [`/ship:dev`](#dev) | **Implementation Engine** | Executes stories from a plan via parallel waves. Dependency analysis groups independent stories; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave. |
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff, then diagnose the structural deficiency that breeds them. Bugs are symptoms — the structural crack is the disease. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
@@ -172,25 +172,19 @@ Assistant: [Design] Dispatching peer investigation...
 
 This is the **implementation engine**.
 
-It takes a plan with concrete stories and executes them one at a time. But the key insight is role separation: **the peer implements, the fresh reviewer discriminates.**
+The key insight is role separation: **the peer implements, the fresh reviewer discriminates.** The peer implementer handles each story in an isolated session. A fresh reviewer — ideally on the other provider — checks spec compliance and code correctness independently.
 
-### Why separate runtimes?
+### Waves and dependency analysis
 
-Self-review doesn't work. When the same runtime writes code and reviews it, the review inherits the blind spots of the implementation. It's like proofreading your own essay — you read what you meant to write, not what you actually wrote.
+Stories are analyzed for dependencies (shared files, import chains) and grouped into **waves**. Independent stories within a wave run **in parallel** via git worktrees; waves run sequentially.
 
-Ship separates the roles. The peer implementer handles each story in an isolated session. Then a fresh reviewer — ideally on the other provider, but otherwise at least in a fresh session — checks spec compliance and code correctness. Independence is the point.
+1. **Build dependency graph** — identify which stories create, modify, or import the same files
+2. **Sort into waves** — topological sort into groups with no intra-group dependencies
+3. **Per wave** — create worktrees, dispatch peer implementers in parallel, review each independently
+4. **Wave merge** — merge all story branches back after review passes
+5. **Cross-story regression** — full test suite after all waves complete
 
-### The story loop
-
-For each story in the plan:
-
-1. **Record start SHA** — so we can diff exactly what changed
-2. **Peer implements** — fresh session with the story spec, plan context, and code conventions
-3. **Fresh reviewer checks** — separate runtime, sees only the diff and the spec
-4. **If FAIL** — targeted fix (max 2 rounds), not a full rewrite
-5. **Record cross-story context** — later stories know what earlier stories built
-
-After all stories, a cross-story regression test catches interactions between stories that individual reviews missed.
+If FAIL → targeted fix (max 2 rounds), not a full rewrite.
 
 ### Example
 
@@ -199,24 +193,25 @@ You:   /ship:dev
 
 Assistant: [Dev] Reading plan: 3 stories for rate-limit-upload
 
-        [Dev] Story 1/3: Wire /api/upload through rate limiter
-        [Peer] Implementing... done (4 files changed)
-        [Review] Checking spec compliance...
-        [Review] PASS — middleware correctly applied, test added
+        [Dev] Dependency analysis: 2 waves
+              Wave 1: [Story 1, Story 2] ← parallel (no shared files)
+              Wave 2: [Story 3] ← depends on Story 1
 
-        [Dev] Story 2/3: Add per-user upload quota
-        [Peer] Implementing... done (3 files changed)
-        [Review] Checking spec compliance...
-        [Review] FAIL — Redis key uses IP instead of user ID
-        [Dev] Targeted fix round 1...
-        [Review] PASS
+        [Dev] Wave 1: creating worktrees, dispatching in parallel...
+        [Peer] Story 1: Wire /api/upload through rate limiter... done
+        [Peer] Story 2: Add per-user upload quota... done
+        [Review] Story 1: PASS
+        [Review] Story 2: FAIL — Redis key uses IP instead of user ID
+        [Dev] Story 2: targeted fix round 1...
+        [Review] Story 2: PASS
+        [Dev] Wave 1: merging branches... clean.
 
-        [Dev] Story 3/3: Return 429 with Retry-After header
-        [Peer] Implementing... done (2 files changed)
+        [Dev] Wave 2: Story 3 (sequential)
+        [Peer] Return 429 with Retry-After header... done
         [Review] PASS
 
         [Dev] Cross-story regression: all tests green.
-        [Dev] 3/3 stories complete.
+        [Dev] 3/3 stories, 2 waves complete.
 ```
 
 ---

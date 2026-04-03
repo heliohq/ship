@@ -1,7 +1,7 @@
 ---
 name: dev
 version: 0.5.0
-description: Execute implementation stories from a plan. The peer agent implements each story, a fresh independent reviewer checks it, and stories run sequentially until review passes.
+description: Execute implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves that run in parallel via git worktrees; each story is reviewed independently, and waves merge before proceeding.
 allowed-tools:
   - Bash
   - Read
