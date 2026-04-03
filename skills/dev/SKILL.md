@@ -1,6 +1,6 @@
 ---
 name: dev
-version: 0.4.0
+version: 0.5.0
 description: Execute implementation stories from a plan. The peer agent implements each story, a fresh independent reviewer checks it, and stories run sequentially until review passes.
 allowed-tools:
   - Bash
@@ -30,10 +30,10 @@ If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
 # Ship: Implement
 
-Execute implementation stories from a plan. Each story: the peer agent
-implements, a fresh independent reviewer checks spec compliance + code
-correctness, targeted fixes happen on failure, and stories run
-sequentially until review passes.
+```
+PEER IMPLEMENTS. FRESH REVIEWER DISCRIMINATES.
+EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
+```
 
 ## Runtime Resolution
 
@@ -49,92 +49,14 @@ Resolve once at the start:
 - If only one provider is available, use a fresh same-provider peer
   session and note that independence is weaker.
 
-## Principal Contradiction
-
-**The code's actual behavior vs the spec's expected behavior.**
-
-Implementation fails not because code "looks wrong" but because it
-behaves differently from what the spec requires. The adversary is the
-gap between what was written and what was intended. One agent
-implements, another reviews — different sessions, different blind spots.
-
-## Core Principle
-
-```
-PEER IMPLEMENTS. FRESH REVIEWER DISCRIMINATES.
-EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
-```
-
-Separation of concerns: the peer implementer works with only the story
-context it needs. The reviewer evaluates without having watched the
-implementation happen — no accumulated leniency, no rationalization.
-
-## Process Flow
-
-```dot
-digraph implement {
-    rankdir=TB;
-
-    "Start" [shape=doublecircle];
-    "Read spec + plan, detect tooling" [shape=box];
-    "Stories remaining?" [shape=diamond];
-    "Record start SHA" [shape=box];
-    "Peer implements story" [shape=box];
-    "Commits exist?" [shape=diamond];
-    "Fresh independent reviewer" [shape=box];
-    "Verdict?" [shape=diamond];
-    "Record context, next story" [shape=box];
-    "Peer targeted fix" [shape=box];
-    "Fix rounds exhausted?" [shape=diamond];
-    "Run full test suite" [shape=box];
-    "Tests pass?" [shape=diamond];
-    "STOP: BLOCKED — story failed after max retries" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
-    "Done" [shape=doublecircle];
-
-    "Start" -> "Read spec + plan, detect tooling";
-    "Read spec + plan, detect tooling" -> "Stories remaining?";
-    "Stories remaining?" -> "Record start SHA" [label="yes"];
-    "Stories remaining?" -> "Run full test suite" [label="no"];
-    "Record start SHA" -> "Peer implements story";
-    "Peer implements story" -> "Commits exist?";
-    "Commits exist?" -> "Fresh independent reviewer" [label="yes"];
-    "Commits exist?" -> "STOP: BLOCKED — story failed after max retries" [label="no, claimed done"];
-    "Fresh independent reviewer" -> "Verdict?";
-    "Verdict?" -> "Record context, next story" [label="PASS"];
-    "Verdict?" -> "Peer targeted fix" [label="FAIL"];
-    "Peer targeted fix" -> "Fix rounds exhausted?";
-    "Fix rounds exhausted?" -> "Fresh independent reviewer" [label="no, re-review"];
-    "Fix rounds exhausted?" -> "STOP: BLOCKED — story failed after max retries" [label="yes, max 2"];
-    "Record context, next story" -> "Stories remaining?";
-    "Run full test suite" -> "Tests pass?";
-    "Tests pass?" -> "Done" [label="yes"];
-    "Tests pass?" -> "Peer targeted fix" [label="no, regression"];
-}
-```
-
 ## Roles
 
-| Role | Who | Why |
-|------|-----|-----|
-| Orchestrator | **You (host agent)** | Coordinate stories, never write code |
-| Implementor | **Peer agent** | Fresh session per story, code generation |
-| Reviewer | **Fresh independent reviewer** | Independent session, ideally from the other provider |
-| Targeted fixer | **Peer agent** | Surgical fixes, not re-implementation |
-
-**Why separate implementation and review:** the review needs fresh eyes.
-Cross-provider review is preferred because it changes model biases as
-well as session context. When only one provider is available, a fresh
-same-provider session is still better than self-review inside the
-implementation thread.
-
-## Hard Rules
-
-1. You never write code, read diffs for review, or run tests yourself. Coordination metadata (git rev-parse, git diff --name-only, git status) is allowed.
-2. The peer agent implements one story per session.
-3. The reviewer is fresh each time — no accumulated context.
-4. Every review finding must include file:line + reproducible evidence.
-5. Stories run sequentially. No parallelism. No skipping review.
-6. FAIL means targeted fix, not full re-implementation.
+| Role | Who |
+|------|-----|
+| Orchestrator | **You (host agent)** — coordinate stories, never write code |
+| Implementor | **Peer agent** — fresh session per story |
+| Reviewer | **Fresh Agent** — independent session per review |
+| Targeted fixer | **Peer agent** — surgical fixes via same session |
 
 ## Quality Gates
 
@@ -145,8 +67,6 @@ implementation thread.
 | Review → Next story | Verdict is PASS or PASS_WITH_CONCERNS | Targeted fix (max 2) |
 | All stories → Done | Full test suite passes | Targeted fix for regression |
 
-No story advances without passing its gate.
-
 ---
 
 ## Phase 1: Setup
@@ -155,85 +75,106 @@ No story advances without passing its gate.
 2. Read **implementation stories** (from plan file, or single story for small tasks).
    Accept any heading format: `## Story N`, `## Step N`, `## N. Title`,
    or numbered/bulleted lists. Normalize as ordered stories.
-3. Detect the repo's test command by inspecting project root:
-   - `Makefile` → `make test`
-   - `package.json` → `npm test` / `pnpm test` / `yarn test`
-   - `pytest.ini` / `pyproject.toml` → `pytest`
-   - `go.mod` → `go test ./...`
-   - `Cargo.toml` → `cargo test`
-   - `mix.exs` → `mix test`
-   - `build.gradle` / `pom.xml` → `./gradlew test` / `mvn test`
-   - `.csproj` / `.sln` → `dotnet test`
-   - `Gemfile` → `bundle exec rspec`
-   Also check `CLAUDE.md`/`AGENTS.md` and CI configs. If none found,
-   AskUserQuestion. Record as `TEST_CMD`.
+3. Detect the repo's test command by inspecting project root
+   (`Makefile`, `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`,
+   CI configs, `CLAUDE.md`/`AGENTS.md`). If none found, AskUserQuestion.
+   Record as `TEST_CMD`.
 4. Extract code conduct from `CLAUDE.md`, `AGENTS.md`, lint/formatter
    configs, and existing code patterns. Record as `CODE_CONDUCT`.
+5. **Build story dependency graph.** For each story, identify:
+   - Files/modules it will create or modify (from plan text)
+   - Explicit dependencies (e.g., "uses the model from story 1")
+   - Shared resources (e.g., two stories both modify the same config file)
+
+   A story **depends on** another if it reads/imports what the other
+   creates, or both modify the same file. Build a DAG and topologically
+   sort into **waves** — groups of stories with no dependencies between
+   them.
+
+   ```
+   Example: 5 stories
+     Story 1: add User model          → no deps
+     Story 2: add Product model       → no deps
+     Story 3: add API for User        → depends on 1
+     Story 4: add API for Product     → depends on 2
+     Story 5: add auth middleware      → depends on 3, 4
+
+   Waves:
+     Wave 1: [Story 1, Story 2]       ← parallel
+     Wave 2: [Story 3, Story 4]       ← parallel
+     Wave 3: [Story 5]                ← sequential
+   ```
+
+   If the plan does not provide enough information to determine file
+   overlap, default to **sequential** (single story per wave). Do not
+   guess — false parallelism causes merge conflicts.
 
 ### Locating input
 
 1. **Caller provides paths** → use them directly.
 2. **Caller provides a task directory** → look for spec/plan files inside.
-3. **No formal plan or spec exists** → investigate:
-   - Read the user's request and relevant source files
-   - Derive acceptance criteria
-   - Present to user via AskUserQuestion for confirmation
-   - Break into stories if multi-file; single story if atomic
+3. **No formal plan or spec exists** → derive acceptance criteria from
+   user request + source files, confirm via AskUserQuestion, break into
+   stories if multi-file. Do not ask the user to write a plan.
 
-   Do not ask the user to write a plan. Derive what you need.
+## Phase 2: Per-Wave Loop
 
-## Phase 2: Per-Story Loop
+For each wave, run all stories in the wave through Steps A→B→(C)→D.
+- **Single-story wave**: run directly on the current branch.
+- **Multi-story wave**: each story gets its own branch via git worktree.
+  After all stories in the wave pass review, merge all branches back.
 
+### Wave setup (multi-story waves only)
+
+```bash
+WAVE_BASE_SHA=$(git rev-parse HEAD)
+# For each story in the wave:
+git worktree add .ship/worktrees/story-<i> -b story-<i>
 ```
-For each story i/N:
-  1. Record STORY_START_SHA = current HEAD
-  2. Peer agent implements → commit(s)
-  3. Record STORY_HEAD_SHA = current HEAD
-  4. ⛔ MANDATORY: Dispatch fresh independent reviewer → verdict
-     PASS → step 5
-     PASS_WITH_CONCERNS → record concerns → step 5
-     FAIL → targeted fix (max 2 rounds) → re-review
-     *** DO NOT skip this step. Implementation ≠ completion. ***
-  5. Record cross-story context → next story
+
+Each peer implementer receives `cwd: .ship/worktrees/story-<i>` (or the
+absolute path) so it works in its own isolated copy.
+
+### Wave merge (multi-story waves only)
+
+After all stories in a wave pass review:
+
+```bash
+# For each story branch in the wave:
+git merge story-<i> --no-edit
+# If merge conflict → dispatch peer targeted fix to resolve, then retry
+git worktree remove .ship/worktrees/story-<i>
+git branch -d story-<i>
 ```
+
+If a merge conflict cannot be resolved in 2 rounds → BLOCKED.
 
 ### Step A: Implement
 
 Record `STORY_START_SHA`:
 ```bash
-git rev-parse HEAD
+git rev-parse HEAD   # in the story's worktree for multi-story waves
 ```
 
 Dispatch the peer implementer using the prompt template in
 `implementer-prompt.md`. Fill all placeholders (story text, acceptance
 criteria, prior stories, CODE_CONDUCT, TEST_CMD) before dispatch.
 Use the dispatch pattern in `implementer-prompt.md` for the resolved
-peer runtime.
+peer runtime. For multi-story waves, set `cwd` to the story's worktree.
 
-After the peer implementer returns, save the thread or session id for
-potential targeted fixes.
+For multi-story waves, dispatch all stories in the wave **in parallel**.
+
+After the peer implementer returns, save the session id for targeted
+fixes. For Codex peers, the `mcp__codex__codex` response includes a
+`session_id` — store it as `PEER_SESSION_ID`.
 1. Record `STORY_HEAD_SHA=$(git rev-parse HEAD)`
-2. If `STORY_HEAD_SHA == STORY_START_SHA` and status is DONE → treat as
-   BLOCKED (claimed done but made no commits).
+2. If `STORY_HEAD_SHA == STORY_START_SHA` and status is DONE → BLOCKED.
 3. If BLOCKED or NEEDS_CONTEXT → escalate to caller.
 4. If DONE_WITH_CONCERNS → log concerns.
 
-**⛔ MANDATORY GATE — DO NOT ADVANCE TO NEXT STORY**
+Proceed to **Step B**. A story is only complete when review returns PASS.
 
-Implementation complete does NOT mean story complete.
-You MUST now dispatch a fresh independent reviewer (Step B).
-A story is only complete when the reviewer returns PASS.
-
-```
-Story complete = implement ✓ AND review PASS ✓
-Story complete ≠ implement ✓ alone
-```
-
-Skipping review is the #1 failure mode of this skill. If you are
-about to move to the next story without dispatching a reviewer Agent,
-STOP. You are making a mistake.
-
-### Step B: Review (MANDATORY)
+### Step B: Review
 
 Dispatch a fresh reviewer using the prompt template in
 `reviewer-prompt.md`. Fill all placeholders (story number, SHAs,
@@ -258,8 +199,10 @@ git status --short
 
 If uncommitted partial changes exist, stash or discard (warn the user).
 
-Continue on the **same peer implementation thread/session** from Step A
-when possible. The implementer already has full context of what it built.
+Continue on the **same peer session** from Step A. The implementer
+already has full context of what it built.
+
+Build the targeted-fix prompt:
 
 ```
 A code reviewer found these issues. Fix them.
@@ -275,9 +218,22 @@ A code reviewer found these issues. Fix them.
 - Do NOT re-implement the story. Make surgical fixes.
 ```
 
-If the peer runtime cannot continue the original thread/session,
-re-dispatch a fresh peer session with the original story prompt plus
-the targeted-fix prompt above.
+**Dispatch by peer runtime:**
+
+- **Codex peer** — continue the session with `mcp__codex__codex-reply`:
+  ```
+  mcp__codex__codex-reply({
+    session_id: <PEER_SESSION_ID from Step A>,
+    reply: <targeted-fix prompt above>
+  })
+  ```
+- **Claude peer** — `claude -p` cannot continue a session; re-dispatch a
+  fresh session with the original story prompt **plus** the targeted-fix
+  prompt appended.
+
+If `mcp__codex__codex-reply` fails (e.g., session expired), fall back to
+a fresh `mcp__codex__codex` dispatch with the original story prompt plus
+the targeted-fix prompt.
 
 After fix commits:
 1. Update `STORY_HEAD_SHA=$(git rev-parse HEAD)`
@@ -308,25 +264,21 @@ Run the full test suite: <TEST_CMD>. Report PASS or FAIL with output.
 ```
 
 If tests fail, dispatch a targeted fix via the peer implementer and
-re-verify.
+re-verify. Max 2 rounds; then BLOCKED.
 
 ---
 
 ## Progress Reporting
 
-Use `[Implement]` prefix for all status output:
+Use `[Implement]` prefix:
 
 ```
-[Implement] Starting — 5 stories, test cmd: make test
-[Implement] Story 1/5: "Add user model" → implementing...
-[Implement] Story 1/5: implemented (3 files, 1 commit). Reviewing...
-[Implement] Story 1/5: PASS.
-[Implement] Story 2/5: "Wire API endpoints" → implementing...
-[Implement] Story 2/5: FAIL — missing input validation. Fixing (1/2)...
-[Implement] Story 2/5: fix applied. Re-reviewing...
-[Implement] Story 2/5: PASS (2 rounds).
-...
-[Implement] All 5 stories complete. 1 concern recorded.
+[Implement] Starting — N stories in W waves, test cmd: <TEST_CMD>
+[Implement] Wave w/W (parallel|sequential): Stories [list]
+[Implement] Story i/N: "<title>" → implementing...
+[Implement] Story i/N: PASS | FAIL — <detail>. Fixing (round/2)...
+[Implement] Wave w/W: merging branches... ✓
+[Implement] All N stories complete. M concerns recorded.
 ```
 
 ## Artifacts
@@ -334,6 +286,69 @@ Use `[Implement]` prefix for all status output:
 ```text
 .ship/tasks/<task_id>/
   concerns.md   — recorded PASS_WITH_CONCERNS notes (if any)
+```
+
+## Example Workflow
+
+```
+[Implement] Starting — 5 stories, test cmd: npm test
+[Implement] Dependency analysis:
+  Wave 1: [Story 1 "Add User model", Story 2 "Add Product model"] ← parallel
+  Wave 2: [Story 3 "User API", Story 4 "Product API"] ← parallel
+  Wave 3: [Story 5 "Auth middleware"] ← sequential
+
+═══ Wave 1 (parallel): Stories 1, 2 ════════════════════
+
+[Implement] Wave 1: creating worktrees...
+  git worktree add .ship/worktrees/story-1 -b story-1
+  git worktree add .ship/worktrees/story-2 -b story-2
+  WAVE_BASE_SHA = abc1234
+
+[Implement] Story 1/5 + Story 2/5: dispatching peer implementers in parallel...
+  Story 1 peer (cwd: .ship/worktrees/story-1) returns: DONE (PEER_SESSION_ID: session_s1)
+  Story 2 peer (cwd: .ship/worktrees/story-2) returns: DONE (PEER_SESSION_ID: session_s2)
+
+[Implement] Story 1/5: commits exist ✓ → dispatching fresh reviewer...
+  Reviewer returns: PASS
+[Implement] Story 2/5: commits exist ✓ → dispatching fresh reviewer...
+  Reviewer returns: PASS
+
+[Implement] Wave 1: all stories PASS. Merging branches...
+  git merge story-1 --no-edit ✓
+  git merge story-2 --no-edit ✓
+  Cleaning up worktrees.
+
+═══ Wave 2 (parallel): Stories 3, 4 ════════════════════
+
+[Implement] Wave 2: creating worktrees...
+
+[Implement] Story 3/5: dispatching peer implementer...
+  Peer returns: DONE (PEER_SESSION_ID: session_s3)
+[Implement] Story 4/5: dispatching peer implementer...
+  Peer returns: DONE (PEER_SESSION_ID: session_s4)
+
+[Implement] Story 3/5: reviewer returns FAIL
+  - Missing input validation on POST /users
+[Implement] Story 3/5: targeted fix (round 1/2)...
+  mcp__codex__codex-reply({ session_id: session_s3, reply: <fix prompt> })
+[Implement] Story 3/5: re-review → PASS (2 rounds).
+
+[Implement] Story 4/5: reviewer returns PASS.
+
+[Implement] Wave 2: merging branches... ✓
+
+═══ Wave 3 (sequential): Story 5 ═══════════════════════
+
+[Implement] Story 5/5: dispatching peer implementer...
+  Peer returns: DONE_WITH_CONCERNS ("jwt secret hardcoded in test fixtures")
+[Implement] Story 5/5: reviewer returns PASS_WITH_CONCERNS. Appending to concerns.md.
+
+── Phase 3: Cross-Story Regression ──────────────────────
+
+[Implement] Running full test suite...
+  Peer returns: PASS (47 tests, 0 failures)
+
+[Implement] DONE_WITH_CONCERNS — 5/5 stories, 3 waves, 1 concern recorded.
 ```
 
 ## Error Handling
@@ -348,104 +363,6 @@ Use `[Implement]` prefix for all status output:
 | Peer implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
 | Agent dispatch failure | Retry once, then BLOCKED |
 
-## Example Workflow
-
-```
-[Implement] Starting — 3 stories, test cmd: npm test
-
-── Story 1/3: "Add user model" ──────────────────────────
-
-[Implement] Story 1/3: recording start SHA...
-  STORY_START_SHA = abc1234
-
-[Implement] Story 1/3: dispatching peer implementer...
-  <peer dispatch with implementer-prompt.md>
-  Peer returns: DONE (thread/session id: thread_abc)
-
-[Implement] Story 1/3: checking commits...
-  STORY_HEAD_SHA = def5678
-  abc1234 != def5678 → commits exist ✓  (GATE PASSED)
-
-[Implement] Story 1/3: dispatching fresh independent reviewer...
-  Agent({ prompt: <filled reviewer-prompt.md> })
-  Reviewer returns: PASS
-
-[Implement] Story 1/3: PASS. Recording context:
-  Story 1: "Add user model"
-    Commits: abc1234..def5678 (2 commits)
-    Files: src/models/user.ts, tests/user.test.ts
-    Concerns: none
-
-── Story 2/3: "Wire API endpoints" ──────────────────────
-
-[Implement] Story 2/3: recording start SHA...
-  STORY_START_SHA = def5678
-
-[Implement] Story 2/3: dispatching peer implementer...
-  Peer returns: DONE (thread/session id: thread_def)
-
-[Implement] Story 2/3: checking commits...
-  STORY_HEAD_SHA = ghi9012
-  def5678 != ghi9012 → commits exist ✓  (GATE PASSED)
-
-[Implement] Story 2/3: dispatching fresh independent reviewer...
-  Reviewer returns: FAIL
-    - Missing input validation on POST /users (spec requires email format check)
-    - No error response for duplicate usernames
-
-[Implement] Story 2/3: FAIL — targeted fix (round 1/2)...
-  <continue on peer thread/session with targeted-fix prompt>
-  Peer applies fix, commits.
-
-[Implement] Story 2/3: fix applied. Updating SHA...
-  STORY_HEAD_SHA = jkl3456
-
-[Implement] Story 2/3: re-reviewing with FRESH independent reviewer...
-  Reviewer returns: PASS
-
-[Implement] Story 2/3: PASS (2 rounds). Recording context.
-
-── Story 3/3: "Add auth middleware" ─────────────────────
-
-[Implement] Story 3/3: recording start SHA...
-  STORY_START_SHA = jkl3456
-
-[Implement] Story 3/3: dispatching peer implementer...
-  Peer returns: DONE_WITH_CONCERNS ("jwt secret should be env var, currently hardcoded in test fixtures")
-
-[Implement] Story 3/3: checking commits...
-  STORY_HEAD_SHA = mno7890
-  jkl3456 != mno7890 → commits exist ✓  (GATE PASSED)
-
-[Implement] Story 3/3: DONE_WITH_CONCERNS — logging concern, proceeding to review...
-
-[Implement] Story 3/3: dispatching fresh independent reviewer...
-  Reviewer returns: PASS_WITH_CONCERNS (test fixtures use hardcoded secret)
-
-[Implement] Story 3/3: PASS_WITH_CONCERNS. Appending to concerns.md.
-
-── Phase 3: Cross-Story Regression ──────────────────────
-
-[Implement] All stories complete. Running full test suite...
-  <peer dispatch: run npm test and report PASS or FAIL>
-  Peer returns: PASS (47 tests, 0 failures)
-
-[Implement] DONE_WITH_CONCERNS — 3/3 stories implemented, reviewed, committed. 1 concern recorded.
-```
-
-### What This Shows
-
-| Principle | How the example enforces it |
-|-----------|---------------------------|
-| **Never skip commit check** | Every story shows SHA comparison before review |
-| **Never skip review** | Every story dispatches a fresh Agent reviewer |
-| **Fresh reviewer each time** | Re-review after fix uses a NEW Agent, not the same one |
-| **Targeted fix, not re-implement** | FAIL → continue on same peer thread/session with surgical instructions |
-| **Sequential stories** | Story 2 starts only after Story 1 is PASS |
-| **Gate enforcement** | Each gate check shown explicitly with ✓ |
-| **Concerns are logged, not ignored** | DONE_WITH_CONCERNS → recorded → review still happens |
-| **Cross-story regression** | Full test suite runs after all stories, not just the last |
-
 ## Completion
 
 Report one of:
@@ -454,20 +371,13 @@ Report one of:
 - **BLOCKED** — a story failed after max retries.
 - **NEEDS_CONTEXT** — missing information needed from user.
 
-## Red Flag
-- **ADVANCING TO NEXT STORY WITHOUT DISPATCHING A REVIEWER AGENT** ← #1 failure mode
-- Treating peer implementer returning DONE as "story complete" — it is NOT, review is still required
-- Skipping review because "the implementer's self-review looked good"
-- Skipping review because "the implementation looks straightforward"
-- Skipping review because "we're running low on context"
-- Starting the next story before the current story's review returns PASS
-- Writing code yourself instead of dispatching the peer implementer
-- Reading the diff yourself instead of dispatching a fresh Agent reviewer
-- Running tests yourself instead of letting the peer implementer/reviewer handle it
-- Falling back to "I'll just do it myself" when the peer is slow — report BLOCKED
-- Running multiple implementation dispatches in parallel
-- Doing a full re-implementation on FAIL instead of a targeted fix
-- Letting the peer implementer modify tests to make them pass instead of fixing code
-- Accepting "close enough" on spec checklist — any FAIL item is FAIL
-- Omitting prior stories context from the implementor prompt
-- Retrying after crash without checking HEAD for partial changes
+## Red Flags
+
+- You never write code, read diffs for review, or run tests yourself. Coordination metadata (git rev-parse, git diff --name-only, git status) is allowed.
+- The reviewer is a fresh Agent each time — no accumulated context.
+- Parallelizing stories that share files — only parallelize within a wave after dependency analysis.
+- No skipping review.
+- FAIL means targeted fix, not full re-implementation.
+- Advancing to next story without dispatching a reviewer Agent
+- Letting the peer modify tests to make them pass instead of fixing code
+- Omitting prior stories context from the implementer prompt
