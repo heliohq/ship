@@ -15,7 +15,7 @@
 |-----------|----------|---------|
 | `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start) and utilities (task-id, preflight, auth-headers) |
 | `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, Stop) |
-| `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:plan, etc.) |
+| `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:design, etc.) |
 | `skills/setup/` | Setup skill | Infra bootstrap + convention discovery, AGENTS.md + CONVENTIONS.md generation |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata for ShipAI |
 | `.mcp.json` | MCP config | Codex MCP server registration |

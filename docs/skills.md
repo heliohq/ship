@@ -5,7 +5,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | Skill | Role | What it does |
 |-------|------|--------------|
 | [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to merge-ready PR. Delegates every phase to fresh subagents with quality gates at every transition. You approve the plan once; it handles the rest. |
-| [`/ship:plan`](#plan) | **Adversarial Planner** | Reads your codebase, writes a plan, then hands it to an independent Codex challenger. Two rounds of adversarial review. A blind execution drill. You see the plan only after it survives falsification. |
+| [`/ship:design`](#design) | **Adversarial Planner** | Reads your codebase, writes a plan, then hands it to an independent Codex challenger. Two rounds of adversarial review. A blind execution drill. You see the plan only after it survives falsification. |
 | [`/ship:dev`](#dev) | **Implementation Engine** | Executes stories from a plan. Codex writes code, Claude reviews — different models catching each other's blind spots. Stories run sequentially; review must pass before the next one starts. |
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff, then diagnose the structural deficiency that breeds them. Bugs are symptoms — the structural crack is the disease. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
@@ -40,7 +40,7 @@ Plan → Approve → Dev → Review → Verify → QA → Simplify → Handoff
 ```
 
 1. **Bootstrap** — init task directory, detect tooling
-2. **Design** — invoke `/ship:plan` for adversarial planning
+2. **Design** — invoke `/ship:design` for adversarial planning
 3. **Approve** — present the plan to you. This is the only human gate.
 4. **Dev** — invoke `/ship:dev` to execute implementation stories
 5. **Review** — invoke `/ship:review` for staff-engineer code review
@@ -112,7 +112,7 @@ One command. Task description to merge-ready PR. You approved the plan once. Eve
 
 ---
 
-## `plan`
+## `design`
 
 This is where **adversarial rigor** meets planning.
 

@@ -1,5 +1,5 @@
 ---
-name: plan
+name: design
 version: 1.0.0
 description: "Adversarial pre-coding planning: you and Codex independently investigate the codebase and produce specs, then diff. Merged spec feeds an executable plan validated by Codex drill."
 allowed-tools:
@@ -455,7 +455,7 @@ Add a warning to the output: `WARNING: Drill was Agent-performed, not Codex`
 
 ### Detecting invocation mode
 
-- **Standalone** (`/ship:plan`): the user invoked plan directly.
+- **Standalone** (`/ship:design`): the user invoked plan directly.
 - **From /ship:auto**: the calling prompt contains a task_id.
   /ship:auto is waiting for artifacts to exist.
 

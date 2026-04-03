@@ -128,8 +128,8 @@ The only difference from Claude's instructions: after investigation, Codex outpu
 ## Test Plan
 
 ### Manual verification
-- Run `/ship:plan` on a small bugfix task — spec.md should be a few paragraphs, plan.md should have 1-2 tasks with TDD steps
-- Run `/ship:plan` on a multi-file feature — spec.md should have full sections, plan.md should have 3+ tasks with complete code
+- Run `/ship:design` on a small bugfix task — spec.md should be a few paragraphs, plan.md should have 1-2 tasks with TDD steps
+- Run `/ship:design` on a multi-file feature — spec.md should have full sections, plan.md should have 3+ tasks with complete code
 - Verify Codex MCP is dispatched before Claude starts investigating (check timing in output)
 - Verify Codex's spec follows same format as Claude's (brainstorming style)
 - Verify plan.md has no placeholders, all code blocks are complete

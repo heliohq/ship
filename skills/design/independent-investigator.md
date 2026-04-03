@@ -1,6 +1,6 @@
 # Independent Investigator — Codex Prompt
 
-Used in Phase 2 of `/ship:plan`. Codex independently investigates the
+Used in Phase 2 of `/ship:design`. Codex independently investigates the
 codebase and produces its own spec. Dispatched **before** Claude starts
 investigating — runs in parallel.
 
