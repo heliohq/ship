@@ -9,7 +9,7 @@ set -u
 #   3. Subagent → allow exit
 #   4. State file exists, same session → block exit, tell agent which phase to resume
 #
-# State file: .claude/ship-auto.local.md (YAML frontmatter + description body)
+# State file: .ship/ship-auto.local.md (YAML frontmatter + description body)
 # Returns {"decision":"block","reason":"..."} to prevent stop, or exit 0 to allow.
 
 INPUT=$(cat)
@@ -23,7 +23,7 @@ AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""')
 CWD=$(echo "$INPUT" | jq -r '.cwd // ""')
 [ -z "$CWD" ] && exit 0
 
-STATE_FILE="$CWD/.claude/ship-auto.local.md"
+STATE_FILE="$CWD/.ship/ship-auto.local.md"
 [ ! -f "$STATE_FILE" ] && exit 0
 
 # ── PARSE FRONTMATTER ────────────────────────────────────────

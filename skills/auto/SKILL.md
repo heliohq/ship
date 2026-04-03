@@ -103,12 +103,12 @@ digraph auto {
 
 ## Phase 1: Bootstrap
 
-**State file:** `.claude/ship-auto.local.md`
+**State file:** `.ship/ship-auto.local.md`
 
 ### Step A: Check for active task
 
 ```
-Read(".claude/ship-auto.local.md")
+Read(".ship/ship-auto.local.md")
 ```
 
 - **File exists** → read frontmatter. Extract `task_id`, `branch`, `base_branch`, `phase`. Jump to Step C (resume).
@@ -142,10 +142,7 @@ fi
 BRANCH=$(git branch --show-current)
 ```
 
-Ensure `.claude/` exists and write state file (via Bash):
-```
-Bash("mkdir -p .claude")
-```
+Write state file (via Bash):
 ```markdown
 ---
 active: true
@@ -198,7 +195,7 @@ Agent(prompt="Call Skill('design').
 - `status: DONE` → proceed
 - `status: BLOCKED` or `NEEDS_CONTEXT` → re-dispatch with more context (max 2 rounds)
 
-**State update:** set `phase: dev` in `.claude/ship-auto.local.md`.
+**State update:** set `phase: dev` in `.ship/ship-auto.local.md`.
 
 Output: `[Ship] Design complete — <N> stories identified. Starting dev...`
 
@@ -232,7 +229,7 @@ Agent(prompt="Call Skill('dev').
 | BLOCKED | Read `detail`, re-dispatch with fix instructions (max 2) |
 | NEEDS_CONTEXT | Read `detail` for what's missing, investigate, re-dispatch (max 2) |
 
-**State update:** set `phase: review` in `.claude/ship-auto.local.md`.
+**State update:** set `phase: review` in `.ship/ship-auto.local.md`.
 
 Output: `[Ship] Dev complete. Starting review...`
 
@@ -285,7 +282,7 @@ loop:
      - Bugs found → next round
 ```
 
-**State update:** set `phase: qa` in `.claude/ship-auto.local.md`.
+**State update:** set `phase: qa` in `.ship/ship-auto.local.md`.
 
 Output: `[Ship] Review clean. Starting QA...`
 
@@ -336,7 +333,7 @@ loop:
      - FAIL/BLOCKED → next round
 ```
 
-**State update:** set `phase: simplify` in `.claude/ship-auto.local.md`.
+**State update:** set `phase: simplify` in `.ship/ship-auto.local.md`.
 
 Output: `[Ship] QA passed. Running simplify...`
 
@@ -371,7 +368,7 @@ Agent(prompt="Call Skill('simplify').
   - PASS → proceed.
   - FAIL → revert to `PRE_SIMPLIFY_SHA`, proceed anyway.
 
-**State update:** set `phase: handoff` in `.claude/ship-auto.local.md`.
+**State update:** set `phase: handoff` in `.ship/ship-auto.local.md`.
 
 ## Phase 7: Handoff (ship:handoff)
 
@@ -398,7 +395,7 @@ Agent(prompt="Call Skill('handoff').
 | DONE | Extract PR URL from `artifacts`, done |
 | FAIL | Re-dispatch handoff — it owns its own CI fix loop (max 2 rounds) |
 
-**State update (DONE):** delete `.claude/ship-auto.local.md`.
+**State update (DONE):** delete `.ship/ship-auto.local.md`.
 
 Output: `[Ship] PR merge-ready: <url>`
 
