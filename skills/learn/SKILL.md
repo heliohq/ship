@@ -58,10 +58,8 @@ Learnings that are transient or wrong get pruned.
 
 Parse the input to determine which mode to run:
 
-- `/ship:learn` (no arguments, or end of auto pipeline) → **Capture**
-- `/ship:learn promote` → **Promote**
-- `/ship:learn prune` → **Prune**
-- `/ship:learn show` → **Show**
+- `/ship:learn` (no arguments, or end of auto pipeline) → **Capture** (includes auto-promote and auto-prune)
+- `/ship:learn show` → **Show** current staging entries and their status
 
 ---
 
@@ -124,82 +122,59 @@ Create `.ship/learnings.md` if it doesn't exist, with this header:
 > to clean stale entries.
 ```
 
-### Step 4: Confirm
+### Step 4: Auto-promote on capture
 
-When invoked standalone, use AskUserQuestion to confirm each learning
-before writing. Show the learning and its destination.
+When writing a learning, check if it should go directly to a permanent
+store instead of staging. Promote immediately (no staging) when:
 
-When invoked by `/ship:auto` (end of pipeline), capture silently —
-only show a summary of what was captured.
+- The learning is clearly a code constraint → write to CONVENTIONS.md
+- The learning is clearly a deterministic check → generate hookify rule
+- The learning matches an existing design doc's scope → append to that doc's Boundaries
 
----
-
-## Mode: Promote
-
-Review staging entries and promote durable ones to permanent stores.
-
-### Step 1: Read `.ship/learnings.md`
-
-If it doesn't exist or is empty, report "No learnings to promote" and stop.
-
-### Step 2: For each entry
-
-Ask via AskUserQuestion:
-
-```
-Learning: "<title>"
-  Scope: <scope>
-  Learned: <date>
-  Source: <source>
-
-Options:
-  A) Promote to CONVENTIONS.md (code rule)
-  B) Promote to hookify (deterministic check)
-  C) Promote to design doc (architectural)
-  D) Keep in staging
-  E) Remove (no longer relevant)
-```
-
-### Step 3: Execute promotions
-
-- A → append to CONVENTIONS.md, remove from learnings.md
-- B → generate hookify rule, remove from learnings.md
-- C → create/update design doc, remove from learnings.md
-- D → keep as-is
-- E → remove from learnings.md
+Only stage to `learnings.md` when the classification is ambiguous or
+the learning is operational (build quirks, timing, CI behavior, etc.).
 
 ---
 
-## Mode: Prune
+## Auto-Promote (runs during capture)
 
-Remove stale or invalid learnings from staging.
+When adding new learnings, also scan existing staging entries:
 
-### Step 1: Read `.ship/learnings.md`
+### Promote detection
 
-### Step 2: For each entry
+An entry is ready for promotion when:
+- **Repeated**: the same insight was captured again (validates it)
+- **Aged + still valid**: older than 14 days AND the scope files still exist AND not already covered by CONVENTIONS.md or a design doc
+- **Pattern match**: the entry clearly fits CONVENTIONS.md format (has a scope + constraint + why)
 
-Check:
-- **Age**: entries older than 30 days without promotion are candidates
-- **Scope validity**: do the files/directories in Scope still exist?
-- **Redundancy**: is this already covered by a CONVENTIONS.md rule or design doc?
+Auto-promote: move to the matching permanent store, remove from staging.
 
-### Step 3: Present candidates
+### Prune detection
 
-Show stale/invalid entries via AskUserQuestion:
-- A) Remove
-- B) Keep
-- C) Promote now
+An entry should be removed when:
+- **Scope invalid**: the files/directories in Scope no longer exist
+- **Redundant**: already covered by a CONVENTIONS.md rule, hookify rule, or design doc
+- **Stale**: older than 30 days and never repeated or validated
+- **Contradicted**: a newer learning or code change contradicts it
+
+Auto-prune: remove from staging silently.
+
+### Safety
+
+- Never auto-promote to CONVENTIONS.md if the rule would contradict an existing rule
+- Never auto-prune a learning that was added in the current session
+- Log all promotions and prunes in the Execution Handoff output so the user can review
 
 ---
 
 ## Mode: Show
 
-Display current learnings grouped by age.
+Display current learnings grouped by status.
 
 Read `.ship/learnings.md` and present:
 - Recent (< 7 days)
-- Aging (7-30 days) — suggest promote or prune
-- Stale (> 30 days) — suggest prune
+- Promotion candidates (> 14 days, still valid)
+- Prune candidates (scope invalid, redundant, or > 30 days)
 
 ---
 
@@ -221,10 +196,7 @@ Output summary:
     - Hookify: <N> rules generated
     - Design docs: <N> updated
     - Staging: <N> entries added
-  Staging total: <N> entries (<N> recent, <N> aging, <N> stale)
-
-## What's next?
-1. **Promote** — run /ship:learn promote to review staging
-2. **Prune** — run /ship:learn prune to clean stale entries
-3. **Continue** — learnings are captured, keep working
+  Auto-promoted: <N> staging entries → permanent stores
+  Auto-pruned: <N> stale/redundant entries removed
+  Staging: <N> entries remaining
 ```
