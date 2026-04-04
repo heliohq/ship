@@ -184,17 +184,31 @@ If `SPEC_EXISTS`:
 - Skip to Phase 5 (Write Plan) with the spec as your starting context.
 - The execution drill (Phase 6) still runs — plan.md always gets validated.
 
-If `NO_SPEC`: proceed normally — Phase 2 investigates, Phase 3 writes
-spec.md, Phase 4 resolves divergences, then Phase 5 writes plan.md.
+If `NO_SPEC`: proceed to scope assessment.
+
+### Scope assessment
+
+After reading the task description, assess scope:
+
+- **Focused** (≤3 files, well-scoped bug fix or small change):
+  Skip peer investigation (Phase 2 Step A), diff & verify (Phase 4),
+  and execution drill (Phase 6). Just: investigate → spec → plan.
+  No `peer-spec.md` or `diff-report.md` produced.
+- **Broad** (4+ files, new feature, architectural change):
+  Full process — all phases including peer investigation and drill.
+
+If investigation reveals the task is broader than initially assessed,
+escalate to the full process (dispatch peer investigation at that point).
 
 ## Phase 2: Investigate (Parallel)
 
 **This is the most important phase. Do not rush it.**
 
-### Step A: Dispatch peer investigation
+### Step A: Dispatch peer investigation (broad scope only)
 
-Kick off the peer investigation **before** you start investigating. The
-peer works in parallel while you read code.
+Skip this step for **focused** tasks. For **broad** tasks, kick off the
+peer investigation **before** you start investigating. The peer works in
+parallel while you read code.
 
 Read `independent-investigator.md` for the dispatch pattern and
 prompt template. Fill in the task description, task_id, and repo root.
@@ -224,7 +238,9 @@ checks, spec structure, and self-review.
 Covered by `write-spec.md` — follow the spec writing and self-review
 guidance there.
 
-## Phase 4: Diff & Verify
+## Phase 4: Diff & Verify (broad scope only)
+
+Skip this phase for **focused** tasks — proceed directly to Phase 5.
 
 Read `peer-spec.md` (written by the peer investigation dispatched in Phase 2).
 Compare it against your `spec.md`.
@@ -278,7 +294,9 @@ Translate the validated spec.md into an executable plan.md. The reference
 covers the plan template, bite-sized steps, code completeness guidance,
 and the self-review checklist.
 
-## Phase 6: Execution Drill
+## Phase 6: Execution Drill (broad scope only)
+
+Skip this phase for **focused** tasks — proceed directly to Execution Handoff.
 
 The final gate. Give the plan to the peer agent and ask it to validate
 every step is implementable.
