@@ -3,13 +3,15 @@
 # Injects project context into conversation:
 #   1. .ship/rules/CONVENTIONS.md — semantic rules for code
 #   2. docs/DESIGN_INDEX.md — design doc index for architectural guardrails
-# If neither file exists, outputs nothing (no-op).
+#   3. .ship/learnings.md — operational knowledge from recent sessions
+# If no files exist, outputs nothing (no-op).
 
 set -u
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CONVENTIONS_FILE="$REPO_ROOT/.ship/rules/CONVENTIONS.md"
 DESIGN_INDEX_FILE="$REPO_ROOT/docs/DESIGN_INDEX.md"
+LEARNINGS_FILE="$REPO_ROOT/.ship/learnings.md"
 
 PARTS=""
 
@@ -31,6 +33,19 @@ if [[ -f "$DESIGN_INDEX_FILE" ]]; then
   PARTS="${PARTS}${SEPARATOR}Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding.
 
 $(cat "$DESIGN_INDEX_FILE")"
+fi
+
+# Part 3: Learnings (staging)
+if [[ -f "$LEARNINGS_FILE" ]]; then
+  SEPARATOR=""
+  [[ -n "$PARTS" ]] && SEPARATOR="
+
+---
+
+"
+  PARTS="${PARTS}${SEPARATOR}Operational learnings from recent sessions. Check these before making decisions in the affected areas — they capture mistakes and discoveries that aren't yet promoted to conventions or design docs.
+
+$(cat "$LEARNINGS_FILE")"
 fi
 
 # Nothing to inject
