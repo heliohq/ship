@@ -518,9 +518,9 @@ best available independent review. Add a warning:
 - Peer unavailable (self-produce second spec with warning)
 - Peer output parse failure (retry once, then fallback Agent)
 
-### Completion output (both modes)
+### Execution Handoff
 
-Always output this summary — it is read by the next agent or the user:
+Verify `spec.md` and `plan.md` are non-empty on disk, then output:
 
 ```
 [Plan] Planning complete for "<task title>".
@@ -535,25 +535,15 @@ Always output this summary — it is read by the next agent or the user:
 - spec.md: .ship/tasks/<task_id>/plan/spec.md
 - plan.md: .ship/tasks/<task_id>/plan/plan.md
 - diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md
-```
 
-Verify `spec.md` and `plan.md` are non-empty on disk before outputting.
-
-### Execution Handoff (standalone only)
-
-In standalone mode (`/ship:design` invoked directly by the user), offer
-execution choices after the summary:
-
-```
 ## What's next?
 1. **Full pipeline (recommended)** — run /ship:auto to implement, review, QA, and ship
 2. **Implement only** — run /ship:dev to execute this plan without review/QA/handoff
 3. **Review the plan** — read the artifacts and give feedback
 ```
 
-In /ship:auto mode (the calling prompt contains a task_id), do NOT ask
-the user or offer choices. Output the summary and return — Auto owns
-the flow.
+In /ship:auto mode (the calling prompt contains a task_id), skip the
+"What's next?" choices and return — Auto owns the flow.
 
 ### Blocked (both modes)
 
