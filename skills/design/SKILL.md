@@ -197,9 +197,6 @@ After reading the task description, assess scope:
 - **Broad** (4+ files, new feature, architectural change):
   Full process — all phases including peer investigation and drill.
 
-If investigation reveals the task is broader than initially assessed,
-escalate to the full process (dispatch peer investigation at that point).
-
 ## Phase 2: Investigate (Parallel)
 
 **This is the most important phase. Do not rush it.**
@@ -232,6 +229,10 @@ Read `write-spec.md` for investigation methodology and spec authoring.
 Investigate the codebase, then write `spec.md`. The reference covers
 investigation strategy (bug fixes, new features, all tasks), vagueness
 checks, spec structure, and self-review.
+
+If investigation reveals the task is broader than initially assessed
+(e.g., more files affected, hidden dependencies, cross-cutting concerns),
+escalate to the full process — dispatch peer investigation at that point.
 
 ## Phase 3: Write Spec
 
