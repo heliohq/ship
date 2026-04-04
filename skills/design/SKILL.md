@@ -518,13 +518,9 @@ best available independent review. Add a warning:
 - Peer unavailable (self-produce second spec with warning)
 - Peer output parse failure (retry once, then fallback Agent)
 
-### Detecting invocation mode
+### Completion output (both modes)
 
-- **Standalone** (`/ship:design`): the user invoked plan directly.
-- **From /ship:auto**: the calling prompt contains a task_id.
-  /ship:auto is waiting for artifacts to exist.
-
-### Standalone completion
+Always output this summary — it is read by the next agent or the user:
 
 ```
 [Plan] Planning complete for "<task title>".
@@ -533,25 +529,31 @@ best available independent review. Add a warning:
 - Investigation: <N> files traced, <M> existing defenses found
 - Independent replication: <M> divergences resolved (<N> by evidence, <N> by debate)
 - Execution drill: <N>/<total> steps CLEAR
+- Stories: <N> tasks in plan.md
 
 ## Artifacts
 - spec.md: .ship/tasks/<task_id>/plan/spec.md
 - plan.md: .ship/tasks/<task_id>/plan/plan.md
 - diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md
-
-## What's next?
-1. **Implement now** — run /ship:dev to execute this plan
-2. **Review the plan** — read the artifacts and give feedback
-3. **Re-plan** — discard this plan and start over
 ```
 
-### /ship:auto completion
+Verify `spec.md` and `plan.md` are non-empty on disk before outputting.
 
-Do NOT ask the user. /ship:auto is waiting for artifacts. Just:
+### Execution Handoff (standalone only)
 
-1. Verify `spec.md` and `plan.md` are non-empty on disk.
-2. Output: `[Plan] Design complete — spec.md and plan.md ready.`
-3. Return.
+In standalone mode (`/ship:design` invoked directly by the user), offer
+execution choices after the summary:
+
+```
+## What's next?
+1. **Full pipeline (recommended)** — run /ship:auto to implement, review, QA, and ship
+2. **Implement only** — run /ship:dev to execute this plan without review/QA/handoff
+3. **Review the plan** — read the artifacts and give feedback
+```
+
+In /ship:auto mode (the calling prompt contains a task_id), do NOT ask
+the user or offer choices. Output the summary and return — Auto owns
+the flow.
 
 ### Blocked (both modes)
 
