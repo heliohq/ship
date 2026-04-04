@@ -36,15 +36,17 @@ If `SHIP_AUTO_LOGIN: true`: skip AskUserQuestion, run `ship auth login` directly
 If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
 ## Red Flag
-- Assuming a stack instead of detecting it
-- Executing modules the user did not select
-- Overwriting existing config without showing diff and asking
-- Writing convention rules without reading the code first
-- Putting style rules in CONVENTIONS.md — the model follows style by reading code
-- Putting grep-able checks in CONVENTIONS.md instead of hookify rules
-- Generating rules from templates without reading code
-- Running Dependabot inside CI/CD module (separate modules)
-- Overwriting existing core.hooksPath without asking
+
+**Never:**
+- Assume a stack — detect first
+- Execute modules the user did not select
+- Overwrite existing config without showing diff and asking
+- Write convention rules without reading the code first
+- Put style rules in CONVENTIONS.md — the model follows style by reading code
+- Put grep-able checks in CONVENTIONS.md — use hookify rules instead
+- Generate rules from templates without reading code
+- Run Dependabot inside CI/CD module — separate modules
+- Overwrite existing core.hooksPath without asking
 
 ---
 

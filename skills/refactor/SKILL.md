@@ -83,17 +83,19 @@ digraph refactor {
 ```
 
 ## Red Flag
-- **Changing external behavior** — same inputs must produce same outputs, status codes, return shapes, validation rules. This is the most important constraint.
-- **Rewriting a function's internal logic** — you may extract, rename, simplify conditionals, add guard clauses, but the function must produce identical output. If tempted to "improve" logic (change format, tighten validation, rename return fields), STOP — that is a behavior change.
-- Diagnosing without reading the code — every smell must cite file:line
-- Skipping verification ("tests are probably fine")
-- Forcing a change after verification fails twice — revert and skip it
-- Claiming "no tests" without checking for test files
-- Refactoring and adding features in the same session
-- Moving code between files without simplifying anything — that's reorganization, not refactoring
-- Architectural redesign disguised as refactoring
-- Writing a 100-line spec for a single file cleanup
-- Not running existing tests before AND after changes to establish baseline
+
+**Never:**
+- **Change external behavior** — same inputs must produce same outputs, status codes, return shapes, validation rules. Most important constraint.
+- **Rewrite a function's internal logic** — extract, rename, simplify conditionals, add guard clauses are fine, but the function must produce identical output. "Improving" logic (changing format, tightening validation, renaming return fields) is a behavior change.
+- Diagnose without reading the code — every smell must cite file:line
+- Skip verification ("tests are probably fine")
+- Force a change after verification fails twice — revert and skip it
+- Claim "no tests" without checking for test files
+- Refactor and add features in the same session
+- Move code between files without simplifying anything — that's reorganization, not refactoring
+- Disguise architectural redesign as refactoring
+- Write a 100-line spec for a single file cleanup
+- Skip running existing tests before AND after changes to establish baseline
 
 ## Phase 1: Scan
 

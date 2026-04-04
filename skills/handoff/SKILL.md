@@ -73,19 +73,21 @@ Done means:
 - no relevant GitHub checks are pending
 
 ## Red Flag
-- **STOPPING WHEN THE PR IS CREATED** — #1 failure mode
-- Pushing code changes without re-running relevant local verification
-- Force pushing
-- Treating `pending` checks as "good enough"
-- Creating the PR before local verification runs
-- Using `git add -A` when unrelated local changes are present
-- Forgetting to stage and commit changelog or doc edits before the first push
-- Marking a thread or comment as resolved before the fix is actually pushed
-- Resolving comments that still need product, security, or architecture judgment
-- Trying to fix failures without reading the actual check logs or review comments
-- Syncing with base preemptively instead of only when drift, conflicts, or repo policy require it
-- Looping past 3 fix rounds instead of escalating
-- Leaving doc debt implicit instead of carrying it into the PR
+
+**Never:**
+- **Stop when the PR is created** — #1 failure mode
+- Push code changes without re-running relevant local verification
+- Force push
+- Treat `pending` checks as "good enough"
+- Create the PR before local verification runs
+- Use `git add -A` when unrelated local changes are present
+- Forget to stage and commit changelog or doc edits before the first push
+- Mark a thread or comment as resolved before the fix is actually pushed
+- Resolve comments that still need product, security, or architecture judgment
+- Fix failures without reading the actual check logs or review comments
+- Sync with base preemptively — only when drift, conflicts, or repo policy require it
+- Loop past 3 fix rounds — escalate instead
+- Leave doc debt implicit — carry it into the PR
 
 ---
 

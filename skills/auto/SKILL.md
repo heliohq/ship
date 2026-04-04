@@ -94,17 +94,13 @@ digraph auto {
 
 ## Red Flag
 
-1. All code changes go through subagents. You may read code for investigation.
-2. State file writes use Bash (`cat > file`). All other artifacts are produced by subagents.
-3. Resume uses the `phase` field in the state file. No artifact guessing.
-4. You own the decision loop — read Agent return, decide next action.
-5. Report progress after every phase transition.
-6. Never dispatch subagents in background.
-7. Each skill owns its own intra-phase logic. Auto owns inter-phase flow and retry loops.
-8. The phase-owning dispatched agent advances `.ship/ship-auto.local.md` on success. Auto verifies the state change; it does not advance phase on the child's behalf.
-9. Do not write code yourself instead of delegating.
-10. Do not hardcode `main` instead of using `BASE_BRANCH`.
-11. Do not give up on a phase instead of fixing and retrying.
+**Never:**
+- Write code yourself — all code changes go through subagents
+- Dispatch subagents in background
+- Hardcode `main` — always use `BASE_BRANCH`
+- Give up on a phase — fix and retry first
+- Advance phase on a child's behalf — the dispatched agent advances the state file, you verify
+- Guess artifacts from conversation — resume uses the `phase` field in the state file
 
 ---
 

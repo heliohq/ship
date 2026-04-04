@@ -130,18 +130,20 @@ digraph plan {
 No artifact passes to the next phase without meeting its gate.
 
 ## Red Flag
-- Citing files you haven't opened
-- Letting the peer see your spec before producing its own
-- Resolving divergences by reasoning instead of code evidence (max 2 debate rounds, both sides cite file:line)
-- Trusting prior conversation over disk artifacts
-- Marking plan ready when drill has BLOCKED or UNCLEAR items
-- Skipping the drill because "the plan looks solid"
-- Delegating investigation to a sub-agent (you must read the code yourself)
-- Claiming "function X is not called" without tracing all callers
-- Proposing a fix without searching for existing defenses
-- Proposing to create a file without checking if it already exists
-- Changing a value without grepping tests that assert the old value
-- Writing plan.md with vague steps or placeholders (TBD, TODO, "similar to Task N")
+
+**Never:**
+- Cite files you haven't opened
+- Let the peer see your spec before producing its own
+- Resolve divergences by reasoning instead of code evidence (max 2 debate rounds, both cite file:line)
+- Trust prior conversation over disk artifacts
+- Mark plan ready when drill has BLOCKED or UNCLEAR items
+- Skip the drill because "the plan looks solid"
+- Delegate investigation to a sub-agent — read the code yourself
+- Claim "function X is not called" without tracing all callers
+- Propose a fix without searching for existing defenses
+- Propose to create a file without checking if it already exists
+- Change a value without grepping tests that assert the old value
+- Write plan.md with vague steps or placeholders (TBD, TODO, "similar to Task N")
 
 ---
 

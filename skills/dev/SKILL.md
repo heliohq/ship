@@ -68,14 +68,16 @@ Resolve once at the start:
 | All stories → Done | Full test suite passes | Targeted fix for regression |
 
 ## Red Flag
-- Writing code, reading diffs for review, or running tests yourself — only coordination metadata allowed (git rev-parse, git diff --name-only, git status)
-- Skipping review for any story
-- Parallelizing stories that share files without dependency analysis
-- FAIL means targeted fix, not full re-implementation
-- Advancing to next story without dispatching a reviewer Agent
-- Letting the peer modify tests to make them pass instead of fixing code
-- Omitting prior stories context from the implementer prompt
-- The reviewer must be a fresh Agent each time — no accumulated context
+
+**Never:**
+- Write code, read diffs for review, or run tests yourself — only coordination metadata allowed
+- Skip review for any story
+- Parallelize stories that share files without dependency analysis
+- Re-implement a full story on FAIL — use targeted fix instead
+- Advance to next story without dispatching a reviewer Agent
+- Let the peer modify tests to make them pass instead of fixing code
+- Omit prior stories context from the implementer prompt
+- Reuse a reviewer across stories — fresh Agent each time
 
 ---
 

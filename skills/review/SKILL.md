@@ -39,14 +39,16 @@ reviewer. Keep the focus on review behavior, not workflow prose.
 3. Add a short diagnosis only if multiple findings share one root cause.
 
 ## Red Flag
-- Reporting a bug before understanding the changed code path
-- Reading only diff hunks instead of full changed files
-- Reporting a concern without `file:line` and trigger
-- Reporting style nits, refactor wishes, or using `B1`/`B2` severity
-- Ignoring staged or unstaged work in standalone mode
-- Leading with philosophy instead of findings
-- Forcing a diagnosis when findings don't share one root cause
-- Writing a vague "looks good" report with no evidence trail
+
+**Never:**
+- Report a bug before understanding the changed code path
+- Read only diff hunks — read full changed files
+- Report a concern without `file:line` and trigger
+- Report style nits, refactor wishes, or use `B1`/`B2` severity
+- Ignore staged or unstaged work in standalone mode
+- Lead with philosophy instead of findings
+- Force a diagnosis when findings don't share one root cause
+- Write a vague "looks good" report with no evidence trail
 
 ## Valid Findings
 

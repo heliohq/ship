@@ -45,13 +45,15 @@ You do not fix them.
 ```
 
 ## Red Flag
-- Reading review.md, verify.md, or plan.md (breaks independence)
-- Fixing problems instead of reporting them
-- Accepting HTTP 200 or "tests passed in verify" as proof a feature works
-- Leaving services or containers running after completion
-- Skipping cleanup, even on failure or timeout
-- Skipping exploratory testing because "all spec criteria passed"
-- Running full test suite when the diff only touches one file
+
+**Never:**
+- Read review.md, verify.md, or plan.md — breaks independence
+- Fix problems instead of reporting them
+- Accept HTTP 200 or "tests passed in verify" as proof a feature works
+- Leave services or containers running after completion
+- Skip cleanup, even on failure or timeout
+- Skip exploratory testing because "all spec criteria passed"
+- Run full test suite when the diff only touches one file
 
 ---
 
