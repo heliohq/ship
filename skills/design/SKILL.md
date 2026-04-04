@@ -208,91 +208,16 @@ If peer dispatch fails, self-produce the second spec:
 
 ### Step B: Your investigation
 
-Read the codebase systematically. Before writing the spec, you must
-have recorded: entrypoint files, traced caller chain, traced consumer
-chain, affected data structures/interfaces, existing tests, and
-unresolved assumptions — each with file:line evidence.
+Read `write-spec.md` for investigation methodology and spec authoring.
 
-#### For bug fixes — trace the full data/call path:
+Investigate the codebase, then write `spec.md`. The reference covers
+investigation strategy (bug fixes, new features, all tasks), vagueness
+checks, spec structure, and self-review.
 
-1. **Start at the symptom.** Find the function that produces the wrong
-   output or behavior. Read it.
-2. **Trace BACKWARD (callers).** Who calls this function? With what
-   arguments? Trace up to 2 levels up (stop if graph terminates).
-   Use `grep -rn "functionName"` to find all call sites. Read each one.
-3. **Trace FORWARD (consumers).** Who uses the output? At least 2 levels
-   down (stop if graph terminates). Read those too.
-4. **Search for existing defenses.** Before proposing a new guard or
-   fix, search for code that already handles this problem:
-   `grep -rn "relatedKeyword"`. If you find existing defenses, explain
-   why they are insufficient — or reconsider your root cause.
-5. **Check for the fix already applied upstream.** The most common
-   planning error is finding a gap in function A, without noticing that
-   function A's caller already compensates for it. Trace the full path.
+## Phase 3: Write Spec
 
-#### For new features — map the integration surface:
-
-1. **Find analogous features.** Search for similar existing features.
-   How are they wired in? What files do they touch?
-2. **Trace the integration path.** Follow a similar feature from config →
-   registration → runtime → UI/API surface. Every file it touches is a
-   candidate for your plan.
-3. **Check for existing infrastructure.** Does the foundation you need
-   already exist? Don't reinvent what's there.
-
-#### For all tasks:
-
-- **Verify file existence** before proposing to create new files
-  (`test -f "path"`). If it exists, propose extending it.
-- **Search for existing tests** that assert the current behavior you
-  plan to change (`grep -rn "oldValue" --include="*.test.*"`). These
-  tests will break — list them in your plan.
-- **Cross-reference all consumers** when defining schemas or interfaces.
-  Grep for the type name and every field name. Build a complete
-  inventory, not a partial one.
-
-### Task too vague?
-
-After investigation, check if any of these are missing from the task
-description AND could not be inferred from code:
-- **Target behavior** — what should change
-- **Target surface** — which files, endpoints, or components
-- **Success condition** — how to know it's done
-
-If any are missing, ask user via AskUserQuestion before writing spec.
-
-## Phase 3: Write Spec (Design)
-
-Write your spec.md following brainstorming style — **flexible sections
-scaled to the task's complexity.** A small bugfix gets a few paragraphs.
-An architectural change gets full sections.
-
-### What to include (pick what's relevant)
-
-- **Problem/Motivation** — what's broken, missing, or suboptimal
-- **Design approach** — how you'll solve it and why this approach
-- **Investigation findings** — what you traced, file:line refs, what
-  existing code you found, what assumptions remain unverified
-- **Changes by file** — which files are affected and what changes
-- **Intent / non-goals / forbidden shortcuts** — when relevant, state what
-  counts as satisfying the task versus merely satisfying the current tests
-- **Acceptance criteria** — concrete, testable conditions for "done"
-- **Test plan** — what tests exist, what breaks, what's needed
-- **Risks / unknowns** — anything you couldn't verify from code alone
-
-### Spec self-review
-
-After writing, run this checklist:
-
-1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections? Fix them.
-2. **Internal consistency:** Do sections contradict each other?
-3. **Scope check:** Focused enough for a single plan?
-4. **Ambiguity check:** Could any requirement be interpreted two ways?
-   If so, pick one and make it explicit.
-5. **Integrity check:** If tests could be gamed, does the spec say what
-   behavior is required and which shortcuts are forbidden?
-
-Fix issues inline. No need to re-review.
+Covered by `write-spec.md` — follow the spec writing and self-review
+guidance there.
 
 ## Phase 4: Diff & Verify
 
@@ -341,108 +266,12 @@ code evidence was cited during debate, and the final disposition
 
 ## Phase 5: Write Plan
 
-Translate the validated spec.md into an executable plan.md following
-the writing-plans format.
+Read `write-plan.md` for plan structure, task granularity, no-placeholder
+rules, and self-review.
 
-### plan.md structure
-
-```markdown
-# <Task Title> Implementation Plan
-
-> **For agentic workers:** Use /ship:dev to implement this plan
-> task-by-task. Steps use checkbox syntax for tracking.
-
-**Goal:** [One sentence — what this builds]
-
-**Architecture:** [2-3 sentences about approach]
-
-**Tech Stack:** [Key technologies/libraries]
-
----
-
-### Task 1: [Component Name]
-
-**Files:**
-- Create: `exact/path/to/file.ext`
-- Modify: `exact/path/to/existing.ext:123-145`
-- Test: `tests/exact/path/to/test.ext`
-
-- [ ] **Step 1: Write the failing test**
-
-```<lang>
-def test_specific_behavior():
-    result = function(input)
-    assert result == expected
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `<exact test command>`
-Expected: FAIL with "<specific error>"
-
-- [ ] **Step 3: Write minimal implementation**
-
-```<lang>
-def function(input):
-    return expected
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `<exact test command>`
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add <files you changed>
-git commit -m "feat: <description>"
-```
-
-### Task 2: ...
-```
-
-### Bite-sized step granularity
-
-Each step is one action:
-- "Write the failing test" — one step
-- "Run it to make sure it fails" — one step
-- "Implement the minimal code to make it pass" — one step
-- "Run the tests" — one step
-- "Commit" — one step
-
-### No placeholders
-
-Every step must contain the actual content the implementer needs.
-These are plan failures — never write them:
-- "TBD", "TODO", "implement later", "fill in details"
-- "Add appropriate error handling" / "add validation" / "handle edge cases"
-- "Write tests for the above" (without actual test code)
-- "Similar to Task N" (repeat the content — the implementer may read tasks out of order)
-- Steps that describe what to do without showing how
-
-If a step changes code, show the code. Test steps always show complete
-test code — the test IS the specification. Implementation steps show
-complete code for small focused changes; for larger steps, show the
-interface, signature, key logic, and file:line integration points so
-the implementer knows exactly what to build and where.
-
-### Plan self-review
-
-After writing, check against spec.md:
-
-1. **Spec coverage:** Every acceptance criterion in spec.md has a task
-   that implements it. List any gaps.
-2. **Placeholder scan:** Search for any of the patterns from the
-   "No placeholders" section above. Fix them.
-3. **Type consistency:** Do types, function names, and signatures match
-   across tasks? A function called `clearLayers()` in Task 2 but
-   `clearFullLayers()` in Task 5 is a bug.
-4. **Anti-shortcut check:** Would an implementer know not to solve this
-   by overfitting fixtures, editing the harness, or optimizing for tests
-   while violating the task intent?
-
-Fix issues inline. No need to re-review — just fix and move on.
+Translate the validated spec.md into an executable plan.md. The reference
+covers the plan template, bite-sized steps, code completeness guidance,
+and the self-review checklist.
 
 ## Phase 6: Execution Drill
 
