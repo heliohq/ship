@@ -1,5 +1,5 @@
 ---
-name: design-docs
+name: write-design-docs
 description: Use when creating, editing, or reviewing design docs under docs/design/ — enforces frontmatter format, numbering, status lifecycle, and writing conventions
 ---
 
