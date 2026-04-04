@@ -303,10 +303,10 @@ Agent(prompt="Call Skill('review').
 | Includes findings or bug summaries | verify `phase: review_fix`, then enter review-fix loop |
 | Clearly indicates the review is blocked or not reviewable | re-dispatch with adjusted context (max 2 rounds) |
 
-### Review-fix loop
+### Review-fix loop (max 3 rounds)
 
 ```
-loop:
+loop (max 3 rounds — after that, escalate to user):
   1. Verify `.ship/ship-auto.local.md` now says `phase: review_fix`
   2. If resuming and the prior review Agent return is unavailable, read
      `.ship/tasks/<TASK_ID>/review.md` and use its latest findings as the fix input
@@ -336,7 +336,8 @@ loop:
   5. Re-dispatch ship:review (same prompt as above)
   6. Read the review response directly:
      - No bugs found → break, proceed
-     - Findings listed → next round
+     - Findings listed → next round (if round < 3)
+     - Findings listed and round = 3 → escalate remaining findings to user
      - Review blocked → stop the loop and investigate or re-dispatch with better context
 ```
 
@@ -374,10 +375,10 @@ Agent(prompt="Call Skill('qa').
 | Clearly indicates FAIL | verify `phase: qa_fix`, then enter QA-fix loop |
 | Clearly indicates BLOCKED | re-dispatch with adjusted context or investigate (max 2 rounds) |
 
-### QA-fix loop
+### QA-fix loop (max 3 rounds)
 
 ```
-loop:
+loop (max 3 rounds — after that, escalate to user):
   1. Verify `.ship/ship-auto.local.md` now says `phase: qa_fix`
   2. If resuming and the prior QA Agent return is unavailable, read the latest
      failing report in `.ship/tasks/<TASK_ID>/qa/` and use it as the fix input
@@ -407,7 +408,8 @@ loop:
   5. Re-dispatch ship:qa with --recheck
   6. Read the QA response directly:
      - PASS/SKIP → break, proceed
-     - FAIL → next round
+     - FAIL → next round (if round < 3)
+     - FAIL and round = 3 → escalate remaining failures to user
      - BLOCKED → stop the loop and investigate or re-dispatch with better context
 ```
 
