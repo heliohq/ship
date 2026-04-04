@@ -37,7 +37,7 @@ Every session makes the harness stronger. This skill captures what
 was discovered or went wrong and routes it to the right persistent
 store so future sessions don't repeat the same mistakes.
 
-**Learnings staging file:** `.ship/learnings.md`
+**Learnings staging file:** `.learnings/LEARNINGS.md`
 
 This file is a **staging area**, not a permanent store. Learnings that
 prove durable get promoted to permanent stores and removed from staging.
@@ -87,7 +87,7 @@ For each learning, classify where it belongs:
 | Code constraint requiring AI judgment | `.ship/rules/CONVENTIONS.md` | "Don't simplify auth flows to fix errors" |
 | Deterministic check (grep/regex can catch) | Hookify rule | "Never commit files matching *.env*" |
 | Architectural decision or boundary | Design doc (`docs/design/`) | "Services A and B must not share a database" |
-| Operational knowledge (everything else) | `.ship/learnings.md` (staging) | "CI test X is flaky — retry before filing bug" |
+| Operational knowledge (everything else) | `.learnings/LEARNINGS.md` (staging) | "CI test X is flaky — retry before filing bug" |
 
 ### Step 3: Write
 
@@ -104,23 +104,38 @@ Source: learned from session <date>
 
 **For design docs:** invoke `Skill("write-design-docs")` if the learning is substantial enough for a design doc. Otherwise append to an existing design doc's Boundaries section.
 
-**For staging (operational knowledge):** append to `.ship/learnings.md`:
+**For staging (operational knowledge):** append to `.learnings/LEARNINGS.md`:
 ```markdown
-## <Short title>
-- Scope: <affected files/directories>
-- Learned: <YYYY-MM-DD>
-- Source: <what happened — one sentence>
+## [LRN-YYYYMMDD-NNN] <type>
+
+**Logged**: <ISO 8601 timestamp>
+**Priority**: high | medium | low
+**Status**: pending | promoted | pruned
+**Area**: <infra | code | ci | qa | design | ops>
+
+### Summary
+<One sentence — the core insight>
+
+### Details
+<What happened, why it matters, what the impact was>
+
+### Suggested Action
+<What to do differently next time>
+
+### Metadata
+- Source: <session_observation | user_feedback | auto_detected>
+- Related Files: <file paths>
+- Tags: <relevant tags>
+
+---
 ```
 
-Create `.ship/learnings.md` if it doesn't exist, with this header:
-```markdown
-# Learnings (Staging)
+**ID format:** `LRN-YYYYMMDD-NNN` where NNN is a zero-padded sequence
+number for that day. Check existing entries to avoid duplicates.
 
-> Operational knowledge from recent sessions. Entries that prove durable
-> get promoted to CONVENTIONS.md, hookify rules, or design docs.
-> Run `/ship:learn promote` to review and promote. Run `/ship:learn prune`
-> to clean stale entries.
-```
+**Type:** one of: `correction`, `pattern`, `pitfall`, `quirk`, `preference`
+
+Create `.learnings/LEARNINGS.md` if it doesn't exist.
 
 ### Step 4: Auto-promote on capture
 
@@ -131,7 +146,7 @@ store instead of staging. Promote immediately (no staging) when:
 - The learning is clearly a deterministic check → generate hookify rule
 - The learning matches an existing design doc's scope → append to that doc's Boundaries
 
-Only stage to `learnings.md` when the classification is ambiguous or
+Only stage to `.learnings/LEARNINGS.md` when the classification is ambiguous or
 the learning is operational (build quirks, timing, CI behavior, etc.).
 
 ---
@@ -171,7 +186,7 @@ Auto-prune: remove from staging silently.
 
 Display current learnings grouped by status.
 
-Read `.ship/learnings.md` and present:
+Read `.learnings/LEARNINGS.md` and present:
 - Recent (< 7 days)
 - Promotion candidates (> 14 days, still valid)
 - Prune candidates (scope invalid, redundant, or > 30 days)
@@ -180,7 +195,7 @@ Read `.ship/learnings.md` and present:
 
 ## Session Start Integration
 
-`.ship/learnings.md` is injected into every session by `session-start.sh`
+`.learnings/LEARNINGS.md` is injected into every session by `session-start.sh`
 alongside CONVENTIONS.md and DESIGN_INDEX.md. This gives the AI
 context about recent operational discoveries without manual lookup.
 

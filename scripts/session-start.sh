@@ -3,7 +3,7 @@
 # Injects project context into conversation:
 #   1. .ship/rules/CONVENTIONS.md — semantic rules for code
 #   2. docs/DESIGN_INDEX.md — design doc index for architectural guardrails
-#   3. .ship/learnings.md — operational knowledge from recent sessions
+#   3. .learnings/LEARNINGS.md — operational knowledge from recent sessions
 # If no files exist, outputs nothing (no-op).
 
 set -u
@@ -11,7 +11,7 @@ set -u
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CONVENTIONS_FILE="$REPO_ROOT/.ship/rules/CONVENTIONS.md"
 DESIGN_INDEX_FILE="$REPO_ROOT/docs/DESIGN_INDEX.md"
-LEARNINGS_FILE="$REPO_ROOT/.ship/learnings.md"
+LEARNINGS_FILE="$REPO_ROOT/.learnings/LEARNINGS.md"
 
 PARTS=""
 
