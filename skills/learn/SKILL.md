@@ -81,37 +81,24 @@ The test for each: **would knowing this save 5+ minutes in a future session?** I
 
 ### Step 2: Route
 
-For each learning, classify where it belongs:
+For each learning, classify its type and priority, then write to
+`.learnings/LEARNINGS.md` — the single store for all learnings.
 
-| Learning type | Destination | Example |
-|---|---|---|
-| Code constraint requiring AI judgment | `.ship/rules/CONVENTIONS.md` | "Don't simplify auth flows to fix errors" |
-| Deterministic check (grep/regex can catch) | Hookify rule | "Never commit files matching *.env*" |
-| Architectural decision or boundary | Design doc (`docs/design/`) | "Services A and B must not share a database" |
-| Operational knowledge (everything else) | `.learnings/LEARNINGS.md` (staging) | "CI test X is flaky — retry before filing bug" |
+**Additionally**, if the learning is a deterministic check (grep/regex
+can catch it), also generate a hookify rule via `Skill("hookify:writing-rules")`.
+If it's substantial enough for a design doc, also invoke
+`Skill("write-design-docs")`.
 
 ### Step 3: Write
 
-**For convention rules:** append to `.ship/rules/CONVENTIONS.md` using the existing format:
-```markdown
-## <Rule name>
-Scope: <glob pattern>
-Constraint: <what must not happen>
-Why: <what breaks>
-Source: learned from session <date>
-```
+Append to `.learnings/LEARNINGS.md` using this format:
 
-**For hookify rules:** invoke `Skill("hookify:writing-rules")` and generate the rule file.
-
-**For design docs:** invoke `Skill("write-design-docs")` if the learning is substantial enough for a design doc. Otherwise append to an existing design doc's Boundaries section.
-
-**For staging (operational knowledge):** append to `.learnings/LEARNINGS.md`:
 ```markdown
 ## [LRN-YYYYMMDD-NNN] <type>
 
 **Logged**: <ISO 8601 timestamp>
 **Priority**: high | medium | low
-**Status**: pending | promoted | pruned
+**Status**: pending | verified
 **Area**: <infra | code | ci | qa | design | ops>
 
 ### Summary
@@ -136,48 +123,44 @@ number for that day. Check existing entries to avoid duplicates.
 
 **Type:** one of: `correction`, `pattern`, `pitfall`, `quirk`, `preference`
 
+**Status:**
+- `pending` — fresh from this session, not yet validated
+- `verified` — confirmed against code, high confidence (equivalent to
+  what was previously a convention rule)
+
 Create `.learnings/LEARNINGS.md` if it doesn't exist.
 
-### Step 4: Auto-promote on capture
-
-When writing a learning, check if it should go directly to a permanent
-store instead of staging. Promote immediately (no staging) when:
-
-- The learning is clearly a code constraint → write to CONVENTIONS.md
-- The learning is clearly a deterministic check → generate hookify rule
-- The learning matches an existing design doc's scope → append to that doc's Boundaries
-
-Only stage to `.learnings/LEARNINGS.md` when the classification is ambiguous or
-the learning is operational (build quirks, timing, CI behavior, etc.).
+High-confidence learnings (clear code constraints, user corrections,
+repeated patterns) should be written directly as `Status: verified`.
+Uncertain or operational learnings start as `Status: pending`.
 
 ---
 
-## Auto-Promote (runs during capture)
+## Auto-Verify and Auto-Prune (runs during capture)
 
-When adding new learnings, also scan existing staging entries:
+When adding new learnings, also scan existing entries:
 
-### Promote detection
+### Verify detection
 
-An entry is ready for promotion when:
+A pending entry should be upgraded to `verified` when:
 - **Repeated**: the same insight was captured again (validates it)
-- **Aged + still valid**: older than 14 days AND the scope files still exist AND not already covered by CONVENTIONS.md or a design doc
-- **Pattern match**: the entry clearly fits CONVENTIONS.md format (has a scope + constraint + why)
+- **Aged + still valid**: older than 14 days AND related files still exist
+- **User confirmed**: the user explicitly agreed with the learning
 
-Auto-promote: move to the matching permanent store, remove from staging.
+Update the entry's Status to `verified` in place.
 
 ### Prune detection
 
 An entry should be removed when:
-- **Scope invalid**: the files/directories in Scope no longer exist
-- **Redundant**: already covered by a CONVENTIONS.md rule, hookify rule, or design doc
-- **Stale**: older than 30 days and never repeated or validated
+- **Scope invalid**: the files/directories in Related Files no longer exist
+- **Stale**: older than 30 days and still `pending` (never verified)
 - **Contradicted**: a newer learning or code change contradicts it
 
-Auto-prune: remove from staging silently.
+Auto-prune: remove from file silently.
 
 ### Safety
 
-- Never auto-promote to CONVENTIONS.md if the rule would contradict an existing rule
+- Never auto-verify if the insight contradicts an existing verified entry
 - Never auto-prune a learning that was added in the current session
 - Log all promotions and prunes in the Execution Handoff output so the user can review
 
@@ -197,7 +180,7 @@ Read `.learnings/LEARNINGS.md` and present:
 ## Session Start Integration
 
 `.learnings/LEARNINGS.md` is injected into every session by `session-start.sh`
-alongside CONVENTIONS.md and DESIGN_INDEX.md. This gives the AI
+alongside DESIGN_INDEX.md. This gives the AI
 context about recent operational discoveries without manual lookup.
 
 ## Execution Handoff
@@ -206,13 +189,11 @@ Output summary:
 
 ```
 [Learn] Session captured.
-  New learnings: <N>
-  Routed to:
-    - CONVENTIONS.md: <N> rules added
-    - Hookify: <N> rules generated
-    - Design docs: <N> updated
-    - Staging: <N> entries added
-  Auto-promoted: <N> staging entries → permanent stores
-  Auto-pruned: <N> stale/redundant entries removed
-  Staging: <N> entries remaining
+  New entries: <N> added to .learnings/LEARNINGS.md
+    - <N> verified (high confidence)
+    - <N> pending (needs validation)
+  Also generated: <N> hookify rules, <N> design doc updates
+  Auto-verified: <N> pending entries → verified
+  Auto-pruned: <N> stale/contradicted entries removed
+  Total: <N> entries (<N> verified, <N> pending)
 ```

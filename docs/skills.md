@@ -11,7 +11,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
 | [`/ship:refactor`](#refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Diagnoses and fixes directly — surgical (within-file) or structural (cross-file) execution. |
-| [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + CONVENTIONS.md + hookify safety rules. Audits existing harness for staleness. |
+| [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
 | [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions, routes them to the right persistent store (conventions, hookify, design docs, or staging). Auto-promotes durable learnings and prunes stale ones. |
 | [`/ship:write-design-docs`](#write-design-docs) | **Design Doc Author** | Creates and maintains high-level design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
 
@@ -308,7 +308,7 @@ Max 3 rounds. If it can't get the PR checks green in 3 rounds, it escalates to y
 
 ### Harness freshness check
 
-Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, CONVENTIONS.md, README.md) still match the code. Stale documentation is treated as a PR-blocking finding — not background noise.
+Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, .learnings/LEARNINGS.md, README.md) still match the code. Stale documentation is treated as a PR-blocking finding — not background noise.
 
 ### What it won't do
 
@@ -416,17 +416,17 @@ Detects languages (15 supported including Shell), package managers, linters, for
 
 Investigates code and git history for two types of rules:
 
-- **Semantic rules** (CONVENTIONS.md) — things only AI can judge: "don't remove auth to fix errors", "price is in cents not dollars", "legacy module is being migrated". Injected into every session via SessionStart hook.
+- **Semantic rules** (.learnings/LEARNINGS.md) — things only AI can judge: "don't remove auth to fix errors", "price is in cents not dollars", "legacy module is being migrated". Injected into every session via SessionStart hook.
 - **Safety rules** (hookify) — deterministic regex checks: block editing .env files, block DROP TABLE. Real-time PreToolUse blocking.
 
-If harness files already exist (AGENTS.md, CLAUDE.md, CONVENTIONS.md), setup audits them for staleness before generating.
+If harness files already exist (AGENTS.md, CLAUDE.md, .learnings/LEARNINGS.md), setup audits them for staleness before generating.
 
 ### Three-layer defense
 
 | Layer | Tool | How | Cost |
 |-------|------|-----|------|
 | Real-time block | Hookify rules | regex on PreToolUse | Free |
-| Semantic context | CONVENTIONS.md | SessionStart injection | Free |
+| Semantic context | .learnings/LEARNINGS.md | SessionStart injection | Free |
 | Commit-time | Pre-commit hook | lint + format | Free |
 
 ### Example
@@ -450,14 +450,14 @@ Assistant: [Setup] Detecting stack...
         SAFETY RULES (hookify):
           ✓ [D1] Block .env file edits
 
-        SEMANTIC RULES (CONVENTIONS.md):
+        SEMANTIC RULES (.learnings/LEARNINGS.md):
           ✓ [S1] Don't remove auth checks to fix errors
               Why: AI agents delete validation to make errors go away
 
         [Setup] Complete.
 
         AGENTS.md: generated
-        CONVENTIONS.md: 1 semantic rule
+        .learnings/LEARNINGS.md: 1 semantic rule
         Hookify: 1 safety rule
         Pre-commit: wired via core.hooksPath
 ```
@@ -476,7 +476,7 @@ No user interaction. The skill reflects on the session, classifies each learning
 
 | Learning type | Destination |
 |---|---|
-| Code constraint requiring AI judgment | CONVENTIONS.md |
+| Code constraint requiring AI judgment | .learnings/LEARNINGS.md |
 | Deterministic check (grep/regex can catch) | Hookify rule |
 | Architectural decision or boundary | Design doc |
 | Operational knowledge | `.learnings/LEARNINGS.md` (staging) |
@@ -489,7 +489,7 @@ No user interaction. The skill reflects on the session, classifies each learning
 
 All injected at session start:
 
-1. **CONVENTIONS.md** — code-level guardrails
+1. **.learnings/LEARNINGS.md** — code-level guardrails
 2. **DESIGN_INDEX.md** — architecture-level guardrails
 3. **LEARNINGS.md** — operational knowledge from recent sessions
 

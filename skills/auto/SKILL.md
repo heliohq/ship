@@ -162,7 +162,7 @@ started_at: "<ISO 8601 timestamp>"
 <original user description>
 ```
 
-If `.ship/rules/CONVENTIONS.md` is missing: suggest `/ship:setup` but do not block.
+If `.learnings/LEARNINGS.md` is missing: suggest `/ship:setup` but do not block.
 
 Output: `[Ship] Task "<title>" created. Starting design phase...`
 

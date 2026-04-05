@@ -31,7 +31,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 ## The Basic Workflow
 
-**setup** — Bootstrap repo infrastructure (detect languages, install tools, configure CI/CD, pre-commit hooks) and discover semantic constraints from code and git history. Generates AGENTS.md, CONVENTIONS.md (injected at session start), and hookify safety rules. Audits existing harness for staleness.
+**setup** — Bootstrap repo infrastructure (detect languages, install tools, configure CI/CD, pre-commit hooks) and discover semantic constraints from code and git history. Generates AGENTS.md, verified learnings (injected at session start), and hookify safety rules. Audits existing harness for staleness.
 
 **design** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent peer challenger for 2 rounds of adversarial review. Scales process to task size: focused tasks (≤3 files) skip peer investigation and drill.
 
@@ -47,7 +47,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **refactor** — Diagnose structural cracks from concrete pain, then fix directly. Surgical (within-file) or structural (cross-file) execution — code changes, not documents.
 
-**learn** — Captures mistakes and discoveries from sessions, routes them to the right persistent store (CONVENTIONS.md, hookify, design docs, or staging). Fully autonomous — no user interaction. Auto-promotes durable learnings and prunes stale ones.
+**learn** — Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Fully autonomous — no user interaction. Verified entries are rules; pending entries auto-verify when validated or auto-prune when stale.
 
 **write-design-docs** — Creates high-level design documents that prevent AI drift. Structured frontmatter enables AI indexing; status lifecycle tracks trust; the Boundaries section is the core anti-drift mechanism.
 
@@ -64,7 +64,7 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 | `/ship:qa` | Independent QA: tests code changes against the spec via the running application |
 | `/ship:handoff` | PR creation with verification summary, GitHub check loop, and review comment resolution |
 | `/ship:refactor` | Diagnose structural cracks and fix directly — surgical or structural execution |
-| `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + CONVENTIONS.md + hookify safety rules |
+| `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + verified learnings + hookify safety rules |
 | `/ship:learn` | Capture session learnings, route to permanent stores, auto-promote and auto-prune |
 | `/ship:write-design-docs` | Create and maintain design docs with structured frontmatter for AI indexing |
 
