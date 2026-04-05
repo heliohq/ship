@@ -10,7 +10,6 @@ All design documents live under `docs/design/`. Follow this standard when creati
 ## Red Flag
 
 **Never:**
-- Write a design doc longer than 200 lines without splitting it
 - Lead with analysis instead of the decision
 - Include implementation details that belong in code
 - Mix languages within one document
