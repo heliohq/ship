@@ -118,8 +118,7 @@ available for this repo.
   typecheck, build, or targeted smoke checks as applicable.
 - If code changes during handoff, run the relevant verification again before
   the next push.
-- If a task directory already exists and this repo expects `verify.md`, update
-  it with a short summary. Do not invent extra artifacts just for handoff.
+- If a task directory already exists, do not invent extra artifacts just for handoff.
 - If verification fails, fix the issue before pushing.
 
 Output a short summary of what was run and whether it passed.

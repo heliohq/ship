@@ -128,6 +128,27 @@ Resolve once at the start:
 3. **No formal plan or spec exists** → derive acceptance criteria from
    user request + source files, confirm via AskUserQuestion, break into
    stories if multi-file. Do not ask the user to write a plan.
+4. **Caller provides review/QA findings (fix mode)** → this is a targeted
+   fix, not a full implementation. See Fix Mode below.
+
+### Fix Mode
+
+When invoked by `/ship:auto` with review findings or QA issues to fix,
+operate in fix mode instead of the full wave loop:
+
+1. Read the findings/issues provided by the caller.
+2. For each finding, identify the affected file(s) and the fix needed.
+3. Dispatch the peer implementer with a targeted fix prompt — not the
+   full story prompt. The fix scope is limited to the listed findings.
+4. Run `TEST_CMD` after fixes to verify no regressions.
+5. Commit the fixes.
+
+Fix mode skips: wave construction, dependency analysis, story-based
+review. The fixes are reviewed by Auto's re-dispatch of `/ship:review`
+or `/ship:qa`, not by dev's internal reviewer.
+
+Return: which findings were fixed, what verification ran, any remaining
+concerns.
 
 ## Phase 2: Per-Wave Loop
 

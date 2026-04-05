@@ -7,6 +7,18 @@ description: Use when creating, editing, or reviewing design docs under docs/des
 
 All design documents live under `docs/design/`. Follow this standard when creating new docs or modifying existing ones.
 
+## Red Flag
+
+**Never:**
+- Write a design doc longer than 200 lines without splitting it
+- Lead with analysis instead of the decision
+- Include implementation details that belong in code
+- Mix languages within one document
+- Silently delete history — mark superseded sections, don't erase them
+- Create a design doc without adding it to the docs index
+- Mark a doc as `current` without verifying claims against code
+- Skip the Boundaries section — it's the core anti-drift mechanism
+
 ## Frontmatter (Required)
 
 Every design doc MUST start with YAML frontmatter:

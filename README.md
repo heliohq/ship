@@ -10,7 +10,7 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 
 **Quality gates at every transition.** The `stop-gate.sh` hook prevents the orchestrator from exiting while the pipeline is active (tracked via `.ship/ship-auto.local.md`). Each phase produces artifacts that the next phase consumes — no shortcuts, no skipped steps.
 
-**Every phase is an isolated subagent.** The reviewer has never seen the implementation context. The QA evaluator is contractually forbidden from reading the review or verification artifacts — it can only look at the spec and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
+**Every phase is an isolated subagent.** The reviewer has never seen the implementation context. The QA evaluator is contractually forbidden from reading the review — it can only look at the spec, the git diff, and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
 
 **State lives on disk, not in memory.** The current phase is tracked in `.ship/ship-auto.local.md`. The stop-gate hook reads this file and blocks session exit while the pipeline is active. On resume, auto reads the phase field and picks up where it left off.
 
@@ -39,9 +39,9 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **dev** — Executes implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave.
 
-**review** — Find every bug in the diff — spec violations, runtime errors, race conditions, missing error handling — then diagnose the structural deficiency that breeds them. No style or formatting nits.
+**review** — Find every bug in the diff — spec violations, runtime errors, race conditions, missing error handling. Add a short diagnosis only when multiple findings share one structural root cause. No style or formatting nits.
 
-**qa** — Starts the application and tests the code changes against the spec by interacting with the running product. Discovers the stack, matches testing to what changed (browser, API, CLI), and reports findings with evidence. Browser testing uses [agent-browser](https://github.com/vercel-labs/agent-browser). Independence contract: cannot read review.md, verify.md, or plan.md.
+**qa** — Starts the application and tests the code changes against the spec by interacting with the running product. Discovers the stack, matches testing to what changed (browser, API, CLI), and reports findings with evidence. Browser testing uses [agent-browser](https://github.com/vercel-labs/agent-browser). Independence contract: cannot read review.md or plan.md.
 
 **handoff** — Creates a PR with a concise verification summary, then enters the post-PR loop: monitor GitHub checks, fix failures, address review comments, resolve merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted.
 

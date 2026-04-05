@@ -38,20 +38,21 @@ Every session makes the harness stronger. This skill captures what
 was discovered or went wrong and routes it to the right persistent
 store so future sessions don't repeat the same mistakes.
 
-**Learnings staging file:** `.learnings/LEARNINGS.md`
+**Learnings file:** `.learnings/LEARNINGS.md`
 
-This file is a **staging area**, not a permanent store. Learnings that
-prove durable get promoted to permanent stores and removed from staging.
-Learnings that are transient or wrong get pruned.
+This is the **single persistent store** for all project learnings.
+Verified entries are rules — they replace what CONVENTIONS.md used to be.
+Pending entries are fresh observations that auto-verify when validated
+or auto-prune when stale.
 
 ## Red Flag
 
 **Never:**
 - Capture obvious or trivial learnings ("npm install installs packages")
 - Capture transient errors (network blips, rate limits, one-time CI flakes)
-- Let the staging file grow beyond ~30 entries — prune or promote
-- Promote a learning without verifying it against current code
-- Skip the routing step — every learning belongs in a specific store
+- Let the file grow beyond ~30 entries — prune stale ones
+- Mark a learning as verified without checking it against current code
+- Skip classification — every learning needs a type, priority, and status
 
 ---
 
@@ -84,10 +85,12 @@ The test for each: **would knowing this save 5+ minutes in a future session?** I
 For each learning, classify its type and priority, then write to
 `.learnings/LEARNINGS.md` — the single store for all learnings.
 
-**Additionally**, if the learning is a deterministic check (grep/regex
-can catch it), also generate a hookify rule via `Skill("hookify:writing-rules")`.
-If it's substantial enough for a design doc, also invoke
-`Skill("write-design-docs")`.
+**Additionally** (both optional — skip if the tool/skill is unavailable):
+- If the learning is a deterministic check (grep/regex can catch it)
+  AND hookify is installed, also generate a hookify rule via
+  `Skill("hookify:writing-rules")`.
+- If it's substantial enough for a design doc, also invoke
+  `Skill("write-design-docs")`.
 
 ### Step 3: Write
 

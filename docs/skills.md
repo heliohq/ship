@@ -7,7 +7,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
 | [`/ship:design`](#design) | **Adversarial Designer** | The host agent and a peer agent independently investigate the codebase and produce specs in parallel. Divergences are resolved by code evidence and debate. The merged spec feeds an executable TDD plan validated by a peer drill. |
 | [`/ship:dev`](#dev) | **Implementation Engine** | Executes stories from a plan via parallel waves. Dependency analysis groups independent stories; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave. |
-| [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff, then diagnose the structural deficiency that breeds them. Bugs are symptoms — the structural crack is the disease. |
+| [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff. Add diagnosis only when multiple findings share one structural root cause. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
 | [`/ship:refactor`](#refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Diagnoses and fixes directly — surgical (within-file) or structural (cross-file) execution. |
@@ -33,7 +33,7 @@ The orchestrator delegates all code changes to fresh subagents. It may read code
 
 Implementation and review use **separate runtimes**. Cross-provider separation is preferred when available because model biases differ as well as session context. When only one provider is available, Ship still uses fresh same-provider sessions so review does not collapse into self-review.
 
-The QA evaluator is contractually forbidden from reading the review or the plan. It can only look at the spec and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
+The QA evaluator is contractually forbidden from reading the review or the plan. It can only look at the spec, the git diff, and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
 
 ### Seven phases
 
@@ -222,11 +222,9 @@ Assistant: [Dev] Reading plan: 3 stories for rate-limit-upload
 
 This is the **staff engineer who finds the disease, not just the symptoms**.
 
-Code review has two jobs:
+Code review has one job: **find every bug** in the diff. N+1 queries, race conditions, trust boundary violations, missing error handling on partial failures, tests that test the wrong thing, forgotten enum handlers when new values are added. All of them, with file:line + triggering scenario.
 
-1. **Find every bug.** The class of bugs that survive CI but explode in production: N+1 queries, race conditions, trust boundary violations, missing error handling on partial failures, tests that test the wrong thing, forgotten enum handlers when new values are added. All of them, with file:line + triggering scenario.
-
-2. **Diagnose the structural deficiency.** Bugs cluster around structural weaknesses — a missing validation boundary, shared mutable state without ownership, a trust boundary in the wrong layer. The review identifies the ONE structural crack that breeds the bug cluster. Fix the crack, and a class of bugs disappears — not just the ones caught today, but the ones that would have appeared in the next PR.
+When multiple findings share one structural root cause, the review adds a short **diagnosis** — but only when it genuinely explains the pattern. Diagnosis is optional and always secondary to concrete findings.
 
 This is the principal contradiction applied to code review: bugs are the many contradictions, and the structural deficiency is the principal contradiction whose existence determines the others.
 
@@ -236,7 +234,7 @@ This is the principal contradiction applied to code review: bugs are the many co
 
 This is **independent QA**.
 
-The most important word is "independent." The QA evaluator is contractually forbidden from reading the review, the verification results, or the plan. It can only look at two things: the spec (what was supposed to be built) and the running application (what was actually built). This independence contract exists because every other phase has optimistic bias — the implementer thinks their code works, the reviewer saw the implementation context, the verifier ran the tests the implementer wrote. QA is the outsider.
+The most important word is "independent." The QA evaluator is contractually forbidden from reading the review or the plan. It looks at three things: the spec (what was supposed to be built), the git diff (what changed), and the running application (what was actually built). This independence contract exists because every other phase has optimistic bias — the implementer thinks their code works, the reviewer saw the implementation context, the verifier ran the tests the implementer wrote. QA is the outsider.
 
 ### Evidence hierarchy
 

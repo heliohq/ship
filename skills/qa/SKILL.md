@@ -47,7 +47,7 @@ You do not fix them.
 ## Red Flag
 
 **Never:**
-- Read review.md, verify.md, or plan.md — breaks independence
+- Read review.md or plan.md — breaks independence
 - Fix problems instead of reporting them
 - Accept HTTP 200 or "tests passed in verify" as proof a feature works
 - Leave services or containers running after completion

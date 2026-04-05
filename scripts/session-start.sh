@@ -15,7 +15,7 @@ PARTS=""
 
 # Part 1: Learnings (verified rules + pending observations)
 if [[ -f "$LEARNINGS_FILE" ]]; then
-  PARTS="Project learnings loaded. Verified entries are rules — follow them. Pending entries are recent observations — check them before making decisions in the affected areas.
+  PARTS="Project learnings loaded. Verified entries are rules that MUST be followed — violations cause bugs, security issues, or architectural breakage. Pending entries are recent observations — check them before making decisions in the affected areas.
 
 $(cat "$LEARNINGS_FILE")"
 fi
