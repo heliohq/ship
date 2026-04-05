@@ -472,7 +472,8 @@ Agent(prompt="Call Skill('handoff').
   and keep working the CI and review loop until the PR is ready.
   Do not redo design, review, or QA in this phase.
   You are invoked by /ship:auto — do NOT ask the user questions.
-  Do not delete `.ship/ship-auto.local.md` — Auto owns state file cleanup.
+  On success (PR checks green), delete `.ship/ship-auto.local.md` before returning.
+  If handoff is not ready or blocked, leave the state file in place.
   In your return, say whether handoff is complete, include the PR URL when available,
   summarize the current check status, and call out any remaining blockers.
   Handoff context:
@@ -516,17 +517,6 @@ Agent(prompt="Call Skill('learn').
 ```
 
 This phase is best-effort — if it fails, the pipeline outcome is unchanged.
-
-## Cleanup
-
-After Learn completes (or fails), Auto deletes the state file:
-
-```bash
-rm -f .ship/ship-auto.local.md
-```
-
-This is the very last action. Auto owns the full state file lifecycle:
-create (Phase 1), read/update (throughout), delete (here).
 
 ---
 
@@ -663,12 +653,13 @@ create (Phase 1), read/update (throughout), delete (here).
 ── Phase 7: Handoff ───────────────────────────────────────
 
 [Ship] Dispatching /ship:handoff...
-  Agent(prompt="Call Skill('handoff'). This is the handoff phase only. Verify what is needed, push the branch, create or update the PR, and work the CI loop until ready. Do not delete `.ship/ship-auto.local.md` — Auto owns state file cleanup. In your return, include the PR URL and current check status. Handoff context: base_branch: main ...")
+  Agent(prompt="Call Skill('handoff'). This is the handoff phase only. Verify what is needed, push the branch, create or update the PR, and work the CI loop until ready. On success, delete `.ship/ship-auto.local.md` before returning. In your return, include the PR URL and current check status. Handoff context: base_branch: main ...")
 
   Agent returns:
   PR #42 checks are green:
   https://github.com/user/repo/pull/42
 
+[Ship] Verified state file cleanup.
 [Ship] PR checks green: https://github.com/user/repo/pull/42
 
 ── Phase 8: Learn ─────────────────────────────────────────
@@ -680,11 +671,6 @@ create (Phase 1), read/update (throughout), delete (here).
   2 learnings captured:
     - [LRN-20260405-001] correction: review found stale CSS variable fallback (verified)
     - [LRN-20260405-002] quirk: localStorage needs explicit JSON.stringify (pending)
-
-── Cleanup ────────────────────────────────────────────────
-
-[Ship] Removing state file...
-  rm -f .ship/ship-auto.local.md
 
 [Ship] Done.
 ```
@@ -699,4 +685,4 @@ create (Phase 1), read/update (throughout), delete (here).
 | **Simplify is safe** | SHA recorded before, tests run after, revert if broken |
 | **No code writes** | Orchestrator dispatches Agents for all code changes |
 | **Learn is unconditional** | Runs after success or failure — captures what the harness should remember |
-| **Auto owns create + delete** | Auto creates state file (Phase 1), subagents advance phases, Auto deletes (Cleanup) |
+| **Handoff is the terminal phase** | Only handoff deletes the state file (on PR green) — blocked pipelines keep it for resume |
