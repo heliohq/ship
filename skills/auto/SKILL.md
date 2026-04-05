@@ -340,7 +340,7 @@ loop (max 3 rounds — tracked in state file as review_fix_round):
   6. Read the review response directly:
      - No bugs found → break, proceed
      - Findings listed → next round (if round < 3)
-     - Findings listed and round = 3 → escalate remaining findings to user
+     - Findings listed and round = 3 → run Phase 8 (Learn), then escalate remaining findings to user
      - Review blocked → stop the loop and investigate or re-dispatch with better context
 ```
 
@@ -415,7 +415,7 @@ loop (max 3 rounds — tracked in state file as qa_fix_round):
   6. Read the QA response directly:
      - PASS/SKIP → break, proceed
      - FAIL → next round (if round < 3)
-     - FAIL and round = 3 → escalate remaining failures to user
+     - FAIL and round = 3 → run Phase 8 (Learn), then escalate remaining failures to user
      - BLOCKED → stop the loop and investigate or re-dispatch with better context
 ```
 
@@ -494,10 +494,15 @@ Agent(prompt="Call Skill('handoff').
 
 Output: `[Ship] PR checks green: <url>`
 
-## Phase 8: Learn
+## Phase 8: Learn (unconditional)
 
-After the pipeline completes (handoff done or escalated), capture
-session learnings. This runs silently — no user interaction.
+**Always runs** — after handoff succeeds, after handoff fails, or when
+any phase escalates to the user. The most valuable learnings come from
+failures, not successes.
+
+Before escalating to the user at any point in the pipeline (review-fix
+exhausted, QA-fix exhausted, phase blocked after retries), run Phase 8
+first, then escalate.
 
 ```
 Agent(prompt="Call Skill('learn').
@@ -506,13 +511,14 @@ Agent(prompt="Call Skill('learn').
   Reflect on this pipeline run and capture learnings.
   You are invoked by /ship:auto — do NOT ask the user questions.
   Capture silently and report what was captured in your return.
+  Pipeline outcome: <completed | blocked at <phase> | escalated at <phase>>
   Pipeline context:
   task_id: <TASK_ID>
   branch: <BRANCH>
   base_branch: <BASE_BRANCH>")
 ```
 
-This phase is best-effort — if it fails, the pipeline is still complete.
+This phase is best-effort — if it fails, the pipeline outcome is unchanged.
 
 ---
 
