@@ -663,14 +663,30 @@ create (Phase 1), read/update (throughout), delete (here).
 ── Phase 7: Handoff ───────────────────────────────────────
 
 [Ship] Dispatching /ship:handoff...
-  Agent(prompt="Call Skill('handoff'). This is the handoff phase only. Verify what is needed, push the branch, create or update the PR, and work the CI loop until ready. On success, delete `.ship/ship-auto.local.md` before returning. In your return, include the PR URL and current check status. Handoff context: base_branch: main ...")
+  Agent(prompt="Call Skill('handoff'). This is the handoff phase only. Verify what is needed, push the branch, create or update the PR, and work the CI loop until ready. Do not delete `.ship/ship-auto.local.md` — Auto owns state file cleanup. In your return, include the PR URL and current check status. Handoff context: base_branch: main ...")
 
   Agent returns:
   PR #42 checks are green:
   https://github.com/user/repo/pull/42
 
-[Ship] Verified state file cleanup.
 [Ship] PR checks green: https://github.com/user/repo/pull/42
+
+── Phase 8: Learn ─────────────────────────────────────────
+
+[Ship] Dispatching /ship:learn...
+  Agent(prompt="Call Skill('learn'). Reflect on this pipeline run and capture learnings. Pipeline outcome: completed ...")
+
+  Agent returns:
+  2 learnings captured:
+    - [LRN-20260405-001] correction: review found stale CSS variable fallback (verified)
+    - [LRN-20260405-002] quirk: localStorage needs explicit JSON.stringify (pending)
+
+── Cleanup ────────────────────────────────────────────────
+
+[Ship] Removing state file...
+  rm -f .ship/ship-auto.local.md
+
+[Ship] Done.
 ```
 
 ### What This Shows
@@ -682,4 +698,5 @@ create (Phase 1), read/update (throughout), delete (here).
 | **Fix loops stay honest** | Review and QA move into `review_fix` or `qa_fix`, then the fix worker moves state back on success |
 | **Simplify is safe** | SHA recorded before, tests run after, revert if broken |
 | **No code writes** | Orchestrator dispatches Agents for all code changes |
-| **Always ship** | Pipeline flows start to finish without stopping |
+| **Learn is unconditional** | Runs after success or failure — captures what the harness should remember |
+| **Auto owns create + delete** | Auto creates state file (Phase 1), subagents advance phases, Auto deletes (Cleanup) |
