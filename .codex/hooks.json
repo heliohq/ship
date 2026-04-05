@@ -2,11 +2,10 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/scripts/session-start.sh\"",
+            "command": "bash \"$HOME/.codex/ship/scripts/session-start.sh\"",
             "statusMessage": "Loading Ship learnings and design index"
           }
         ]
@@ -17,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/scripts/stop-gate.sh\"",
+            "command": "bash \"$HOME/.codex/ship/scripts/stop-gate.sh\"",
             "statusMessage": "Checking Ship auto state",
             "timeout": 30
           }

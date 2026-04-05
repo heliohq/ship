@@ -1,6 +1,6 @@
 # Installing Ship for Codex
 
-Enable Ship workflow skills in Codex via native skill discovery. Clone and symlink.
+Enable Ship workflow skills in Codex via native skill discovery. To install Codex hooks across repos, also install Ship's shipped hook manifest.
 
 ## Prerequisites
 
@@ -26,11 +26,7 @@ Enable Ship workflow skills in Codex via native skill discovery. Clone and symli
    cmd /c mklink /J "$env:USERPROFILE\.agents\skills\ship" "$env:USERPROFILE\.codex\ship\skills"
    ```
 
-3. **Restart Codex** (quit and relaunch the CLI) to discover the skills.
-
-## Optional: Enable advanced features
-
-Add to `~/.codex/config.toml`:
+3. **Enable Codex features** by adding this to `~/.codex/config.toml`:
 
 ```toml
 [features]
@@ -39,17 +35,35 @@ codex_hooks = true
 ```
 
 - `multi_agent` — enables subagent dispatch for skills like `implement` and `plan`
-- `codex_hooks` — enables Codex's hook runtime so Ship can load repo-local hooks from `.codex/hooks.json`
+- `codex_hooks` — enables Codex's hook runtime so Codex can load hook manifests
 
-With `codex_hooks = true`, Codex automatically discovers `.codex/hooks.json` in the checked-out repo. That manifest reuses Ship's existing `scripts/session-start.sh` and `scripts/stop-gate.sh`.
+4. **Install global Codex hooks** (macOS/Linux):
+
+   If `~/.codex/hooks.json` does not exist yet:
+
+   ```bash
+   mkdir -p ~/.codex
+   cp ~/.codex/ship/.codex/hooks.json ~/.codex/hooks.json
+   ```
+
+   If `~/.codex/hooks.json` already exists, do not replace it. Instead, open both files and copy the Ship hook entries from `~/.codex/ship/.codex/hooks.json` into the matching arrays in `~/.codex/hooks.json`:
+
+   - append the entries under `hooks.SessionStart` to your existing `hooks.SessionStart`
+   - append the entries under `hooks.Stop` to your existing `hooks.Stop`
+   - if either array does not exist yet, create it first
+
+   This step is what installs Codex hooks globally. Without it, Ship skills will be available, but hooks will only run in repos that already contain their own `.codex/hooks.json`.
+
+5. **Restart Codex** (quit and relaunch the CLI) to discover the skills and hooks.
 
 ## Verify
 
 ```bash
 ls -la ~/.agents/skills/ship
+jq . ~/.codex/hooks.json
 ```
 
-You should see a symlink pointing to your Ship skills directory.
+You should see a symlink pointing to your Ship skills directory and a valid global hook manifest.
 
 ## Updating
 
