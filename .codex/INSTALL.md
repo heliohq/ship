@@ -43,7 +43,7 @@ codex_hooks = true
 
    ```bash
    mkdir -p ~/.codex
-   cp ~/.codex/ship/.codex/hooks.json ~/.codex/hooks.json
+   ln -s ~/.codex/ship/.codex/hooks.json ~/.codex/hooks.json
    ```
 
    If `~/.codex/hooks.json` already exists, do not replace it. Instead, open both files and copy the Ship hook entries from `~/.codex/ship/.codex/hooks.json` into the matching arrays in `~/.codex/hooks.json`:
@@ -60,10 +60,11 @@ codex_hooks = true
 
 ```bash
 ls -la ~/.agents/skills/ship
+ls -la ~/.codex/hooks.json
 jq . ~/.codex/hooks.json
 ```
 
-You should see a symlink pointing to your Ship skills directory and a valid global hook manifest.
+You should see a symlink pointing to your Ship skills directory and either a symlink or a valid merged global hook manifest.
 
 ## Updating
 
@@ -73,10 +74,15 @@ cd ~/.codex/ship && git pull
 
 Skills update instantly through the symlink.
 
+If `~/.codex/hooks.json` is a symlink to `~/.codex/ship/.codex/hooks.json`, hook updates apply automatically after `git pull`.
+If you manually merged Ship's hook entries into an existing `~/.codex/hooks.json`, re-open `~/.codex/ship/.codex/hooks.json` after updates and re-merge any changed Ship entries.
+
 ## Uninstalling
 
 ```bash
 rm ~/.agents/skills/ship
 ```
+
+If `~/.codex/hooks.json` is a symlink to Ship's hook manifest, remove that symlink too: `rm ~/.codex/hooks.json`
 
 Optionally delete the clone: `rm -rf ~/.codex/ship`

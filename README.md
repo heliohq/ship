@@ -92,7 +92,7 @@ Tell Codex:
 Fetch and follow instructions from https://raw.githubusercontent.com/tryship/ship/refs/heads/main/.codex/INSTALL.md
 ```
 
-Codex hook support is not plugin-based. Follow [`.codex/INSTALL.md`](/Users/travisxie/Desktop/ship/.codex/INSTALL.md) to copy or append Ship's shipped `.codex/hooks.json` into your global `~/.codex/hooks.json`.
+Codex hook support is not plugin-based. Follow [`.codex/INSTALL.md`](./.codex/INSTALL.md) to symlink or append Ship's shipped `.codex/hooks.json` into your global `~/.codex/hooks.json`.
 
 ### Local Development
 
