@@ -19,7 +19,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
 SHIP_SKILL_NAME=auto source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
@@ -121,7 +121,7 @@ Read(".ship/ship-auto.local.md")
 
 Generate task ID:
 ```
-Bash("${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}/scripts/task-id.sh '<description>'")
+Bash("${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}/scripts/task-id.sh '<description>'")
 ```
 Record as `TASK_ID`.
 
@@ -145,12 +145,19 @@ fi
 BRANCH=$(git branch --show-current)
 ```
 
+Resolve current session id:
+```bash
+CURRENT_SESSION_ID="$(cat .ship/session-id.local 2>/dev/null || printf '%s' "${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}")"
+CURRENT_SESSION_ID="$(printf '%s' "$CURRENT_SESSION_ID" | tr -d '\r\n')"
+[ -n "$CURRENT_SESSION_ID" ] || CURRENT_SESSION_ID="unknown"
+```
+
 Write state file (via Bash):
 ```markdown
 ---
 active: true
 task_id: <TASK_ID>
-session_id: ${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}
+session_id: <CURRENT_SESSION_ID>
 branch: <BRANCH>
 base_branch: <BASE_BRANCH>
 phase: design
@@ -188,7 +195,7 @@ For `qa_fix` resume, read the latest failing report in
 `.ship/tasks/<TASK_ID>/qa/` and use it as the fix input if the prior
 Agent return is not in memory.
 
-Update `session_id` in state file to current session (so this session owns the task).
+Update `session_id` in state file to the current session (so this session owns the task). Read `.ship/session-id.local` first, then fall back to `${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}` if the file is missing.
 
 Output: `[Ship] Resuming task "<task_id>" — phase: <phase>`
 

@@ -7,7 +7,26 @@
 
 set -u
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+INPUT=$(cat)
+
+CWD=""
+SESSION_ID=""
+if command -v jq &>/dev/null && [[ -n "$INPUT" ]]; then
+  CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2>/dev/null || printf '')
+  SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || printf '')
+fi
+
+if [[ -n "$CWD" ]]; then
+  REPO_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$CWD")"
+else
+  REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+fi
+
+if [[ -n "$SESSION_ID" ]]; then
+  mkdir -p "$REPO_ROOT/.ship"
+  printf '%s\n' "$SESSION_ID" > "$REPO_ROOT/.ship/session-id.local"
+fi
+
 LEARNINGS_FILE="$REPO_ROOT/.learnings/LEARNINGS.md"
 DESIGN_INDEX_FILE="$REPO_ROOT/docs/DESIGN_INDEX.md"
 

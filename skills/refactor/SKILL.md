@@ -19,7 +19,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
 SHIP_SKILL_NAME=refactor source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
@@ -220,4 +220,3 @@ After all changes, output summary and offer next steps:
 - Keeping structural execution cards short and actionable
 - Doing surgical cleanup as the last step of structural refactoring
 </Good>
-
