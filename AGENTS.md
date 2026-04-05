@@ -17,7 +17,7 @@
 | `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, Stop) |
 | `.codex/` | `INSTALL.md`, `hooks.json` | Codex install docs and repo-local Codex hook registration |
 | `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:design, etc.) |
-| `skills/setup/` | Setup skill | Infra bootstrap + convention discovery, AGENTS.md + CONVENTIONS.md generation |
+| `skills/setup/` | Setup skill | Infra bootstrap + convention discovery, AGENTS.md + learnings generation |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata for ShipAI |
 | `.mcp.json` | MCP config | Codex MCP server registration |
 
@@ -27,7 +27,7 @@ Two independent layers:
 
 **Harness layer (opt-in via /ship:setup):** AI analyzes the project and generates enforceable conventions.
 - Generates `AGENTS.md` (prevention — AI reads at session start)
-- Generates `.ship/rules/CONVENTIONS.md` (semantic rules — injected at session start via SessionStart hook)
+- Generates `.learnings/LEARNINGS.md` (verified rules + session learnings — injected at session start via SessionStart hook)
 - Generates `.claude/hookify.ship-*.local.md` (deterministic safety rules — real-time PreToolUse block via hookify)
 
 **Workflow layer (opt-in via /ship:auto):** Fires only during ship-coding sessions.

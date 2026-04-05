@@ -1,46 +1,18 @@
-# Independent Investigator — Peer Agent Prompt
+# Write Spec — Investigation & Spec Authoring
 
-Used in Phase 2 of `/ship:design`. The peer agent independently
-investigates the codebase and produces its own spec. Dispatch it
-**before** the host starts investigating so both runs stay independent.
+How to investigate a codebase and write a spec. Used by the host agent
+in Phase 2-3 of `/ship:design`.
 
-## Dispatch
+## Overview
 
-Resolve the peer runtime before dispatching:
-
-- Preferred: use the non-host provider.
-- Fallback: use a fresh same-provider session and note weaker independence.
-
-If the peer runtime is Codex, use:
-
-```
-mcp__codex__codex({
-  prompt: <prompt below, with <task description> and <task_id> filled in>,
-  approval-policy: "never",
-  cwd: <repo root>
-})
-```
-
-If the peer runtime is Claude, use:
-
-```bash
-claude -p --permission-mode bypassPermissions "<prompt below, with <task description> and <task_id> filled in>"
-```
-
-## Prompt
-
-```text
-You are an independent investigator and spec writer. You have NOT seen
-any prior spec or plan for this task. Your job is to read the codebase,
-investigate thoroughly, and produce your own spec from scratch.
-
-## Task
-
-<task description>
+Write comprehensive specs assuming the next reader has zero context.
+Document what you found, what you traced, and what must be true for
+the task to be done. The spec is the contract — everything downstream
+(plan, implementation, review, QA) flows from it.
 
 ## Investigation
 
-This is the most important phase. Do not rush it.
+**This is the most important phase. Do not rush it.**
 
 Read the codebase systematically. Before writing the spec, you must
 have recorded: entrypoint files, traced caller chain, traced consumer
@@ -68,8 +40,8 @@ unresolved assumptions — each with file:line evidence.
 
 1. **Find analogous features.** Search for similar existing features.
    How are they wired in? What files do they touch?
-2. **Trace the integration path.** Follow a similar feature from config →
-   registration → runtime → UI/API surface. Every file it touches is a
+2. **Trace the integration path.** Follow a similar feature from config ->
+   registration -> runtime -> UI/API surface. Every file it touches is a
    candidate for your plan.
 3. **Check for existing infrastructure.** Does the foundation you need
    already exist? Don't reinvent what's there.
@@ -85,9 +57,19 @@ unresolved assumptions — each with file:line evidence.
   Grep for the type name and every field name. Build a complete
   inventory, not a partial one.
 
-## Write Spec
+## Task too vague?
 
-Write your spec following brainstorming style — **flexible sections
+After investigation, check if any of these are missing from the task
+description AND could not be inferred from code:
+- **Target behavior** — what should change
+- **Target surface** — which files, endpoints, or components
+- **Success condition** — how to know it's done
+
+If any are missing, ask user via AskUserQuestion before writing spec.
+
+## Write the Spec
+
+Write your spec.md following brainstorming style — **flexible sections
 scaled to the task's complexity.** A small bugfix gets a few paragraphs.
 An architectural change gets full sections.
 
@@ -116,12 +98,4 @@ After writing, run this checklist:
 5. **Integrity check:** If tests could be gamed, does the spec say what
    behavior is required and which shortcuts are forbidden?
 
-Fix issues inline. No need to re-review.
-
-Every claim must reference specific file:line locations you actually
-read. No speculating about code you haven't opened.
-
-## Output
-
-Write your spec to: .ship/tasks/<task_id>/plan/peer-spec.md
-```
+Fix issues inline. No need to re-review — just fix and move on.

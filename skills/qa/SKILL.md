@@ -44,12 +44,16 @@ You do not fix them.
 5. Report       Summarize what you found
 ```
 
-## Hard Rules
+## Red Flag
 
-1. You do not fix problems. You find and report them.
-2. You do not read review.md, verify.md, or plan.md (independence).
-3. The running application is the only source of truth.
-4. Cleanup is mandatory — never skip, even on failure or timeout.
+**Never:**
+- Read review.md or plan.md — breaks independence
+- Fix problems instead of reporting them
+- Accept HTTP 200 or "tests passed in verify" as proof a feature works
+- Leave services or containers running after completion
+- Skip cleanup, even on failure or timeout
+- Skip exploratory testing because "all spec criteria passed"
+- Run full test suite when the diff only touches one file
 
 ---
 
@@ -58,9 +62,11 @@ You do not fix them.
 Read the spec and the diff. These two inputs decide everything.
 
 ```bash
-# What changed?
-git diff main...HEAD --stat
-git diff main...HEAD --name-only
+# What changed? Use the base branch provided by caller, or detect it.
+BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+[ -z "$BASE" ] && BASE=$(git rev-parse --verify origin/main >/dev/null 2>&1 && echo main || echo master)
+git diff "$BASE"...HEAD --stat
+git diff "$BASE"...HEAD --name-only
 ```
 
 Read the spec file (provided by caller, or auto-detect from
@@ -178,17 +184,24 @@ When invoked with `--recheck`:
 - `references/electron.md` — Electron app automation via CDP
 - `references/report.md` — shared exploratory report template
 
-## Completion
+## Execution Handoff
 
-### Never stop for
-- Individual criterion failures (record and continue)
-- A single service failing to start (test what you can)
+Never stop for individual criterion failures (record and continue)
+or a single service failing to start (test what you can).
 
-## Red Flag
-- Reading review.md or verify.md (breaks independence)
-- Reading plan.md (biases what you test)
-- Skipping testing because "tests passed in verify"
-- Accepting HTTP 200 as proof a feature works
-- Leaving services or containers running after completion
-- Skipping exploratory testing because "all spec criteria passed"
-- Running full test suite when the diff only touches one file
+Output summary, then offer next steps in standalone mode:
+
+```
+[QA] <PASS|FAIL|BLOCKED|SKIP>
+  Criteria: <N>/<total> passed
+  Issues: <N> found beyond spec
+  Reports: <qa_dir>/
+
+## What's next?
+1. **Fix failures** — run /ship:dev to fix the reported issues
+2. **Ship (if passing)** — run /ship:handoff to create the PR
+3. **Full pipeline** — run /ship:auto to handle fixes and shipping
+```
+
+In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+

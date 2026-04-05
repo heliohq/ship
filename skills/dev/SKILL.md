@@ -67,6 +67,18 @@ Resolve once at the start:
 | Review → Next story | Verdict is PASS or PASS_WITH_CONCERNS | Targeted fix (max 2) |
 | All stories → Done | Full test suite passes | Targeted fix for regression |
 
+## Red Flag
+
+**Never:**
+- Write code, read diffs for review, or run tests yourself — only coordination metadata allowed
+- Skip review for any story
+- Parallelize stories that share files without dependency analysis
+- Re-implement a full story on FAIL — use targeted fix instead
+- Advance to next story without dispatching a reviewer Agent
+- Let the peer modify tests to make them pass instead of fixing code
+- Omit prior stories context from the implementer prompt
+- Reuse a reviewer across stories — fresh Agent each time
+
 ---
 
 ## Phase 1: Setup
@@ -116,6 +128,27 @@ Resolve once at the start:
 3. **No formal plan or spec exists** → derive acceptance criteria from
    user request + source files, confirm via AskUserQuestion, break into
    stories if multi-file. Do not ask the user to write a plan.
+4. **Caller provides review/QA findings (fix mode)** → this is a targeted
+   fix, not a full implementation. See Fix Mode below.
+
+### Fix Mode
+
+When invoked by `/ship:auto` with review findings or QA issues to fix,
+operate in fix mode instead of the full wave loop:
+
+1. Read the findings/issues provided by the caller.
+2. For each finding, identify the affected file(s) and the fix needed.
+3. Dispatch the peer implementer with a targeted fix prompt — not the
+   full story prompt. The fix scope is limited to the listed findings.
+4. Run `TEST_CMD` after fixes to verify no regressions.
+5. Commit the fixes.
+
+Fix mode skips: wave construction, dependency analysis, story-based
+review. The fixes are reviewed by Auto's re-dispatch of `/ship:review`
+or `/ship:qa`, not by dev's internal reviewer.
+
+Return: which findings were fixed, what verification ran, any remaining
+concerns.
 
 ## Phase 2: Per-Wave Loop
 
@@ -363,21 +396,22 @@ Use `[Implement]` prefix:
 | Peer implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
 | Agent dispatch failure | Retry once, then BLOCKED |
 
-## Completion
+## Execution Handoff
 
-Report one of:
-- **DONE** — all stories implemented, reviewed, committed.
-- **DONE_WITH_CONCERNS** — all stories pass, concerns recorded.
-- **BLOCKED** — a story failed after max retries.
-- **NEEDS_CONTEXT** — missing information needed from user.
+Output summary, then offer next steps in standalone mode:
 
-## Red Flags
+```
+[Implement] <DONE|DONE_WITH_CONCERNS|BLOCKED|NEEDS_CONTEXT>
+  Stories: <N>/<total> complete, <W> waves
+  Concerns: <N> recorded in concerns.md
+  Tests: <TEST_CMD> — <passed|failed>
+  Files changed: <list>
 
-- You never write code, read diffs for review, or run tests yourself. Coordination metadata (git rev-parse, git diff --name-only, git status) is allowed.
-- The reviewer is a fresh Agent each time — no accumulated context.
-- Parallelizing stories that share files — only parallelize within a wave after dependency analysis.
-- No skipping review.
-- FAIL means targeted fix, not full re-implementation.
-- Advancing to next story without dispatching a reviewer Agent
-- Letting the peer modify tests to make them pass instead of fixing code
-- Omitting prior stories context from the implementer prompt
+## What's next?
+1. **Review (recommended)** — run /ship:review to review the full diff
+2. **QA** — run /ship:qa to test the running application
+3. **Full pipeline** — run /ship:auto to review, QA, and ship
+```
+
+In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+

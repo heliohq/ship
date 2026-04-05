@@ -19,7 +19,7 @@ allowed-tools:
 
 ```bash
 SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}"
-SHIP_SKILL_NAME=plan source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
+SHIP_SKILL_NAME=design source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
 ### Auth Gate
@@ -28,7 +28,7 @@ If `SHIP_AUTH: not_logged_in`: AskUserQuestion — "Ship requires authentication
 If `SHIP_AUTO_LOGIN: true`: skip AskUserQuestion, run `ship auth login` directly.
 If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
-# Ship: Plan
+# Ship: Design
 
 You ARE the planner. You read code, investigate, write spec and plan.
 You must read the code yourself — delegating investigation loses the
@@ -116,16 +116,6 @@ digraph plan {
 | Write plan.md | **You** | Spec context must flow into plan |
 | Execution Drill | **Peer agent** (fresh session) | Fresh eyes test implementability |
 
-## Hard Rules
-
-1. You read all code you reference. No citing files you haven't opened.
-2. The peer agent never sees your spec when producing its own. Independence is sacred.
-3. The peer agent receives the same investigation instructions you follow.
-4. Divergences are resolved by code evidence. When evidence alone isn't conclusive, debate with the peer agent (max 2 rounds, both sides cite file:line).
-5. Disk artifacts are truth. Prior conversation is reference only.
-6. The execution drill must pass before any plan is marked ready.
-7. spec.md has no rigid template — sections scale to task complexity.
-8. plan.md has no placeholders — every step has complete code and commands.
 
 ## Quality Gates
 
@@ -138,6 +128,22 @@ digraph plan {
 | Drill → Ready | Zero BLOCKED steps, zero UNCLEAR steps | Revise plan (max 1 loop) |
 
 No artifact passes to the next phase without meeting its gate.
+
+## Red Flag
+
+**Never:**
+- Cite files you haven't opened
+- Let the peer see your spec before producing its own
+- Resolve divergences by reasoning instead of code evidence (max 2 debate rounds, both cite file:line)
+- Trust prior conversation over disk artifacts
+- Mark plan ready when drill has BLOCKED or UNCLEAR items
+- Skip the drill because "the plan looks solid"
+- Delegate investigation to a sub-agent — read the code yourself
+- Claim "function X is not called" without tracing all callers
+- Propose a fix without searching for existing defenses
+- Propose to create a file without checking if it already exists
+- Change a value without grepping tests that assert the old value
+- Write plan.md with vague steps or placeholders (TBD, TODO, "similar to Task N")
 
 ---
 
@@ -178,17 +184,28 @@ If `SPEC_EXISTS`:
 - Skip to Phase 5 (Write Plan) with the spec as your starting context.
 - The execution drill (Phase 6) still runs — plan.md always gets validated.
 
-If `NO_SPEC`: proceed normally — Phase 2 investigates, Phase 3 writes
-spec.md, Phase 4 resolves divergences, then Phase 5 writes plan.md.
+If `NO_SPEC`: proceed to scope assessment.
+
+### Scope assessment
+
+After reading the task description, assess scope:
+
+- **Focused** (≤3 files, well-scoped bug fix or small change):
+  Skip peer investigation (Phase 2 Step A), diff & verify (Phase 4),
+  and execution drill (Phase 6). Just: investigate → spec → plan.
+  No `peer-spec.md` or `diff-report.md` produced.
+- **Broad** (4+ files, new feature, architectural change):
+  Full process — all phases including peer investigation and drill.
 
 ## Phase 2: Investigate (Parallel)
 
 **This is the most important phase. Do not rush it.**
 
-### Step A: Dispatch peer investigation
+### Step A: Dispatch peer investigation (broad scope only)
 
-Kick off the peer investigation **before** you start investigating. The
-peer works in parallel while you read code.
+Skip this step for **focused** tasks. For **broad** tasks, kick off the
+peer investigation **before** you start investigating. The peer works in
+parallel while you read code.
 
 Read `independent-investigator.md` for the dispatch pattern and
 prompt template. Fill in the task description, task_id, and repo root.
@@ -207,93 +224,24 @@ If peer dispatch fails, self-produce the second spec:
 
 ### Step B: Your investigation
 
-Read the codebase systematically. Before writing the spec, you must
-have recorded: entrypoint files, traced caller chain, traced consumer
-chain, affected data structures/interfaces, existing tests, and
-unresolved assumptions — each with file:line evidence.
+Read `write-spec.md` for investigation methodology and spec authoring.
 
-#### For bug fixes — trace the full data/call path:
+Investigate the codebase, then write `spec.md`. The reference covers
+investigation strategy (bug fixes, new features, all tasks), vagueness
+checks, spec structure, and self-review.
 
-1. **Start at the symptom.** Find the function that produces the wrong
-   output or behavior. Read it.
-2. **Trace BACKWARD (callers).** Who calls this function? With what
-   arguments? Trace up to 2 levels up (stop if graph terminates).
-   Use `grep -rn "functionName"` to find all call sites. Read each one.
-3. **Trace FORWARD (consumers).** Who uses the output? At least 2 levels
-   down (stop if graph terminates). Read those too.
-4. **Search for existing defenses.** Before proposing a new guard or
-   fix, search for code that already handles this problem:
-   `grep -rn "relatedKeyword"`. If you find existing defenses, explain
-   why they are insufficient — or reconsider your root cause.
-5. **Check for the fix already applied upstream.** The most common
-   planning error is finding a gap in function A, without noticing that
-   function A's caller already compensates for it. Trace the full path.
+If investigation reveals the task is broader than initially assessed
+(e.g., more files affected, hidden dependencies, cross-cutting concerns),
+escalate to the full process — dispatch peer investigation at that point.
 
-#### For new features — map the integration surface:
+## Phase 3: Write Spec
 
-1. **Find analogous features.** Search for similar existing features.
-   How are they wired in? What files do they touch?
-2. **Trace the integration path.** Follow a similar feature from config →
-   registration → runtime → UI/API surface. Every file it touches is a
-   candidate for your plan.
-3. **Check for existing infrastructure.** Does the foundation you need
-   already exist? Don't reinvent what's there.
+Covered by `write-spec.md` — follow the spec writing and self-review
+guidance there.
 
-#### For all tasks:
+## Phase 4: Diff & Verify (broad scope only)
 
-- **Verify file existence** before proposing to create new files
-  (`test -f "path"`). If it exists, propose extending it.
-- **Search for existing tests** that assert the current behavior you
-  plan to change (`grep -rn "oldValue" --include="*.test.*"`). These
-  tests will break — list them in your plan.
-- **Cross-reference all consumers** when defining schemas or interfaces.
-  Grep for the type name and every field name. Build a complete
-  inventory, not a partial one.
-
-### Task too vague?
-
-After investigation, check if any of these are missing from the task
-description AND could not be inferred from code:
-- **Target behavior** — what should change
-- **Target surface** — which files, endpoints, or components
-- **Success condition** — how to know it's done
-
-If any are missing, ask user via AskUserQuestion before writing spec.
-
-## Phase 3: Write Spec (Design)
-
-Write your spec.md following brainstorming style — **flexible sections
-scaled to the task's complexity.** A small bugfix gets a few paragraphs.
-An architectural change gets full sections.
-
-### What to include (pick what's relevant)
-
-- **Problem/Motivation** — what's broken, missing, or suboptimal
-- **Design approach** — how you'll solve it and why this approach
-- **Investigation findings** — what you traced, file:line refs, what
-  existing code you found, what assumptions remain unverified
-- **Changes by file** — which files are affected and what changes
-- **Intent / non-goals / forbidden shortcuts** — when relevant, state what
-  counts as satisfying the task versus merely satisfying the current tests
-- **Acceptance criteria** — concrete, testable conditions for "done"
-- **Test plan** — what tests exist, what breaks, what's needed
-- **Risks / unknowns** — anything you couldn't verify from code alone
-
-### Spec self-review
-
-After writing, run this checklist:
-
-1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections? Fix them.
-2. **Internal consistency:** Do sections contradict each other?
-3. **Scope check:** Focused enough for a single plan?
-4. **Ambiguity check:** Could any requirement be interpreted two ways?
-   If so, pick one and make it explicit.
-5. **Integrity check:** If tests could be gamed, does the spec say what
-   behavior is required and which shortcuts are forbidden?
-
-Fix issues inline. No need to re-review.
-
-## Phase 4: Diff & Verify
+Skip this phase for **focused** tasks — proceed directly to Phase 5.
 
 Read `peer-spec.md` (written by the peer investigation dispatched in Phase 2).
 Compare it against your `spec.md`.
@@ -340,74 +288,16 @@ code evidence was cited during debate, and the final disposition
 
 ## Phase 5: Write Plan
 
-Translate the validated spec.md into an executable plan.md following
-the writing-plans format.
+Read `write-plan.md` for plan structure, task granularity, no-placeholder
+rules, and self-review.
 
-### plan.md structure
+Translate the validated spec.md into an executable plan.md. The reference
+covers the plan template, bite-sized steps, code completeness guidance,
+and the self-review checklist.
 
-```markdown
-# <Task Title> Implementation Plan
+## Phase 6: Execution Drill (broad scope only)
 
-> **For agentic workers:** Use /ship:dev to implement this plan
-> task-by-task. Steps use checkbox syntax for tracking.
-
-**Goal:** [One sentence — what this builds]
-
-**Architecture:** [2-3 sentences about approach]
-
-**Tech Stack:** [Key technologies/libraries]
-
----
-
-### Task 1: [Component Name]
-
-**Files:**
-- Create: `exact/path/to/file.ext`
-- Modify: `exact/path/to/existing.ext:123-145`
-- Test: `tests/exact/path/to/test.ext`
-
-- [ ] **Step 1: Write the failing test**
-
-<complete test code>
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `<exact test command>`
-Expected: FAIL with "<specific error>"
-
-- [ ] **Step 3: Write minimal implementation**
-
-<complete implementation code>
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `<exact test command>`
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-`git commit -m "feat: <description>"`
-
-### Task 2: ...
-```
-
-### Plan self-review
-
-After writing, check against spec.md:
-
-1. **Spec coverage:** Every acceptance criterion in spec.md has a task
-   that implements it. List any gaps.
-2. **Placeholder scan:** Search for "TBD", "TODO", vague steps. Fix them.
-3. **Type consistency:** Do types, function names, and signatures match
-   across tasks? A function called `clearLayers()` in Task 2 but
-   `clearFullLayers()` in Task 5 is a bug.
-4. **Anti-shortcut check:** Would an implementer know not to solve this
-   by overfitting fixtures, editing the harness, or optimizing for tests
-   while violating the task intent?
-
-Fix issues inline.
-
-## Phase 6: Execution Drill
+Skip this phase for **focused** tasks — proceed directly to Execution Handoff.
 
 The final gate. Give the plan to the peer agent and ask it to validate
 every step is implementable.
@@ -481,58 +371,40 @@ best available independent review. Add a warning:
 - Peer unavailable (self-produce second spec with warning)
 - Peer output parse failure (retry once, then fallback Agent)
 
-### Detecting invocation mode
+### Execution Handoff
 
-- **Standalone** (`/ship:design`): the user invoked plan directly.
-- **From /ship:auto**: the calling prompt contains a task_id.
-  /ship:auto is waiting for artifacts to exist.
-
-### Standalone completion
+Verify `spec.md` and `plan.md` are non-empty on disk, then output:
 
 ```
-[Plan] Planning complete for "<task title>".
+[Design] Planning complete for "<task title>".
 
 ## Summary
+- Scope: <focused | broad>
 - Investigation: <N> files traced, <M> existing defenses found
-- Independent replication: <M> divergences resolved (<N> by evidence, <N> by debate)
-- Execution drill: <N>/<total> steps CLEAR
+- Independent replication: <M> divergences resolved (<N> by evidence, <N> by debate)  [broad only]
+- Execution drill: <N>/<total> steps CLEAR  [broad only]
+- Stories: <N> tasks in plan.md
 
 ## Artifacts
 - spec.md: .ship/tasks/<task_id>/plan/spec.md
 - plan.md: .ship/tasks/<task_id>/plan/plan.md
-- diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md
+- diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md  [broad only]
 
 ## What's next?
-1. **Implement now** — run /ship:dev to execute this plan
-2. **Review the plan** — read the artifacts and give feedback
-3. **Re-plan** — discard this plan and start over
+1. **Full pipeline (recommended)** — run /ship:auto to implement, review, QA, and ship
+2. **Implement only** — run /ship:dev to execute this plan without review/QA/handoff
+3. **Review the plan** — read the artifacts and give feedback
 ```
 
-### /ship:auto completion
-
-Do NOT ask the user. /ship:auto is waiting for artifacts. Just:
-
-1. Verify `spec.md` and `plan.md` are non-empty on disk.
-2. Output: `[Plan] Design complete — spec.md and plan.md ready.`
-3. Return.
+In /ship:auto mode (the calling prompt contains a task_id), skip the
+"What's next?" choices and return — Auto owns the flow.
 
 ### Blocked (both modes)
 
 ```
-[Plan] BLOCKED
+[Design] BLOCKED
 REASON: <what failed and why>
 ATTEMPTED: <what was tried>
 UNRESOLVED: <escalated items from diff or drill>
 RECOMMENDATION: <what the user should do next>
 ```
-
-## Red Flag
-- Delegating investigation to a sub-agent (you must read the code yourself)
-- Writing plan.md with vague steps ("update the handler", "add tests")
-- Writing plan.md with placeholders (TBD, TODO, "similar to Task N")
-- Claiming "function X is not called" without tracing all callers
-- Proposing a fix without searching for existing defenses that already handle it
-- Proposing to create a file without checking if it already exists
-- Changing a value without grepping tests that assert the old value
-- Marking plan ready when drill has BLOCKED items
-- Skipping the drill because "the plan looks solid"

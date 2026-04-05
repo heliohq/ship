@@ -10,7 +10,7 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 
 **Quality gates at every transition.** The `stop-gate.sh` hook prevents the orchestrator from exiting while the pipeline is active (tracked via `.ship/ship-auto.local.md`). Each phase produces artifacts that the next phase consumes — no shortcuts, no skipped steps.
 
-**Every phase is an isolated subagent.** The reviewer has never seen the implementation context. The QA evaluator is contractually forbidden from reading the review or verification artifacts — it can only look at the spec and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
+**Every phase is an isolated subagent.** The reviewer has never seen the implementation context. The QA evaluator is contractually forbidden from reading the review — it can only look at the spec, the git diff, and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
 
 **State lives on disk, not in memory.** The current phase is tracked in `.ship/ship-auto.local.md`. The stop-gate hook reads this file and blocks session exit while the pipeline is active. On resume, auto reads the phase field and picks up where it left off.
 
@@ -31,21 +31,25 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 ## The Basic Workflow
 
-**setup** — Bootstrap repo infrastructure (detect languages, install tools, configure CI/CD, pre-commit hooks) and discover semantic constraints from code and git history. Generates AGENTS.md, CONVENTIONS.md (injected at session start), and hookify safety rules. Audits existing harness for staleness.
+**setup** — Bootstrap repo infrastructure (detect languages, install tools, configure CI/CD, pre-commit hooks) and discover semantic constraints from code and git history. Generates AGENTS.md, verified learnings (injected at session start), and hookify safety rules. Audits existing harness for staleness.
 
-**plan** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent peer challenger for 2 rounds of adversarial review. You see the plan only after it survives falsification.
+**design** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent peer challenger for 2 rounds of adversarial review. Scales process to task size: focused tasks (≤3 files) skip peer investigation and drill.
 
 **auto** — The full pipeline. Bootstraps a task directory, invokes design, then runs dev → review → QA → simplify → handoff autonomously. State tracked in `.ship/ship-auto.local.md` — stop-gate hook blocks exit while active. Every phase is a fresh subagent dispatch.
 
 **dev** — Executes implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave.
 
-**review** — Find every bug in the diff — spec violations, runtime errors, race conditions, missing error handling — then diagnose the structural deficiency that breeds them. No style or formatting nits.
+**review** — Find every bug in the diff — spec violations, runtime errors, race conditions, missing error handling. Add a short diagnosis only when multiple findings share one structural root cause. No style or formatting nits.
 
-**qa** — Starts the application and tests the code changes against the spec by interacting with the running product. Discovers the stack, matches testing to what changed (browser, API, CLI), and reports findings with evidence. Browser testing uses [agent-browser](https://github.com/vercel-labs/agent-browser). Independence contract: cannot read review.md, verify.md, or plan.md.
+**qa** — Starts the application and tests the code changes against the spec by interacting with the running product. Discovers the stack, matches testing to what changed (browser, API, CLI), and reports findings with evidence. Browser testing uses [agent-browser](https://github.com/vercel-labs/agent-browser). Independence contract: cannot read review.md or plan.md.
 
 **handoff** — Creates a PR with a concise verification summary, then enters the post-PR loop: monitor GitHub checks, fix failures, address review comments, resolve merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted.
 
 **refactor** — Diagnose structural cracks from concrete pain, then fix directly. Surgical (within-file) or structural (cross-file) execution — code changes, not documents.
+
+**learn** — Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Fully autonomous — no user interaction. Verified entries are rules; pending entries auto-verify when validated or auto-prune when stale.
+
+**write-design-docs** — Creates high-level design documents that prevent AI drift. Structured frontmatter enables AI indexing; status lifecycle tracks trust; the Boundaries section is the core anti-drift mechanism.
 
 Skills trigger automatically based on what you're doing. The harness enforces the workflow — you don't need to remember the process.
 
@@ -60,7 +64,9 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 | `/ship:qa` | Independent QA: tests code changes against the spec via the running application |
 | `/ship:handoff` | PR creation with verification summary, GitHub check loop, and review comment resolution |
 | `/ship:refactor` | Diagnose structural cracks and fix directly — surgical or structural execution |
-| `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + CONVENTIONS.md + hookify safety rules |
+| `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + verified learnings + hookify safety rules |
+| `/ship:learn` | Capture session learnings, route to permanent stores, auto-promote and auto-prune |
+| `/ship:write-design-docs` | Create and maintain design docs with structured frontmatter for AI indexing |
 
 ## Installation
 

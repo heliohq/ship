@@ -5,7 +5,7 @@ description: >
   Bootstrap repo infrastructure and AI harness. Detects languages and tooling,
   installs missing tools, configures CI/CD and pre-commit hooks, discovers
   semantic constraints from code and git history, generates AGENTS.md and
-  CONVENTIONS.md, and sets up hookify safety rules. Audits existing harness
+  learnings, and sets up hookify safety rules. Audits existing harness
   for staleness if one already exists.
   Use when: setup, init, bootstrap, setup harness, setup infra, install tools,
   configure CI, add pre-commit, enforce conventions.
@@ -35,20 +35,18 @@ If `SHIP_AUTH: not_logged_in`: AskUserQuestion — "Ship requires authentication
 If `SHIP_AUTO_LOGIN: true`: skip AskUserQuestion, run `ship auth login` directly.
 If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
-## Hard Rules
+## Red Flag
 
-1. Detect first, never assume. Never invent a default stack.
-2. One user interaction for infra module selection.
-3. Execute ONLY the modules the user selected.
-4. Respect existing config. Show diff and ask before replacing.
-5. Read the code before writing any convention rules.
-6. CONVENTIONS.md is for semantic rules only — things that require AI
-   judgment. Deterministic checks (regex/grep) go in hookify rules.
-7. Do not include style rules. The model follows project style by
-   reading the code. Do not include rules the linter already enforces.
-8. Two user interactions max for harness: convention confirmation
-   and existing file replacement (only if AGENTS.md or CONVENTIONS.md exists).
-   Hooks are automatic — hookify for deterministic, ship plugin for semantic.
+**Never:**
+- Assume a stack — detect first
+- Execute modules the user did not select
+- Overwrite existing config without showing diff and asking
+- Write convention rules without reading the code first
+- Put style rules in learnings — the model follows style by reading code
+- Put grep-able checks in learnings — use hookify rules instead
+- Generate rules from templates without reading code
+- Run Dependabot inside CI/CD module — separate modules
+- Overwrite existing core.hooksPath without asking
 
 ---
 
@@ -183,7 +181,7 @@ git commit -m "<conventional commit message>"
 ## Phase 3.5: Harness Audit (only if harness already exists)
 
 Before generating anything, check if the project already has harness
-files (AGENTS.md, CLAUDE.md, `.ship/rules/CONVENTIONS.md`, DEVELOPMENT.md).
+files (AGENTS.md, CLAUDE.md, `.learnings/LEARNINGS.md`, DEVELOPMENT.md).
 
 If no harness files exist → skip to Phase 4 (full init).
 
@@ -294,7 +292,7 @@ For each finding, apply this test:
    These become hookify rules in Step 7C.
 2. **Can the model figure this out by reading the code?** → skip it.
 3. **Only AI with project context can judge this?** → record as
-   `type: semantic`. These go in CONVENTIONS.md in Step 7B.
+   `type: semantic`. These go in `.learnings/LEARNINGS.md` as verified entries in Step 7B.
 
 ---
 
@@ -320,7 +318,7 @@ findings (survey, investigation, and user-provided context).
 Omit sections with no content. Keep under 200 lines per file.
 
 AGENTS.md documents project structure, commands, and architecture.
-It should reference CONVENTIONS.md for semantic rules and mention
+It should reference `.learnings/LEARNINGS.md` for semantic rules and mention
 that hookify rules exist for deterministic safety checks.
 
 **Single repo:** generate or update root `AGENTS.md`.
@@ -347,49 +345,56 @@ Options:
 For monorepos, ask once per file that needs changes (batch into one
 AskUserQuestion if possible).
 
-### Step B: Generate CONVENTIONS.md
+### Step B: Generate learnings from discovered rules
 
-Write to `.ship/rules/CONVENTIONS.md`. This file contains ONLY rules
-that require AI semantic judgment. Deterministic checks go in hookify
-rules (Step C), NOT here.
+Write semantic rules to `.learnings/LEARNINGS.md` as verified entries.
+These are rules that require AI semantic judgment. Deterministic checks
+go in hookify rules (Step C), NOT here.
 
 **Test before including:** "Could a regex or grep catch this violation?"
-If yes, it belongs in a hookify rule. CONVENTIONS.md is for things
-like "don't remove auth logic to fix a bug" — where understanding
-intent is required.
+If yes, it belongs in a hookify rule. Learnings are for things like
+"don't remove auth logic to fix a bug" — where understanding intent
+is required.
 
-Format:
-
-```markdown
-## <Rule name>
-Scope: <glob pattern>
-Constraint: <what must not happen>
-Why: <what breaks — bug, security issue, data loss, etc.>
-Source: <observed from code | git-history commit:hash | user-defined>
-```
-
-Example:
+Format (each rule is a learning entry):
 
 ```markdown
-## Do not simplify auth flows to fix errors
-Scope: src/auth/**
-Constraint: Never remove or bypass auth checks to resolve runtime errors.
-Why: AI agents are known to delete validation logic to make errors go away.
-Source: observed from code
+## [LRN-YYYYMMDD-NNN] correction
+
+**Logged**: <ISO 8601 timestamp>
+**Priority**: high
+**Status**: verified
+**Area**: code
+
+### Summary
+<What must not happen — one sentence>
+
+### Details
+<Why this matters — what breaks>
+
+### Suggested Action
+<What to do instead>
+
+### Metadata
+- Source: <observed from code | git-history commit:hash | user-defined>
+- Related Files: <file paths>
+- Tags: <relevant tags>
+
+---
 ```
 
 Do NOT include style rules — the model follows style by reading code.
 
-**If `.ship/rules/CONVENTIONS.md` already exists**, use AskUserQuestion:
+**If `.learnings/LEARNINGS.md` already exists**, use AskUserQuestion:
 
 ```
-.ship/rules/CONVENTIONS.md already exists with <N> conventions.
+.learnings/LEARNINGS.md already exists with <N> entries.
 ```
 
 Options:
-- A) Replace entirely with new conventions
-- B) Merge — add new conventions, keep existing ones
-- C) Skip — don't touch CONVENTIONS.md
+- A) Merge — add new entries, keep existing ones
+- B) Replace entirely with new entries
+- C) Skip — don't touch learnings
 
 ### Step C: Generate hookify safety rules
 
@@ -422,7 +427,7 @@ from the hookify skill. Prefix all rule names with `ship-`.
 
 Hookify auto-discovers `.claude/hookify.*.local.md` files — no restart needed.
 
-Semantic rules (CONVENTIONS.md) are injected at session start by the
+Semantic rules (`.learnings/LEARNINGS.md`) are injected at session start by the
 ship plugin's SessionStart hook — no per-edit checking needed.
 
 ### Step D: Update .gitignore
@@ -442,7 +447,7 @@ variables, etc. Cover all detected languages and tools thoroughly.
 .ship/audit/
 ```
 
-Do NOT gitignore `.ship/rules/` or `.ship/hooks/`.
+Do NOT gitignore `.ship/hooks/` or `.learnings/`.
 
 **Always include Claude Code rules:**
 ```
@@ -462,9 +467,9 @@ commit message summarizing what was generated.
 
 ---
 
-## Completion
+## Execution Handoff
 
-Always output this format:
+Output summary and offer next steps:
 
 ```
 [Setup] Complete.
@@ -474,7 +479,7 @@ Infrastructure:
 
 Harness:
   AGENTS.md: <generated | merged | skipped>
-  CONVENTIONS.md: <N> semantic rules
+  Learnings: <N> verified rules in .learnings/LEARNINGS.md
   Hookify: <N> safety rules generated
   Pre-commit: <configured | skipped>
 
@@ -484,6 +489,11 @@ Harness:
   Safety rules:
     1. <name> — <what it blocks>
     2. <name> — <what it blocks>
+
+## What's next?
+1. **Start building** — run /ship:auto with a task description
+2. **Review harness** — read AGENTS.md and .learnings/LEARNINGS.md
+3. **Customize** — edit conventions or hookify rules
 ```
 
 ## Reference Files
@@ -496,9 +506,3 @@ Harness:
 - `references/runtime-install-guide.md` — platform-specific runtime installation
 - `references/harness-audit.md` — harness freshness audit (Phase 3.5)
 
-## Red Flag
-- Putting style rules in CONVENTIONS.md
-- Putting grep-able checks in CONVENTIONS.md instead of hookify rules
-- Generating rules from templates without reading code
-- Running Dependabot inside CI/CD module
-- Overwriting existing core.hooksPath without asking

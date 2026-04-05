@@ -7,11 +7,13 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
 | [`/ship:design`](#design) | **Adversarial Designer** | The host agent and a peer agent independently investigate the codebase and produce specs in parallel. Divergences are resolved by code evidence and debate. The merged spec feeds an executable TDD plan validated by a peer drill. |
 | [`/ship:dev`](#dev) | **Implementation Engine** | Executes stories from a plan via parallel waves. Dependency analysis groups independent stories; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave. |
-| [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff, then diagnose the structural deficiency that breeds them. Bugs are symptoms — the structural crack is the disease. |
+| [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff. Add diagnosis only when multiple findings share one structural root cause. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
 | [`/ship:refactor`](#refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Diagnoses and fixes directly — surgical (within-file) or structural (cross-file) execution. |
-| [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + CONVENTIONS.md + hookify safety rules. Audits existing harness for staleness. |
+| [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
+| [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Auto-verifies durable entries and prunes stale ones. |
+| [`/ship:write-design-docs`](#write-design-docs) | **Design Doc Author** | Creates and maintains high-level design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
 
 ---
 
@@ -31,7 +33,7 @@ The orchestrator delegates all code changes to fresh subagents. It may read code
 
 Implementation and review use **separate runtimes**. Cross-provider separation is preferred when available because model biases differ as well as session context. When only one provider is available, Ship still uses fresh same-provider sessions so review does not collapse into self-review.
 
-The QA evaluator is contractually forbidden from reading the review or the plan. It can only look at the spec and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
+The QA evaluator is contractually forbidden from reading the review or the plan. It can only look at the spec, the git diff, and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
 
 ### Seven phases
 
@@ -61,11 +63,11 @@ You:   Add rate limiting to the /api/upload endpoint
 Assistant: [Ship] Bootstrapping task: rate-limit-upload
         [Ship] Phase 2: Design — investigating codebase...
 
-        [Plan] Read src/routes/api/upload.ts, traced to middleware chain...
-        [Plan] Found existing rate limiter in src/middleware/rateLimit.ts
+        [Design] Read src/routes/api/upload.ts, traced to middleware chain...
+        [Design] Found existing rate limiter in src/middleware/rateLimit.ts
                but /api/upload bypasses it (line 42, direct route mount).
-        [Plan] Peer challenger confirmed: both plans agree on middleware approach.
-        [Plan] Execution drill passed — 3 stories, all implementable.
+        [Design] Peer challenger confirmed: both plans agree on middleware approach.
+        [Design] Execution drill passed — 3 stories, all implementable.
 
         [Ship] Design complete — 3 stories extracted.
 
@@ -220,11 +222,9 @@ Assistant: [Dev] Reading plan: 3 stories for rate-limit-upload
 
 This is the **staff engineer who finds the disease, not just the symptoms**.
 
-Code review has two jobs:
+Code review has one job: **find every bug** in the diff. N+1 queries, race conditions, trust boundary violations, missing error handling on partial failures, tests that test the wrong thing, forgotten enum handlers when new values are added. All of them, with file:line + triggering scenario.
 
-1. **Find every bug.** The class of bugs that survive CI but explode in production: N+1 queries, race conditions, trust boundary violations, missing error handling on partial failures, tests that test the wrong thing, forgotten enum handlers when new values are added. All of them, with file:line + triggering scenario.
-
-2. **Diagnose the structural deficiency.** Bugs cluster around structural weaknesses — a missing validation boundary, shared mutable state without ownership, a trust boundary in the wrong layer. The review identifies the ONE structural crack that breeds the bug cluster. Fix the crack, and a class of bugs disappears — not just the ones caught today, but the ones that would have appeared in the next PR.
+When multiple findings share one structural root cause, the review adds a short **diagnosis** — but only when it genuinely explains the pattern. Diagnosis is optional and always secondary to concrete findings.
 
 This is the principal contradiction applied to code review: bugs are the many contradictions, and the structural deficiency is the principal contradiction whose existence determines the others.
 
@@ -234,7 +234,7 @@ This is the principal contradiction applied to code review: bugs are the many co
 
 This is **independent QA**.
 
-The most important word is "independent." The QA evaluator is contractually forbidden from reading the review, the verification results, or the plan. It can only look at two things: the spec (what was supposed to be built) and the running application (what was actually built). This independence contract exists because every other phase has optimistic bias — the implementer thinks their code works, the reviewer saw the implementation context, the verifier ran the tests the implementer wrote. QA is the outsider.
+The most important word is "independent." The QA evaluator is contractually forbidden from reading the review or the plan. It looks at three things: the spec (what was supposed to be built), the git diff (what changed), and the running application (what was actually built). This independence contract exists because every other phase has optimistic bias — the implementer thinks their code works, the reviewer saw the implementation context, the verifier ran the tests the implementer wrote. QA is the outsider.
 
 ### Evidence hierarchy
 
@@ -306,7 +306,7 @@ Max 3 rounds. If it can't get the PR checks green in 3 rounds, it escalates to y
 
 ### Harness freshness check
 
-Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, CONVENTIONS.md, README.md) still match the code. Stale documentation is treated as a PR-blocking finding — not background noise.
+Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, .learnings/LEARNINGS.md, README.md) still match the code. Stale documentation is treated as a PR-blocking finding — not background noise.
 
 ### What it won't do
 
@@ -414,17 +414,17 @@ Detects languages (15 supported including Shell), package managers, linters, for
 
 Investigates code and git history for two types of rules:
 
-- **Semantic rules** (CONVENTIONS.md) — things only AI can judge: "don't remove auth to fix errors", "price is in cents not dollars", "legacy module is being migrated". Injected into every session via SessionStart hook.
+- **Semantic rules** (.learnings/LEARNINGS.md) — things only AI can judge: "don't remove auth to fix errors", "price is in cents not dollars", "legacy module is being migrated". Injected into every session via SessionStart hook.
 - **Safety rules** (hookify) — deterministic regex checks: block editing .env files, block DROP TABLE. Real-time PreToolUse blocking.
 
-If harness files already exist (AGENTS.md, CLAUDE.md, CONVENTIONS.md), setup audits them for staleness before generating.
+If harness files already exist (AGENTS.md, CLAUDE.md, .learnings/LEARNINGS.md), setup audits them for staleness before generating.
 
 ### Three-layer defense
 
 | Layer | Tool | How | Cost |
 |-------|------|-----|------|
 | Real-time block | Hookify rules | regex on PreToolUse | Free |
-| Semantic context | CONVENTIONS.md | SessionStart injection | Free |
+| Semantic context | .learnings/LEARNINGS.md | SessionStart injection | Free |
 | Commit-time | Pre-commit hook | lint + format | Free |
 
 ### Example
@@ -448,14 +448,66 @@ Assistant: [Setup] Detecting stack...
         SAFETY RULES (hookify):
           ✓ [D1] Block .env file edits
 
-        SEMANTIC RULES (CONVENTIONS.md):
+        SEMANTIC RULES (.learnings/LEARNINGS.md):
           ✓ [S1] Don't remove auth checks to fix errors
               Why: AI agents delete validation to make errors go away
 
         [Setup] Complete.
 
         AGENTS.md: generated
-        CONVENTIONS.md: 1 semantic rule
+        .learnings/LEARNINGS.md: 1 semantic rule
         Hookify: 1 safety rule
         Pre-commit: wired via core.hooksPath
 ```
+
+---
+
+## `learn`
+
+This is the **self-improving harness**.
+
+Every session produces knowledge — mistakes made, surprises discovered, project quirks found. Without capture, the next session starts from scratch. `/ship:learn` captures that knowledge and routes it to the right persistent store.
+
+### Fully autonomous
+
+No user interaction. The skill reflects on the session, classifies each learning, and writes it to the correct store:
+
+| Learning type | Destination |
+|---|---|
+| Code constraint requiring AI judgment | .learnings/LEARNINGS.md |
+| Deterministic check (grep/regex can catch) | Hookify rule |
+| Architectural decision or boundary | Design doc |
+| Operational knowledge | `.learnings/LEARNINGS.md` (staging) |
+
+### Staging lifecycle
+
+`.learnings/LEARNINGS.md` is a staging area, not a permanent store. Learnings that prove durable (repeated, aged + still valid) get auto-promoted to permanent stores. Learnings that go stale (scope deleted, already covered, contradicted) get auto-pruned. The staging file stays lean.
+
+### Three layers of harness memory
+
+All injected at session start:
+
+1. **.learnings/LEARNINGS.md** — code-level guardrails
+2. **DESIGN_INDEX.md** — architecture-level guardrails
+3. **LEARNINGS.md** — operational knowledge from recent sessions
+
+---
+
+## `write-design-docs`
+
+This is **architectural guardrails for AI and humans**.
+
+Design docs prevent the most dangerous form of AI drift: locally-correct decisions that violate the overall architecture. Without design docs, an AI might merge services that must stay separate or simplify flows with hidden constraints.
+
+### Structured for AI indexing
+
+Every design doc has YAML frontmatter with fields designed for machine consumption:
+
+- **description** — one sentence for AI relevance filtering
+- **status** — trust signal (current, draft, partially-outdated, superseded, not-implemented)
+- **services** — which directories this design covers
+- **last_verified** — when the doc was last checked against code
+
+### Index injection
+
+`generate-design-index.sh` builds a compact table from all design doc frontmatter. `session-start.sh` injects this table at session start, so AI agents know what design docs exist without reading each one.

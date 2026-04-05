@@ -8,6 +8,8 @@ description: >
 allowed-tools:
   - Bash
   - Read
+  - Glob
+  - Grep
   - Agent
   - AskUserQuestion
   - mcp__codex__codex
@@ -92,17 +94,13 @@ digraph auto {
 
 ## Red Flag
 
-1. All code changes go through subagents. You may read code for investigation.
-2. State file writes use Bash (`cat > file`). All other artifacts are produced by subagents.
-3. Resume uses the `phase` field in the state file. No artifact guessing.
-4. You own the decision loop — read Agent return, decide next action.
-5. Report progress after every phase transition.
-6. Never dispatch subagents in background.
-7. Each skill owns its own intra-phase logic. Auto owns inter-phase flow and retry loops.
-8. The phase-owning dispatched agent advances `.ship/ship-auto.local.md` on success. Auto verifies the state change; it does not advance phase on the child's behalf.
-9. Do not write code yourself instead of delegating.
-10. Do not hardcode `main` instead of using `BASE_BRANCH`.
-11. Do not give up on a phase instead of fixing and retrying.
+**Never:**
+- Write code yourself — all code changes go through subagents
+- Dispatch subagents in background
+- Hardcode `main` — always use `BASE_BRANCH`
+- Give up on a phase — fix and retry first
+- Advance phase on a child's behalf — the dispatched agent advances the state file, you verify
+- Guess artifacts from conversation — resume uses the `phase` field in the state file
 
 ---
 
@@ -156,13 +154,15 @@ session_id: ${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unk
 branch: <BRANCH>
 base_branch: <BASE_BRANCH>
 phase: design
+review_fix_round: 0
+qa_fix_round: 0
 started_at: "<ISO 8601 timestamp>"
 ---
 
 <original user description>
 ```
 
-If `.ship/rules/CONVENTIONS.md` is missing: suggest `/ship:setup` but do not block.
+If `.learnings/LEARNINGS.md` is missing: suggest `/ship:setup` but do not block.
 
 Output: `[Ship] Task "<title>" created. Starting design phase...`
 
@@ -303,10 +303,13 @@ Agent(prompt="Call Skill('review').
 | Includes findings or bug summaries | verify `phase: review_fix`, then enter review-fix loop |
 | Clearly indicates the review is blocked or not reviewable | re-dispatch with adjusted context (max 2 rounds) |
 
-### Review-fix loop
+### Review-fix loop (max 3 rounds)
+
+Read `review_fix_round` from state file. Increment it at the start of each round
+and write back. If `review_fix_round` ≥ 3, escalate remaining findings to user.
 
 ```
-loop:
+loop (max 3 rounds — tracked in state file as review_fix_round):
   1. Verify `.ship/ship-auto.local.md` now says `phase: review_fix`
   2. If resuming and the prior review Agent return is unavailable, read
      `.ship/tasks/<TASK_ID>/review.md` and use its latest findings as the fix input
@@ -336,7 +339,8 @@ loop:
   5. Re-dispatch ship:review (same prompt as above)
   6. Read the review response directly:
      - No bugs found → break, proceed
-     - Findings listed → next round
+     - Findings listed → next round (if round < 3)
+     - Findings listed and round = 3 → run Phase 8 (Learn), then escalate remaining findings to user
      - Review blocked → stop the loop and investigate or re-dispatch with better context
 ```
 
@@ -374,10 +378,13 @@ Agent(prompt="Call Skill('qa').
 | Clearly indicates FAIL | verify `phase: qa_fix`, then enter QA-fix loop |
 | Clearly indicates BLOCKED | re-dispatch with adjusted context or investigate (max 2 rounds) |
 
-### QA-fix loop
+### QA-fix loop (max 3 rounds)
+
+Read `qa_fix_round` from state file. Increment it at the start of each round
+and write back. If `qa_fix_round` ≥ 3, escalate remaining failures to user.
 
 ```
-loop:
+loop (max 3 rounds — tracked in state file as qa_fix_round):
   1. Verify `.ship/ship-auto.local.md` now says `phase: qa_fix`
   2. If resuming and the prior QA Agent return is unavailable, read the latest
      failing report in `.ship/tasks/<TASK_ID>/qa/` and use it as the fix input
@@ -407,7 +414,8 @@ loop:
   5. Re-dispatch ship:qa with --recheck
   6. Read the QA response directly:
      - PASS/SKIP → break, proceed
-     - FAIL → next round
+     - FAIL → next round (if round < 3)
+     - FAIL and round = 3 → run Phase 8 (Learn), then escalate remaining failures to user
      - BLOCKED → stop the loop and investigate or re-dispatch with better context
 ```
 
@@ -464,7 +472,7 @@ Agent(prompt="Call Skill('handoff').
   and keep working the CI and review loop until the PR is ready.
   Do not redo design, review, or QA in this phase.
   You are invoked by /ship:auto — do NOT ask the user questions.
-  On success, delete `.ship/ship-auto.local.md` before returning.
+  On success (PR checks green), delete `.ship/ship-auto.local.md` before returning.
   If handoff is not ready or blocked, leave the state file in place.
   In your return, say whether handoff is complete, include the PR URL when available,
   summarize the current check status, and call out any remaining blockers.
@@ -482,9 +490,33 @@ Agent(prompt="Call Skill('handoff').
 | Clearly indicates checks are green and includes PR URL | done |
 | Clearly indicates failure or not ready | Re-dispatch handoff — it owns its own CI fix loop (max 3 rounds) |
 
-**Verify cleanup:** confirm `.ship/ship-auto.local.md` has been deleted.
-
 Output: `[Ship] PR checks green: <url>`
+
+## Phase 8: Learn (unconditional)
+
+**Always runs** — after handoff succeeds, after handoff fails, or when
+any phase escalates to the user. The most valuable learnings come from
+failures, not successes.
+
+Before escalating to the user at any point in the pipeline (review-fix
+exhausted, QA-fix exhausted, phase blocked after retries), run Phase 8
+first, then escalate.
+
+```
+Agent(prompt="Call Skill('learn').
+  Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
+  /ship:auto already handled preflight and auth.
+  Reflect on this pipeline run and capture learnings.
+  You are invoked by /ship:auto — do NOT ask the user questions.
+  Capture silently and report what was captured in your return.
+  Pipeline outcome: <completed | blocked at <phase> | escalated at <phase>>
+  Pipeline context:
+  task_id: <TASK_ID>
+  branch: <BRANCH>
+  base_branch: <BASE_BRANCH>")
+```
+
+This phase is best-effort — if it fails, the pipeline outcome is unchanged.
 
 ---
 
@@ -629,6 +661,18 @@ Output: `[Ship] PR checks green: <url>`
 
 [Ship] Verified state file cleanup.
 [Ship] PR checks green: https://github.com/user/repo/pull/42
+
+── Phase 8: Learn ─────────────────────────────────────────
+
+[Ship] Dispatching /ship:learn...
+  Agent(prompt="Call Skill('learn'). Reflect on this pipeline run and capture learnings. Pipeline outcome: completed ...")
+
+  Agent returns:
+  2 learnings captured:
+    - [LRN-20260405-001] correction: review found stale CSS variable fallback (verified)
+    - [LRN-20260405-002] quirk: localStorage needs explicit JSON.stringify (pending)
+
+[Ship] Done.
 ```
 
 ### What This Shows
@@ -640,4 +684,5 @@ Output: `[Ship] PR checks green: <url>`
 | **Fix loops stay honest** | Review and QA move into `review_fix` or `qa_fix`, then the fix worker moves state back on success |
 | **Simplify is safe** | SHA recorded before, tests run after, revert if broken |
 | **No code writes** | Orchestrator dispatches Agents for all code changes |
-| **Always ship** | Pipeline flows start to finish without stopping |
+| **Learn is unconditional** | Runs after success or failure — captures what the harness should remember |
+| **Handoff is the terminal phase** | Only handoff deletes the state file (on PR green) — blocked pipelines keep it for resume |
