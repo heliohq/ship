@@ -66,6 +66,10 @@ else
   exit 0
 fi
 
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": %s\n  }\n}\n' "$CONTEXT"
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+  printf '{\n  "additional_context": %s\n}\n' "$CONTEXT"
+else
+  printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": %s\n  }\n}\n' "$CONTEXT"
+fi
 
 exit 0

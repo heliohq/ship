@@ -94,6 +94,22 @@ Fetch and follow instructions from https://raw.githubusercontent.com/tryship/shi
 
 Codex hook support is not plugin-based. Follow [`.codex/INSTALL.md`](./.codex/INSTALL.md) to symlink or append Ship's shipped `.codex/hooks.json` into your global `~/.codex/hooks.json`.
 
+### Cursor
+
+Ship now includes native Cursor plugin packaging via [`.cursor-plugin/plugin.json`](./.cursor-plugin/plugin.json) and a Cursor `sessionStart` hook manifest at [`hooks/hooks-cursor.json`](./hooks/hooks-cursor.json).
+
+To install from the Cursor plugin marketplace once published:
+
+```text
+/add-plugin ship
+```
+
+Or search for `Ship` in the Cursor plugin marketplace.
+
+This reuses Ship's shared `skills/` directory and the same `scripts/session-start.sh` hook logic used by the other runtimes, with Cursor's `additional_context` hook output shape.
+
+Current Cursor support includes skills plus `sessionStart` context injection. Cursor stop-gate support is not wired in this pass.
+
 ### Local Development
 
 Clone the repo and point Claude Code at it:

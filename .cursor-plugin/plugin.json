@@ -1,5 +1,6 @@
 {
   "name": "ship",
+  "displayName": "Ship",
   "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
   "version": "1.6.2",
   "author": {
@@ -18,5 +19,7 @@
     "refactoring",
     "orchestrator",
     "workflows"
-  ]
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks-cursor.json"
 }
