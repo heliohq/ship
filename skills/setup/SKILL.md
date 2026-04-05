@@ -25,7 +25,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
 SHIP_SKILL_NAME=setup source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
@@ -505,4 +505,3 @@ Harness:
 - `references/review.md` — AI code review workflow setup
 - `references/runtime-install-guide.md` — platform-specific runtime installation
 - `references/harness-audit.md` — harness freshness audit (Phase 3.5)
-

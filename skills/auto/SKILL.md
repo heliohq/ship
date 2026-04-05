@@ -19,7 +19,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
 SHIP_SKILL_NAME=auto source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
@@ -121,7 +121,7 @@ Read(".ship/ship-auto.local.md")
 
 Generate task ID:
 ```
-Bash("${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}/scripts/task-id.sh '<description>'")
+Bash("${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}/scripts/task-id.sh '<description>'")
 ```
 Record as `TASK_ID`.
 

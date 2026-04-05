@@ -22,7 +22,7 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
 SHIP_SKILL_NAME=handoff source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
@@ -343,4 +343,3 @@ Escalate when:
 - 3 fix rounds are exhausted
 - a remaining issue requires user judgment
 - GitHub checks stay pending past the wait timeout
-
