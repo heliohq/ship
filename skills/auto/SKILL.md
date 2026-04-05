@@ -472,8 +472,7 @@ Agent(prompt="Call Skill('handoff').
   and keep working the CI and review loop until the PR is ready.
   Do not redo design, review, or QA in this phase.
   You are invoked by /ship:auto — do NOT ask the user questions.
-  On success, delete `.ship/ship-auto.local.md` before returning.
-  If handoff is not ready or blocked, leave the state file in place.
+  Do not delete `.ship/ship-auto.local.md` — Auto owns state file cleanup.
   In your return, say whether handoff is complete, include the PR URL when available,
   summarize the current check status, and call out any remaining blockers.
   Handoff context:
@@ -489,8 +488,6 @@ Agent(prompt="Call Skill('handoff').
 |---------------|--------|
 | Clearly indicates checks are green and includes PR URL | done |
 | Clearly indicates failure or not ready | Re-dispatch handoff — it owns its own CI fix loop (max 3 rounds) |
-
-**Verify cleanup:** confirm `.ship/ship-auto.local.md` has been deleted.
 
 Output: `[Ship] PR checks green: <url>`
 
@@ -519,6 +516,17 @@ Agent(prompt="Call Skill('learn').
 ```
 
 This phase is best-effort — if it fails, the pipeline outcome is unchanged.
+
+## Cleanup
+
+After Learn completes (or fails), Auto deletes the state file:
+
+```bash
+rm -f .ship/ship-auto.local.md
+```
+
+This is the very last action. Auto owns the full state file lifecycle:
+create (Phase 1), read/update (throughout), delete (here).
 
 ---
 
