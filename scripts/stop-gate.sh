@@ -1,18 +1,202 @@
 #!/usr/bin/env bash
 set -u
-# Ship auto stop gate — prevents the orchestrator from exiting while
-# a /ship:auto pipeline is active.
+# Ship auto stop gate — Ralph-style outer verifier for /ship:auto.
 #
 # Logic:
-#   1. No state file → allow exit
-#   2. Different session → allow exit
-#   3. Subagent → allow exit
-#   4. State file exists, same session → block exit, tell agent which phase to resume
+#   1. No active auto state → allow exit
+#   2. Different session or subagent → allow exit
+#   3. Active auto state, same session → run external verifier
+#   4. TASK_COMPLETE → remove state file and allow exit
+#   5. TASK_INCOMPLETE → block exit and feed missing work back into the loop
+#   6. TASK_BLOCKED → allow exit, keep state file for resume
 #
 # State file: .ship/ship-auto.local.md (YAML frontmatter + description body)
-# Returns {"decision":"block","reason":"..."} to prevent stop, or exit 0 to allow.
+# Returns {"decision":"block","reason":"..."} to prevent stop, or exits 0 to allow.
 
 INPUT=$(cat)
+
+# Verifier subprocesses bypass Ship hooks entirely to avoid recursive stop loops.
+[ "${SHIP_STOP_GATE_BYPASS:-0}" = "1" ] && exit 0
+
+frontmatter_value() {
+  local key="$1"
+  echo "$FRONTMATTER" | grep "^${key}:" | head -1 | sed "s/^${key}: *//" | sed 's/^"\(.*\)"$/\1/' | tr -d '\r' || true
+}
+
+append_labeled_file() {
+  local label="$1" file="$2" max_chars="$3"
+
+  if [ ! -f "$file" ]; then
+    return
+  fi
+
+  printf '\n## %s\n' "$label"
+  printf 'Path: %s\n\n' "$file"
+
+  local total_chars
+  total_chars=$(wc -c < "$file" 2>/dev/null | tr -d ' ')
+
+  if [ "$total_chars" -le "$max_chars" ]; then
+    cat "$file"
+    printf '\n'
+    return
+  fi
+
+  head -c "$max_chars" "$file"
+  printf '\n\n[truncated after %s chars; original size %s chars]\n' "$max_chars" "$total_chars"
+}
+
+collect_text_artifacts() {
+  local task_dir="$1"
+
+  [ ! -d "$task_dir" ] && return
+
+  append_labeled_file "Spec" "$task_dir/plan/spec.md" 20000
+  append_labeled_file "Plan" "$task_dir/plan/plan.md" 20000
+  append_labeled_file "Review" "$task_dir/review.md" 16000
+  append_labeled_file "Simplify" "$task_dir/simplify.md" 12000
+
+  if [ -d "$task_dir/qa" ]; then
+    local qa_file
+    for qa_file in "$task_dir"/qa/*.md "$task_dir"/qa/*.txt "$task_dir"/qa/*.log; do
+      [ -f "$qa_file" ] || continue
+      append_labeled_file "QA Artifact" "$qa_file" 16000
+    done
+  fi
+}
+
+build_verifier_prompt() {
+  local task_dir="$1"
+  local git_status diff_stat changed_files diff_content artifact_tree text_artifacts
+
+  git_status=$(git -C "$CWD" status --short 2>&1 || true)
+  diff_stat=$(git -C "$CWD" diff --stat "$BASE_BRANCH"...HEAD 2>&1 || true)
+  changed_files=$(git -C "$CWD" diff --name-only "$BASE_BRANCH"...HEAD 2>&1 || true)
+  diff_content=$(git -C "$CWD" diff --no-ext-diff --unified=1 "$BASE_BRANCH"...HEAD 2>&1 | head -c 120000)
+  artifact_tree=$(find "$task_dir" -maxdepth 3 -type f 2>/dev/null | sort || true)
+  text_artifacts=$(collect_text_artifacts "$task_dir")
+
+  cat <<EOF
+You are Ship's external completion verifier for an active /ship:auto run.
+
+Decide whether the user's requested task is fully complete based on the
+original request, the current git diff, and the produced artifacts. Judge the
+actual task outcome, not whether the worker claims it is done.
+
+Return EXACTLY one of these formats and nothing else:
+
+VERDICT: TASK_COMPLETE
+SUMMARY: <one short sentence>
+
+VERDICT: TASK_INCOMPLETE
+MISSING:
+- <specific missing item>
+- <specific missing item>
+
+VERDICT: TASK_BLOCKED
+BLOCKER:
+- <specific blocker>
+
+Rules:
+- Be strict. If the available evidence does not support completion, return TASK_INCOMPLETE.
+- Prefer concrete missing work over vague critique.
+- Only return TASK_BLOCKED for genuine external blockers or missing human decisions.
+- Do not suggest implementation details unless they clarify what remains unfinished.
+
+## Task Metadata
+Task ID: $TASK_ID
+Current phase: $PHASE
+Branch: $BRANCH
+Base branch: $BASE_BRANCH
+Task dir: $task_dir
+
+## Original User Request
+$DESCRIPTION
+
+## Git Status
+$git_status
+
+## Git Diff Stat
+$diff_stat
+
+## Changed Files
+$changed_files
+
+## Git Diff
+$diff_content
+
+## Artifact Tree
+$artifact_tree
+$text_artifacts
+EOF
+}
+
+run_verifier() {
+  local prompt_file err_file out_file rc task_dir
+  task_dir="$CWD/.ship/tasks/$TASK_ID"
+  prompt_file=$(mktemp)
+  err_file=$(mktemp)
+  out_file=$(mktemp)
+  build_verifier_prompt "$task_dir" > "$prompt_file"
+
+  if [ -n "${SHIP_AUTO_VERIFIER_CMD:-}" ]; then
+    SHIP_STOP_GATE_BYPASS=1 bash -c "$SHIP_AUTO_VERIFIER_CMD" < "$prompt_file" > "$out_file" 2> "$err_file"
+    rc=$?
+  elif command -v codex >/dev/null 2>&1; then
+    SHIP_STOP_GATE_BYPASS=1 codex exec \
+      --sandbox read-only \
+      --skip-git-repo-check \
+      --output-last-message "$out_file" \
+      < "$prompt_file" \
+      > /dev/null 2> "$err_file"
+    rc=$?
+  elif command -v claude >/dev/null 2>&1; then
+    SHIP_STOP_GATE_BYPASS=1 claude -p \
+      --output-format text \
+      --permission-mode bypassPermissions \
+      < "$prompt_file" \
+      > "$out_file" 2> "$err_file"
+    rc=$?
+  else
+    echo "VERIFIER_ERROR: no verifier CLI available" > "$out_file"
+    rc=1
+  fi
+
+  local output stderr_content
+  output=$(cat "$out_file" 2>/dev/null || true)
+  stderr_content=$(cat "$err_file" 2>/dev/null || true)
+
+  rm -f "$prompt_file" "$err_file" "$out_file"
+
+  if [ "$rc" -ne 0 ]; then
+    printf 'VERIFIER_ERROR\n%s\n%s\n' "$output" "$stderr_content"
+    return 1
+  fi
+
+  printf '%s' "$output"
+}
+
+verdict_line() {
+  printf '%s\n' "$1" | grep '^VERDICT:' | head -1 | sed 's/^VERDICT:[[:space:]]*//' | tr -d '\r' || true
+}
+
+extract_section() {
+  local heading="$1" text="$2"
+  printf '%s\n' "$text" | awk -v heading="$heading" '
+    $0 == heading { capture=1; next }
+    capture && /^VERDICT:/ { next }
+    capture && /^[A-Z_]+:/ { exit }
+    capture { print }
+  '
+}
+
+block_with_reason() {
+  local reason="$1" system_message="$2"
+  jq -n \
+    --arg reason "$reason" \
+    --arg systemMessage "$system_message" \
+    '{"decision":"block","reason":$reason,"systemMessage":$systemMessage}'
+}
 
 # ── SUBAGENT BYPASS ──────────────────────────────────────────
 # Subagents should never be blocked by the stop gate.
@@ -29,22 +213,22 @@ STATE_FILE="$CWD/.ship/ship-auto.local.md"
 # ── PARSE FRONTMATTER ────────────────────────────────────────
 FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
 
-PHASE=$(echo "$FRONTMATTER" | grep '^phase:' | sed 's/phase: *//')
-TASK_ID=$(echo "$FRONTMATTER" | grep '^task_id:' | sed 's/task_id: *//')
-BRANCH=$(echo "$FRONTMATTER" | grep '^branch:' | sed 's/branch: *//')
-BASE_BRANCH=$(echo "$FRONTMATTER" | grep '^base_branch:' | sed 's/base_branch: *//')
+PHASE=$(frontmatter_value "phase")
+TASK_ID=$(frontmatter_value "task_id")
+BRANCH=$(frontmatter_value "branch")
+BASE_BRANCH=$(frontmatter_value "base_branch")
 
 # ── SESSION ISOLATION ────────────────────────────────────────
-# Only block the session that started the pipeline.
+# Only gate the session that owns the active pipeline.
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""')
-STATE_SESSION=$(echo "$FRONTMATTER" | grep '^session_id:' | sed 's/session_id: *//' | tr -d '"')
+STATE_SESSION=$(frontmatter_value "session_id")
 if [ -n "$STATE_SESSION" ] && [ -n "$SESSION_ID" ] && [ "$STATE_SESSION" != "$SESSION_ID" ]; then
   exit 0
 fi
 
 # ── VALIDATE STATE ───────────────────────────────────────────
-if [ -z "$PHASE" ] || [ -z "$TASK_ID" ]; then
-  echo "⚠️  Ship auto: State file corrupted (missing phase or task_id). Removing." >&2
+if [ -z "$PHASE" ] || [ -z "$TASK_ID" ] || [ -z "$BASE_BRANCH" ]; then
+  echo "⚠️  Ship auto: State file corrupted (missing phase, task_id, or base_branch). Removing." >&2
   rm -f "$STATE_FILE"
   exit 0
 fi
@@ -52,25 +236,94 @@ fi
 # ── READ DESCRIPTION ─────────────────────────────────────────
 DESCRIPTION=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 
-# ── FIX ROUND COUNTERS ──────────────────────────────────────
-REVIEW_FIX_ROUND=$(echo "$FRONTMATTER" | grep '^review_fix_round:' | sed 's/review_fix_round: *//')
-QA_FIX_ROUND=$(echo "$FRONTMATTER" | grep '^qa_fix_round:' | sed 's/qa_fix_round: *//')
+# ── FAST-PATH CHECK ─────────────────────────────────────────
+# With the code-driven orchestrator (v0.7+), the script manages phase
+# transitions deterministically. If we're in a terminal state, trust it
+# and skip the expensive external verifier call.
+#
+# Terminal conditions (allow exit without verifier):
+#   1. phase=learn (pipeline already past handoff)
+#   2. phase=handoff AND the task dir has handoff evidence (PR URL)
 
-FIX_INFO=""
 case "$PHASE" in
-  review_fix) [ -n "$REVIEW_FIX_ROUND" ] && FIX_INFO="Review fix round: ${REVIEW_FIX_ROUND}/3" ;;
-  qa_fix)     [ -n "$QA_FIX_ROUND" ] && FIX_INFO="QA fix round: ${QA_FIX_ROUND}/3" ;;
+  learn)
+    # Pipeline is in its final phase — allow exit
+    rm -f "$STATE_FILE"
+    exit 0
+    ;;
+  handoff)
+    # Check for PR evidence: a committed handoff state or PR URL in artifacts
+    TASK_DIR="$CWD/.ship/tasks/$TASK_ID"
+    if [ -d "$TASK_DIR" ]; then
+      # Look for PR URL in any handoff-related file or the prompts dir
+      PR_EVIDENCE=$(grep -rls 'github\.com.*pull/' "$TASK_DIR/" 2>/dev/null | head -1)
+      if [ -n "$PR_EVIDENCE" ]; then
+        # Handoff has PR evidence — allow exit
+        rm -f "$STATE_FILE"
+        exit 0
+      fi
+    fi
+    # No PR evidence yet — fall through to full verifier
+    ;;
 esac
 
-# ── BLOCK EXIT ───────────────────────────────────────────────
-REASON="[Ship] Auto pipeline is active. Do not exit.
+# ── RUN EXTERNAL VERIFIER ────────────────────────────────────
+VERIFIER_OUTPUT=$(run_verifier)
+VERIFIER_RC=$?
+
+if [ "$VERIFIER_RC" -ne 0 ]; then
+  REASON="[Ship] External auto verifier could not determine task completion. Do not exit yet.
 Task: $TASK_ID
+Current phase: $PHASE
 Branch: $BRANCH
 Base branch: $BASE_BRANCH
-Current phase: $PHASE${FIX_INFO:+
-$FIX_INFO}
-Description: $DESCRIPTION
 
-Resume: run /ship:auto — it will read the state file and continue from phase: $PHASE"
+Continue the active /ship:auto run from the current repo state and try again.
 
-jq -n --arg reason "$REASON" '{"decision": "block", "reason": $reason}'
+Verifier output:
+$VERIFIER_OUTPUT"
+  block_with_reason "$REASON" "Ship verifier unavailable — continuing /ship:auto"
+  exit 0
+fi
+
+VERDICT=$(verdict_line "$VERIFIER_OUTPUT")
+
+case "$VERDICT" in
+  TASK_COMPLETE)
+    rm -f "$STATE_FILE"
+    exit 0
+    ;;
+  TASK_BLOCKED)
+    BLOCKER=$(extract_section "BLOCKER:" "$VERIFIER_OUTPUT")
+    echo "🛑 Ship auto verifier: task blocked." >&2
+    [ -n "$BLOCKER" ] && printf '%s\n' "$BLOCKER" >&2
+    exit 0
+    ;;
+  TASK_INCOMPLETE)
+    MISSING=$(extract_section "MISSING:" "$VERIFIER_OUTPUT")
+    REASON="[Ship] External verifier determined the task is not complete yet.
+Task: $TASK_ID
+Current phase: $PHASE
+Branch: $BRANCH
+Base branch: $BASE_BRANCH
+
+Continue the active /ship:auto run from the current state. Do not restart from scratch.
+
+Missing work:
+$MISSING"
+    block_with_reason "$REASON" "Ship verifier: task incomplete — continue /ship:auto"
+    exit 0
+    ;;
+  *)
+    REASON="[Ship] External auto verifier returned an unrecognized verdict. Do not exit yet.
+Task: $TASK_ID
+Current phase: $PHASE
+
+Continue the active /ship:auto run and try again.
+
+Verifier output:
+$VERIFIER_OUTPUT"
+    block_with_reason "$REASON" "Ship verifier returned an invalid verdict"
+    exit 0
+    ;;
+esac

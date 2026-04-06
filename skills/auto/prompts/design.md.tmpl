@@ -1,0 +1,21 @@
+You must use Skill('design').
+Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
+/ship:auto already handled preflight, auth, and repo context for this pipeline.
+This is the design phase only. Do not implement code in this phase.
+Read the existing code and produce the planning artifacts needed for implementation.
+Use the request below as planning context for `spec.md` and `plan.md` only.
+You are invoked by /ship:auto — do NOT ask the user questions. Treat
+any escalated items as blocked and say what is missing.
+Do not edit `.ship/ship-auto.local.md` in this phase.
+Success means `.ship/tasks/{{TASK_ID}}/plan/spec.md` and `.ship/tasks/{{TASK_ID}}/plan/plan.md`
+both exist, are non-empty, and match the current branch and HEAD.
+In your return, say whether design is complete or blocked, how many stories or tasks
+the plan contains, and where the artifacts were written.
+Planning request:
+---
+{{DESCRIPTION}}
+---
+task_id: {{TASK_ID}}
+Artifacts go to: .ship/tasks/{{TASK_ID}}/plan/
+Current branch: {{BRANCH}}
+HEAD SHA: {{HEAD_SHA}}

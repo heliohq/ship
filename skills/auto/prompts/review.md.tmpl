@@ -1,0 +1,18 @@
+You must use Skill('review').
+Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
+/ship:auto already handled preflight, auth, and repo context for this pipeline.
+This is the review phase only.
+Review the active change scope against the provided spec and write actionable findings.
+Do not implement fixes in this phase.
+You are invoked by /ship:auto (pipeline mode) — do NOT ask the user
+questions. If you cannot read the diff or spec, do a diff-only review.
+Do not edit `.ship/ship-auto.local.md` in this phase.
+Write the review artifact to the path below and summarize the verdict in your return.
+In your return, say whether the review is clean, blocked, or has findings, and summarize
+the highest-severity findings when present.
+Review context:
+task_id: {{TASK_ID}}
+task_dir: {{TASK_DIR}}
+spec: {{TASK_DIR}}/plan/spec.md
+base_branch: {{BASE_BRANCH}}
+Write review to: {{TASK_DIR}}/review.md

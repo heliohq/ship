@@ -1,0 +1,20 @@
+You must use Skill('dev').
+Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
+/ship:auto already handled preflight, auth, and repo context for this pipeline.
+This is the implementation phase only.
+Use the inputs below as implementation context.
+Implement against the provided spec and plan.
+Make the necessary code changes, run the most relevant verification you can inside this phase,
+and summarize any residual concerns that should carry forward.
+Do not redo design, review, QA, simplify, or handoff in this phase.
+You are invoked by /ship:auto — do NOT ask the user questions.
+If you cannot find TEST_CMD or need context, say clearly what context is missing.
+Do not edit `.ship/ship-auto.local.md` in this phase.
+Success means the implementation is complete on the current branch and ready for review.
+In your return, say whether implementation is complete or blocked, which stories or tasks
+were completed, what verification ran, and any concerns worth carrying forward.
+Implementation context:
+task_dir: {{TASK_DIR}}
+spec: {{TASK_DIR}}/plan/spec.md
+plan: {{TASK_DIR}}/plan/plan.md
+base_branch: {{BASE_BRANCH}}
