@@ -101,11 +101,10 @@ While `ACTION` is `dispatch`:
 ### Step 3: Terminal
 
 - `ACTION:done` → output MESSAGE to the user. Pipeline complete.
-- `ACTION:escalate` → read REASON, then dispatch learn phase first:
-  ```
-  Bash("${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh complete learn --verdict=success --summary='learnings captured'")
-  ```
-  Then output REASON to the user. Pipeline blocked — user intervention needed.
+- `ACTION:escalate` → read REASON and PHASE. Output REASON to the user.
+  Pipeline blocked at the indicated phase — user intervention needed.
+  (The orchestrator already dispatched the learn agent before emitting escalate,
+  so learnings are captured. No additional dispatch needed here.)
 - `ACTION:error` → output MESSAGE. Something went wrong.
 
 ---
@@ -121,7 +120,7 @@ agent's return, classify it as one of these verdicts:
 | `findings` | Agent reports specific issues that need fixing. Review found P1/P2/P3 bugs. Use only for review and QA phases. |
 | `fail` | Agent says it cannot complete. Missing context, broken dependencies, test failures without specific fixable items. |
 | `blocked` | Agent needs external input, human decision, or something outside the pipeline's control. |
-| `skip` | Agent indicates the phase is not applicable. QA says nothing to test. Simplify says nothing to clean up. |
+| `skip` | Agent indicates the phase is not applicable. Only valid for **qa** and **simplify** phases. |
 
 ### Tips
 

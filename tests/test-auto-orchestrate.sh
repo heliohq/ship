@@ -183,7 +183,7 @@ parse_output "$OUT"
 assert_eq "action is dispatch" "dispatch" "$ACTION"
 assert_eq "phase is review_fix" "review_fix" "$PHASE"
 assert_eq "state is review_fix" "review_fix" "$(get_state phase)"
-assert_eq "review_fix_round bumped to 1" "1" "$(get_state review_fix_round)"
+assert_eq "review_fix_round stays 0 (bumps on fix fail)" "0" "$(get_state review_fix_round)"
 
 # Check fix prompt contains findings
 if [ -f "$PROMPT_FILE" ]; then
@@ -315,7 +315,7 @@ parse_output "$OUT"
 assert_eq "action is dispatch" "dispatch" "$ACTION"
 assert_eq "phase is qa_fix" "qa_fix" "$PHASE"
 assert_eq "state is qa_fix" "qa_fix" "$(get_state phase)"
-assert_eq "qa_fix_round is 1" "1" "$(get_state qa_fix_round)"
+assert_eq "qa_fix_round stays 0 (bumps on fix fail)" "0" "$(get_state qa_fix_round)"
 
 echo ""
 
@@ -399,11 +399,20 @@ echo "plan" > "$TASK_DIR/plan/plan.md"
 echo "test" > dummy4.txt && git add dummy4.txt && git commit -q -m "dummy4"
 echo "P1: bug" > "$TASK_DIR/review.md"
 
-# Set phase to review, then report findings 3 times
+# Set phase to review with review_fix_round=3 (3 fix failures already happened).
+# The next review:findings should trigger escalation (round >= MAX_RETRIES).
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase review > /dev/null
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set review_fix_round 2 > /dev/null
+bash "${SCRIPT_DIR}/scripts/auto-state.sh" set review_fix_round 3 > /dev/null
 
 OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete review --verdict=findings --summary="still buggy" 2>/dev/null)
+parse_output "$OUT"
+
+# dispatch_learn_then_escalate now dispatches learn first (not escalate directly)
+assert_eq "action is dispatch (learn before escalate)" "dispatch" "$ACTION"
+assert_eq "phase is learn" "learn" "$PHASE"
+
+# Complete learn → should now emit escalate with original phase
+OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete learn --verdict=success --summary="learnings captured" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is escalate" "escalate" "$ACTION"

@@ -247,19 +247,17 @@ DESCRIPTION=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 
 case "$PHASE" in
   learn)
-    # Pipeline is in its final phase — allow exit
-    rm -f "$STATE_FILE"
+    # Pipeline is in its final phase — allow exit without deleting state
+    # (the orchestrator's normal flow handles cleanup)
     exit 0
     ;;
   handoff)
     # Check for PR evidence: a committed handoff state or PR URL in artifacts
     TASK_DIR="$CWD/.ship/tasks/$TASK_ID"
     if [ -d "$TASK_DIR" ]; then
-      # Look for PR URL in any handoff-related file or the prompts dir
       PR_EVIDENCE=$(grep -rls 'github\.com.*pull/' "$TASK_DIR/" 2>/dev/null | head -1)
       if [ -n "$PR_EVIDENCE" ]; then
-        # Handoff has PR evidence — allow exit
-        rm -f "$STATE_FILE"
+        # Handoff has PR evidence — allow exit (don't delete state; learn still needs to run)
         exit 0
       fi
     fi

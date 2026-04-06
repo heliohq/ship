@@ -450,17 +450,21 @@ cmd_complete() {
       emit_dispatch "qa" "$pf" "[Ship] Review clean. Starting QA..."
       ;;
     review:findings)
-      state_set "phase" "review_fix"
-      state_bump "review_fix_round"
       local round; round=$(state_get "review_fix_round")
-      if [ "$round" -ge "$MAX_RETRIES" ]; then
+      if [ "${round:-0}" -ge "$MAX_RETRIES" ]; then
         dispatch_learn_then_escalate "Review fix exhausted after $MAX_RETRIES rounds. $summary"
       else
+        state_set "phase" "review_fix"
         local ff_arg=""
-        [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
-        [ -z "$findings_file" ] && [ -f "$task_dir/review.md" ] && ff_arg="--findings-file=$task_dir/review.md"
-        local pf; pf=$(generate_prompt "dev-fix" $ff_arg)
-        emit_dispatch "review_fix" "$pf" "[Ship] Review found issues (round $round/$MAX_RETRIES). Fixing..."
+        [ -n "$findings_file" ] && [ -f "$findings_file" ] && ff_arg="--findings-file=$findings_file"
+        [ -z "$ff_arg" ] && [ -f "$task_dir/review.md" ] && ff_arg="--findings-file=$task_dir/review.md"
+        if [ -z "$ff_arg" ]; then
+          # No findings file available — retry review instead of dispatching empty fix
+          retry_or_escalate "review" "findings reported but no findings file available"
+        else
+          local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
+          emit_dispatch "review_fix" "$pf" "[Ship] Review found issues (round $((round + 1))/$MAX_RETRIES). Fixing..."
+        fi
       fi
       ;;
     review:fail|review:blocked) retry_or_escalate "review" "$summary" ;;
@@ -471,16 +475,15 @@ cmd_complete() {
       emit_dispatch "review" "$pf" "[Ship] Review fixes applied. Re-reviewing..."
       ;;
     dev_fix:fail|dev_fix:blocked|review_fix:fail|review_fix:blocked)
+      state_bump "review_fix_round"
       local round; round=$(state_get "review_fix_round")
       if [ "$round" -ge "$MAX_RETRIES" ]; then
         dispatch_learn_then_escalate "Review fix failed after $MAX_RETRIES rounds. $summary"
       else
-        state_bump "review_fix_round"
-        round=$(state_get "review_fix_round")
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         [ -z "$findings_file" ] && [ -f "$task_dir/review.md" ] && ff_arg="--findings-file=$task_dir/review.md"
-        local pf; pf=$(generate_prompt "dev-fix" $ff_arg)
+        local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
         emit_dispatch "review_fix" "$pf" "[Ship] Review fix retry (round $round/$MAX_RETRIES)..."
       fi
       ;;
@@ -492,16 +495,15 @@ cmd_complete() {
       emit_dispatch "simplify" "$pf" "[Ship] QA passed. Running simplify..."
       ;;
     qa:fail)
-      state_set "phase" "qa_fix"
-      state_bump "qa_fix_round"
       local round; round=$(state_get "qa_fix_round")
-      if [ "$round" -ge "$MAX_RETRIES" ]; then
+      if [ "${round:-0}" -ge "$MAX_RETRIES" ]; then
         dispatch_learn_then_escalate "QA fix exhausted after $MAX_RETRIES rounds. $summary"
       else
+        state_set "phase" "qa_fix"
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
-        local pf; pf=$(generate_prompt "dev-fix" $ff_arg)
-        emit_dispatch "qa_fix" "$pf" "[Ship] QA failed (round $round/$MAX_RETRIES). Fixing..."
+        local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
+        emit_dispatch "qa_fix" "$pf" "[Ship] QA failed (round $((round + 1))/$MAX_RETRIES). Fixing..."
       fi
       ;;
     qa:blocked) retry_or_escalate "qa" "$summary" ;;
@@ -512,15 +514,14 @@ cmd_complete() {
       emit_dispatch "qa" "$pf" "[Ship] QA fixes applied. Re-testing..."
       ;;
     qa_fix:fail|qa_fix:blocked)
+      state_bump "qa_fix_round"
       local round; round=$(state_get "qa_fix_round")
       if [ "$round" -ge "$MAX_RETRIES" ]; then
         dispatch_learn_then_escalate "QA fix failed after $MAX_RETRIES rounds. $summary"
       else
-        state_bump "qa_fix_round"
-        round=$(state_get "qa_fix_round")
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
-        local pf; pf=$(generate_prompt "dev-fix" $ff_arg)
+        local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
         emit_dispatch "qa_fix" "$pf" "[Ship] QA fix retry (round $round/$MAX_RETRIES)..."
       fi
       ;;
@@ -563,7 +564,16 @@ cmd_complete() {
       ;;
     handoff:fail|handoff:blocked) retry_or_escalate "handoff" "$summary" ;;
 
-    learn:*) emit_done "[Ship] Pipeline complete. $summary" ;;
+    learn:*)
+      local esc_reason esc_phase
+      esc_reason=$(state_get "escalation_reason")
+      esc_phase=$(state_get "escalation_phase")
+      if [ -n "$esc_reason" ]; then
+        emit_escalate "$esc_reason" "$esc_phase"
+      else
+        emit_done "[Ship] Pipeline complete. $summary"
+      fi
+      ;;
 
     *) emit_error "Unknown phase:verdict combination: ${phase}:${verdict}" ;;
   esac
@@ -586,8 +596,13 @@ retry_or_escalate() {
 
 dispatch_learn_then_escalate() {
   local reason="$1"
+  local orig_phase
+  orig_phase=$(state_get "phase")
   state_set "phase" "learn"
-  emit_escalate "$reason" "$(state_get "phase")"
+  state_set "escalation_reason" "$reason"
+  state_set "escalation_phase" "$orig_phase"
+  local pf; pf=$(generate_prompt "learn" "--outcome=escalated at $orig_phase")
+  emit_dispatch "learn" "$pf" "[Ship] Capturing learnings before escalation..."
 }
 
 # ── STATUS Command ──────────────────────────────────────────
