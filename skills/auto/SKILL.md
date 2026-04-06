@@ -1,6 +1,6 @@
 ---
 name: auto
-version: 0.7.0
+version: 0.8.0
 description: >
   Full pipeline orchestrator: design → dev → review → QA → simplify → handoff.
   Code-driven coordinator — all state management, artifact validation, phase transitions,
@@ -33,150 +33,116 @@ If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
 # Ship: Auto
 
-Code-driven orchestrator. The shell script `scripts/auto-orchestrate.sh` owns all
-deterministic logic: state management, artifact validation, phase transitions, retry
-counting, and prompt generation from templates. You are a thin dispatch relay.
+Code-driven orchestrator. You are a thin dispatch relay between
+`scripts/auto-orchestrate.sh` (which makes all decisions) and `Agent()` calls
+(which do the actual work). Follow the loop below exactly.
 
-## Core Principle
-
-```
-You relay between the orchestration script and Agent() calls.
-You interpret natural-language agent responses and report structured verdicts.
-You do NOT write code, manage state, or decide phase transitions — the script does.
-The script tells you what to do next. Follow it.
-```
-
-## Red Flags
-
-**Never:**
-- Write code yourself — all code changes go through subagents
-- Manage phase state — only the script writes `.ship/ship-auto.local.md`
-- Skip calling the script after an agent returns
-- Invent a phase transition — the script decides
-- Dispatch subagents in background
+**Never** write code, manage state, decide phase transitions, or dispatch agents in background.
 
 ---
 
-## Dispatch Loop
+## Step 1: Initialize or Resume
 
-### Step 1: Initialize or Resume
+Run this to start or resume the pipeline:
 
-Check if an active task exists, then call the orchestration script:
+```bash
+SHIP_ORCH="${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh"
+if [ -f .ship/ship-auto.local.md ]; then
+  "$SHIP_ORCH" resume
+else
+  "$SHIP_ORCH" init '<user description goes here>'
+fi
+```
+
+The script outputs KEY:VALUE lines. Extract these four values:
+- `ACTION` — what to do next (`dispatch`, `done`, `escalate`, `error`)
+- `PHASE` — current phase name
+- `PROMPT_FILE` — path to the prompt file for the agent
+- `MESSAGE` — status message to show the user
+
+If `ACTION` is `error` → show MESSAGE to the user and stop.
+
+## Step 2: Dispatch Loop
+
+Repeat while `ACTION` is `dispatch`:
+
+**2a.** Show `MESSAGE` to the user.
+
+**2b.** Read the prompt file and dispatch an agent:
+
+```bash
+Read(PROMPT_FILE)
+```
+
+Then call:
 
 ```
-If .ship/ship-auto.local.md exists:
-  result = Bash("${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh resume")
-Else:
-  result = Bash("${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh init '<user description>'")
+Agent(prompt=<contents of PROMPT_FILE>)
 ```
 
-Parse the result for `ACTION`, `PHASE`, `PROMPT_FILE`, and `MESSAGE` (KEY:VALUE lines).
+**2c.** Read the agent's response and classify it as a **verdict**:
 
-If `ACTION:error` → output the MESSAGE and stop.
+| Verdict | When |
+|---------|------|
+| `success` | Phase goal clearly met |
+| `findings` | Specific fixable issues reported (review/QA only) |
+| `fail` | Cannot complete, missing context, broken |
+| `blocked` | Needs human decision or external dependency |
+| `skip` | Phase not applicable (qa/simplify only) |
 
-### Step 2: Dispatch Loop
+When in doubt, lean toward `fail` — the script will retry.
 
-While `ACTION` is `dispatch`:
+**2d.** If the verdict is `findings` or `fail` and the agent listed specific issues,
+save them to a temp file:
 
-1. **Read the prompt**: `Read(PROMPT_FILE)` to get the agent prompt content.
+```bash
+cat > /tmp/ship-findings-$$.md << 'FINDINGS_EOF'
+<findings from agent response>
+FINDINGS_EOF
+```
 
-2. **Output the message**: show `MESSAGE` to the user (e.g. `[Ship] Design complete. Starting dev...`).
+**2e.** Report the verdict back to the script:
 
-3. **Dispatch the agent**: `Agent(prompt=<prompt file contents>)`.
+```bash
+"${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh" complete <PHASE> \
+  --verdict=<verdict> \
+  --summary='<one line summary>' \
+  --findings-file=/tmp/ship-findings-$$.md   # only if findings file was created
+```
 
-4. **Interpret the response**: read the agent's return and classify it using the Verdict Guide below. Extract:
-   - `verdict`: one of `success`, `findings`, `fail`, `blocked`, `skip`
-   - `summary`: a one-line description of what happened
-   - If the response contains specific findings or issues (review bugs, QA failures), write them to a temp file for the script.
+**2f.** Parse the script output for `ACTION`, `PHASE`, `PROMPT_FILE`, `MESSAGE` again.
+If `ACTION` is `dispatch` → go back to **2a**.
 
-5. **Report back to the script**:
-   ```
-   result = Bash("${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh complete <PHASE> --verdict=<verdict> --summary='<summary>' [--findings-file=<path>]")
-   ```
+## Step 3: Terminal
 
-6. **Parse the new result** for `ACTION`, `PHASE`, `PROMPT_FILE`, `MESSAGE`.
-
-7. If `ACTION` is `dispatch` → continue the loop (go to step 1).
-
-### Step 3: Terminal
-
-- `ACTION:done` → output MESSAGE to the user. Pipeline complete.
-- `ACTION:escalate` → read REASON and PHASE. Output REASON to the user.
-  Pipeline blocked at the indicated phase — user intervention needed.
-  (The orchestrator already dispatched the learn agent before emitting escalate,
-  so learnings are captured. No additional dispatch needed here.)
-- `ACTION:error` → output MESSAGE. Something went wrong.
+- `ACTION:done` → show MESSAGE to the user. Pipeline complete.
+- `ACTION:escalate` → show REASON to the user. Pipeline blocked — user intervention needed.
+- `ACTION:error` → show MESSAGE. Something went wrong.
 
 ---
 
-## Verdict Interpretation Guide
-
-This is the **one place** where your LLM intelligence is needed. When reading an
-agent's return, classify it as one of these verdicts:
-
-| Verdict | When to use |
-|---------|-------------|
-| `success` | Agent clearly indicates the phase goal is met. Design produced artifacts. Dev completed stories. Review is clean. QA passed. Handoff has PR with green checks. |
-| `findings` | Agent reports specific issues that need fixing. Review found P1/P2/P3 bugs. Use only for review and QA phases. |
-| `fail` | Agent says it cannot complete. Missing context, broken dependencies, test failures without specific fixable items. |
-| `blocked` | Agent needs external input, human decision, or something outside the pipeline's control. |
-| `skip` | Agent indicates the phase is not applicable. Only valid for **qa** and **simplify** phases. |
-
-### Tips
-
-- If the agent says "complete" or "done" with specific deliverables → `success`
-- If the agent lists bugs/issues but says the review/QA itself completed → `findings`
-- If the agent's response is ambiguous, lean toward `fail` — the script will retry
-- Always extract the findings text when verdict is `findings` or `fail` — the script
-  needs it for the fix prompt
-
-### Writing findings to a file
-
-When the agent returns findings (review bugs, QA failures), write them to a temp file:
+## Example
 
 ```
-Bash("cat > /tmp/ship-findings-$$.md << 'FINDINGS_EOF'
-<paste the findings section from agent response>
-FINDINGS_EOF")
-```
-
-Then pass `--findings-file=/tmp/ship-findings-$$.md` to the complete command.
-
----
-
-## Example Flow
-
-```
-── Initialize ──
-Bash("auto-orchestrate.sh init 'add dark mode toggle'")
+── Step 1 ──
+Bash("$SHIP_ORCH init 'add dark mode toggle'")
 → ACTION:dispatch  PHASE:design  PROMPT_FILE:.ship/tasks/.../prompts/design.md
+  MESSAGE:[Ship] Task created. Starting design phase...
 
-── Design ──
-Read(.ship/tasks/.../prompts/design.md) → prompt
-Agent(prompt=<prompt>) → "Design complete. 3 stories. Artifacts written."
-Bash("auto-orchestrate.sh complete design --verdict=success --summary='3 stories'")
+── Step 2a ──
+Output: [Ship] Task created. Starting design phase...
+
+── Step 2b ──
+Read(.ship/tasks/.../prompts/design.md) → prompt content
+Agent(prompt=<prompt content>) → "Design complete. 3 stories."
+
+── Step 2c ──
+verdict = success
+
+── Step 2e ──
+Bash("$SHIP_ORCH complete design --verdict=success --summary='3 stories'")
 → ACTION:dispatch  PHASE:dev  PROMPT_FILE:.ship/tasks/.../prompts/dev.md
+  MESSAGE:[Ship] Design complete. Starting dev...
 
-── Dev ──
-Agent(prompt=<dev prompt>) → "Implementation complete. All tests pass."
-Bash("auto-orchestrate.sh complete dev --verdict=success --summary='3/3 stories done'")
-→ ACTION:dispatch  PHASE:review  PROMPT_FILE:.ship/tasks/.../prompts/review.md
-
-── Review (with findings) ──
-Agent(prompt=<review prompt>) → "Found 2 bugs: P1 null check, P2 stale fallback"
-Write findings to /tmp/ship-findings-123.md
-Bash("auto-orchestrate.sh complete review --verdict=findings --summary='2 bugs' --findings-file=/tmp/ship-findings-123.md")
-→ ACTION:dispatch  PHASE:review_fix  PROMPT_FILE:.ship/tasks/.../prompts/dev-fix.md
-
-── Review Fix ──
-Agent(prompt=<fix prompt>) → "Fixed both bugs. Tests pass."
-Bash("auto-orchestrate.sh complete review_fix --verdict=success --summary='2 bugs fixed'")
-→ ACTION:dispatch  PHASE:review  PROMPT_FILE:.ship/tasks/.../prompts/review.md
-
-── Review (clean) ──
-Agent(prompt=<review prompt>) → "No bugs found."
-Bash("auto-orchestrate.sh complete review --verdict=success --summary='clean'")
-→ ACTION:dispatch  PHASE:qa  ...
-
-── (continues through QA → simplify → handoff → learn → done) ──
+── (loop continues: dev → review → qa → simplify → handoff → learn → done) ──
 ```
