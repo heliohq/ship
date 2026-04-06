@@ -1,16 +1,9 @@
-You must use Skill('qa').
-Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
-/ship:auto already handled preflight, auth, and repo context for this pipeline.
-This is the QA phase only.
-Test the existing implementation against the provided spec and current changes.
-Produce evidence-backed reports in the QA output directory and summarize the verdict for you.
-Do not implement fixes in this phase.
-You are invoked by /ship:auto — do NOT ask the user questions.
-Do not edit `.ship/ship-auto.local.md` in this phase.
-In your return, say PASS, SKIP, FAIL, or BLOCKED, what criteria were verified, and where
-the QA reports were written.
-QA context:
-task_dir: {{TASK_DIR}}
+You must use Skill('qa'). Skip preamble and auth gate.
+
+Test the implementation against the spec. Produce evidence-backed reports.
+
 spec: {{TASK_DIR}}/plan/spec.md
+task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
 Write reports to: {{TASK_DIR}}/qa/
+Mode: /ship:auto pipeline — no user questions.

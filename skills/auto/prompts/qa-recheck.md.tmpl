@@ -1,16 +1,10 @@
-You must use Skill('qa').
-Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
-/ship:auto already handled preflight, auth, and repo context for this pipeline.
-This is the QA recheck phase only.
-Re-test the implementation after fixes were applied. Focus on previously failing criteria
-and check for regressions. Refresh the QA reports and summarize the updated verdict.
-Do not implement fixes in this phase.
-You are invoked by /ship:auto — do NOT ask the user questions.
-Do not edit `.ship/ship-auto.local.md` in this phase.
-In your return, say PASS, SKIP, FAIL, or BLOCKED, what criteria were verified, and where
-the QA reports were written.
-QA context (recheck mode):
-task_dir: {{TASK_DIR}}
+You must use Skill('qa'). Skip preamble and auth gate.
+
+Recheck after fixes: re-test previously failing criteria + check for regressions.
+Skip exploratory testing (already done in first pass).
+
 spec: {{TASK_DIR}}/plan/spec.md
+task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
 Write reports to: {{TASK_DIR}}/qa/
+Mode: /ship:auto recheck — no user questions.

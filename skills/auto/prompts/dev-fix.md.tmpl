@@ -1,20 +1,13 @@
-You must use Skill('dev').
-Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
-/ship:auto already handled preflight, auth, and repo context for this pipeline.
-This is the implementation fix phase only.
-Apply only the findings below to the existing implementation.
-Keep the fix scope targeted to those findings and rerun the most relevant verification
-for the changed area before returning.
-Do not redo design, review, QA, simplify, or handoff in this phase.
-You are invoked by /ship:auto — fix mode.
-Do not edit `.ship/ship-auto.local.md` in this phase.
-In your return, say which findings were fixed, what verification ran, and whether any
-concerns remain for the next review/QA pass.
-Findings to fix:
+You must use Skill('dev'). Skip preamble and auth gate.
+
+Fix ONLY the findings below. Keep scope targeted. Rerun verification for changed areas.
+
+Findings:
 ---
 {{FINDINGS}}
 ---
-Implementation context:
-task_dir: {{TASK_DIR}}
+
 spec: {{TASK_DIR}}/plan/spec.md
+task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
+Mode: /ship:auto fix — no user questions.

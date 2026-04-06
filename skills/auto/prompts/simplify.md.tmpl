@@ -1,13 +1,11 @@
-You must use Skill('simplify').
-Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
-/ship:auto already handled preflight, auth, and repo context for this pipeline.
-This is the simplify phase only.
-Do behavior-preserving cleanup within the task scope below.
-Prefer simplifications that reduce duplication, clarify structure, or remove incidental
-complexity without changing observable behavior.
-Do not add features, re-plan the task, or start handoff in this phase.
-Do not edit `.ship/ship-auto.local.md` in this phase.
-In your return, say whether code changed, which files changed, and what simplification
-work was performed. If nothing needed simplifying, say so clearly.
-Simplify scope: only files changed in this task (git diff {{BASE_BRANCH}}...HEAD --name-only).
+You must use Skill('simplify'). Skip preamble and auth gate.
+
+Do behavior-preserving cleanup on files changed in this task.
+After making changes, run the repo's test command to verify nothing broke.
+If tests fail after your changes, revert them and report skip instead.
+
+Scope: git diff {{BASE_BRANCH}}...HEAD --name-only
+task_dir: {{TASK_DIR}}
+base_branch: {{BASE_BRANCH}}
 Output: {{TASK_DIR}}/simplify.md
+Mode: /ship:auto pipeline — no user questions.

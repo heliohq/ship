@@ -259,7 +259,7 @@ phase_template() {
     qa)               echo "qa" ;;
     qa_recheck)       echo "qa-recheck" ;;
     simplify)         echo "simplify" ;;
-    simplify_verify)  echo "simplify-verify" ;;
+    simplify_verify)  echo "simplify" ;; # legacy — simplify handles its own verify now
     handoff)          echo "handoff" ;;
     learn)            echo "learn" ;;
     *)                echo "" ;;
@@ -526,35 +526,15 @@ cmd_complete() {
       fi
       ;;
 
-    simplify:success)
-      state_set "phase" "simplify_verify"
-      local pf; pf=$(generate_prompt "simplify-verify")
-      emit_dispatch "simplify_verify" "$pf" "[Ship] Simplify made changes. Verifying..."
-      ;;
-    simplify:skip)
+    simplify:success|simplify:skip|simplify:fail|simplify:blocked)
+      # Simplify handles its own verification internally (runs tests after changes,
+      # reverts if broken). Any outcome advances to handoff.
       state_set "phase" "handoff"
       local pf; pf=$(generate_prompt "handoff")
-      emit_dispatch "handoff" "$pf" "[Ship] Nothing to simplify. Starting handoff..."
-      ;;
-    simplify:fail|simplify:blocked)
-      state_set "phase" "handoff"
-      local pf; pf=$(generate_prompt "handoff")
-      emit_dispatch "handoff" "$pf" "[Ship] Simplify skipped. Starting handoff..."
-      ;;
-
-    simplify_verify:success)
-      state_set "phase" "handoff"
-      local pf; pf=$(generate_prompt "handoff")
-      emit_dispatch "handoff" "$pf" "[Ship] Simplify verified. Starting handoff..."
-      ;;
-    simplify_verify:fail)
-      local pre_sha; pre_sha=$(state_get "pre_simplify_sha")
-      if [ -n "$pre_sha" ] && [ "$pre_sha" != "unknown" ]; then
-        git reset --hard "$pre_sha" >/dev/null 2>&1
-      fi
-      state_set "phase" "handoff"
-      local pf; pf=$(generate_prompt "handoff")
-      emit_dispatch "handoff" "$pf" "[Ship] Simplify reverted (broke tests). Starting handoff..."
+      local msg="[Ship] Simplify done. Starting handoff..."
+      [ "$verdict" = "skip" ] && msg="[Ship] Nothing to simplify. Starting handoff..."
+      [ "$verdict" = "fail" ] || [ "$verdict" = "blocked" ] && msg="[Ship] Simplify skipped. Starting handoff..."
+      emit_dispatch "handoff" "$pf" "$msg"
       ;;
 
     handoff:success)

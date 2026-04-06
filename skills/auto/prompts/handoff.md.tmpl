@@ -1,20 +1,9 @@
-You must use Skill('handoff').
-Skip the skill's entire `## Preamble (run first)` section and Auth Gate.
-/ship:auto already handled preflight, auth, and repo context for this pipeline.
-This is the handoff phase only.
-Ship the current implementation on the provided branch.
-Verify what is needed, commit the relevant changes, push, create or update the PR,
-and keep working the CI and review loop until the PR is ready.
-Do not redo design, review, or QA in this phase.
-You are invoked by /ship:auto — do NOT ask the user questions.
-Do not edit `.ship/ship-auto.local.md` in this phase.
-On success (PR checks green or equivalent ready-to-ship state), leave
-`.ship/ship-auto.local.md` in place.
-If handoff is not ready or blocked, leave the state file in place.
-In your return, say whether handoff is complete, include the PR URL when available,
-summarize the current check status, and call out any remaining blockers.
-Handoff context:
+You must use Skill('handoff'). Skip preamble and auth gate.
+
+Ship the implementation: commit, push, create/update PR, work CI loop until green.
+
 task_id: {{TASK_ID}}
 task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
 branch: {{BRANCH}}
+Mode: /ship:auto pipeline — no user questions.
