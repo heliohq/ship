@@ -13,10 +13,11 @@
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start) and utilities (task-id, preflight, auth-headers) |
-| `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, Stop) |
+| `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start, phase-guardrail), orchestrator (auto-orchestrate), and utilities (task-id, preflight, auto-state, auth-headers) |
+| `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, PreToolUse, Stop) |
 | `.codex/` | `INSTALL.md`, `hooks.json` | Codex install docs and shipped Codex hook manifest |
 | `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:design, etc.) |
+| `skills/auto/prompts/` | `.md.tmpl` files | Prompt templates for each auto pipeline phase |
 | `skills/setup/` | Setup skill | Infra bootstrap + convention discovery, AGENTS.md + learnings generation |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata for ShipAI |
 | `.mcp.json` | MCP config | Codex MCP server registration |
@@ -31,8 +32,10 @@ Two independent layers:
 - Generates `.claude/hookify.ship-*.local.md` (deterministic safety rules — real-time PreToolUse block via hookify)
 
 **Workflow layer (opt-in via /ship:auto):** Fires only during ship-coding sessions.
-- `stop-gate.sh` — blocks session exit while `.ship/ship-auto.local.md` is active
-- Claude Code loads it through plugin `hooks/hooks.json`; Codex installs the same scripts via global `~/.codex/hooks.json` using the shipped `.codex/hooks.json` manifest
+- `stop-gate.sh` — blocks session exit while `.ship/ship-auto.local.md` is active (with fast-path for terminal phases)
+- `auto-orchestrate.sh` — code-driven state machine for /ship:auto (init, resume, complete, status commands)
+- `phase-guardrail.sh` — PreToolUse hook enforcing artifact access rules per phase (QA independence, review read-only, state file protection)
+- Claude Code loads hooks through plugin `hooks/hooks.json`; Codex installs the same scripts via global `~/.codex/hooks.json` using the shipped `.codex/hooks.json` manifest
 
 ## Code Style
 

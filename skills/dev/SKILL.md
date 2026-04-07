@@ -175,12 +175,21 @@ After all stories in a wave pass review:
 ```bash
 # For each story branch in the wave:
 git merge story-<i> --no-edit
-# If merge conflict → dispatch peer targeted fix to resolve, then retry
 git worktree remove .ship/worktrees/story-<i>
 git branch -d story-<i>
 ```
 
-If a merge conflict cannot be resolved in 2 rounds → BLOCKED.
+### Merge conflict resolution
+
+If `git merge` fails with conflicts:
+
+1. Read BOTH sides of the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+2. Preserve the behavior this PR ships — both sides may have valid changes.
+3. Dispatch a targeted fix to the peer implementer: provide the conflicting
+   files, both branch HEAs, and the story context.
+4. After resolution, run `TEST_CMD` to verify the merged result.
+5. If the fix doesn't resolve cleanly, try once more (round 2/2).
+6. If 2 rounds fail → BLOCKED. Do NOT use `--ours` or `--theirs` blindly.
 
 ### Step A: Implement
 
@@ -303,15 +312,15 @@ re-verify. Max 2 rounds; then BLOCKED.
 
 ## Progress Reporting
 
-Use `[Implement]` prefix:
+Use `[Dev]` prefix:
 
 ```
-[Implement] Starting — N stories in W waves, test cmd: <TEST_CMD>
-[Implement] Wave w/W (parallel|sequential): Stories [list]
-[Implement] Story i/N: "<title>" → implementing...
-[Implement] Story i/N: PASS | FAIL — <detail>. Fixing (round/2)...
-[Implement] Wave w/W: merging branches... ✓
-[Implement] All N stories complete. M concerns recorded.
+[Dev] Starting — N stories in W waves, test cmd: <TEST_CMD>
+[Dev] Wave w/W (parallel|sequential): Stories [list]
+[Dev] Story i/N: "<title>" → implementing...
+[Dev] Story i/N: PASS | FAIL — <detail>. Fixing (round/2)...
+[Dev] Wave w/W: merging branches... ✓
+[Dev] All N stories complete. M concerns recorded.
 ```
 
 ## Artifacts
@@ -324,64 +333,64 @@ Use `[Implement]` prefix:
 ## Example Workflow
 
 ```
-[Implement] Starting — 5 stories, test cmd: npm test
-[Implement] Dependency analysis:
+[Dev] Starting — 5 stories, test cmd: npm test
+[Dev] Dependency analysis:
   Wave 1: [Story 1 "Add User model", Story 2 "Add Product model"] ← parallel
   Wave 2: [Story 3 "User API", Story 4 "Product API"] ← parallel
   Wave 3: [Story 5 "Auth middleware"] ← sequential
 
 ═══ Wave 1 (parallel): Stories 1, 2 ════════════════════
 
-[Implement] Wave 1: creating worktrees...
+[Dev] Wave 1: creating worktrees...
   git worktree add .ship/worktrees/story-1 -b story-1
   git worktree add .ship/worktrees/story-2 -b story-2
   WAVE_BASE_SHA = abc1234
 
-[Implement] Story 1/5 + Story 2/5: dispatching peer implementers in parallel...
+[Dev] Story 1/5 + Story 2/5: dispatching peer implementers in parallel...
   Story 1 peer (cwd: .ship/worktrees/story-1) returns: DONE (PEER_SESSION_ID: session_s1)
   Story 2 peer (cwd: .ship/worktrees/story-2) returns: DONE (PEER_SESSION_ID: session_s2)
 
-[Implement] Story 1/5: commits exist ✓ → dispatching fresh reviewer...
+[Dev] Story 1/5: commits exist ✓ → dispatching fresh reviewer...
   Reviewer returns: PASS
-[Implement] Story 2/5: commits exist ✓ → dispatching fresh reviewer...
+[Dev] Story 2/5: commits exist ✓ → dispatching fresh reviewer...
   Reviewer returns: PASS
 
-[Implement] Wave 1: all stories PASS. Merging branches...
+[Dev] Wave 1: all stories PASS. Merging branches...
   git merge story-1 --no-edit ✓
   git merge story-2 --no-edit ✓
   Cleaning up worktrees.
 
 ═══ Wave 2 (parallel): Stories 3, 4 ════════════════════
 
-[Implement] Wave 2: creating worktrees...
+[Dev] Wave 2: creating worktrees...
 
-[Implement] Story 3/5: dispatching peer implementer...
+[Dev] Story 3/5: dispatching peer implementer...
   Peer returns: DONE (PEER_SESSION_ID: session_s3)
-[Implement] Story 4/5: dispatching peer implementer...
+[Dev] Story 4/5: dispatching peer implementer...
   Peer returns: DONE (PEER_SESSION_ID: session_s4)
 
-[Implement] Story 3/5: reviewer returns FAIL
+[Dev] Story 3/5: reviewer returns FAIL
   - Missing input validation on POST /users
-[Implement] Story 3/5: targeted fix (round 1/2)...
+[Dev] Story 3/5: targeted fix (round 1/2)...
   mcp__codex__codex-reply({ session_id: session_s3, reply: <fix prompt> })
-[Implement] Story 3/5: re-review → PASS (2 rounds).
+[Dev] Story 3/5: re-review → PASS (2 rounds).
 
-[Implement] Story 4/5: reviewer returns PASS.
+[Dev] Story 4/5: reviewer returns PASS.
 
-[Implement] Wave 2: merging branches... ✓
+[Dev] Wave 2: merging branches... ✓
 
 ═══ Wave 3 (sequential): Story 5 ═══════════════════════
 
-[Implement] Story 5/5: dispatching peer implementer...
+[Dev] Story 5/5: dispatching peer implementer...
   Peer returns: DONE_WITH_CONCERNS ("jwt secret hardcoded in test fixtures")
-[Implement] Story 5/5: reviewer returns PASS_WITH_CONCERNS. Appending to concerns.md.
+[Dev] Story 5/5: reviewer returns PASS_WITH_CONCERNS. Appending to concerns.md.
 
 ── Phase 3: Cross-Story Regression ──────────────────────
 
-[Implement] Running full test suite...
+[Dev] Running full test suite...
   Peer returns: PASS (47 tests, 0 failures)
 
-[Implement] DONE_WITH_CONCERNS — 5/5 stories, 3 waves, 1 concern recorded.
+[Dev] DONE_WITH_CONCERNS — 5/5 stories, 3 waves, 1 concern recorded.
 ```
 
 ## Error Handling
@@ -398,19 +407,33 @@ Use `[Implement]` prefix:
 
 ## Execution Handoff
 
-Output summary, then offer next steps in standalone mode:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Implement] <DONE|DONE_WITH_CONCERNS|BLOCKED|NEEDS_CONTEXT>
-  Stories: <N>/<total> complete, <W> waves
-  Concerns: <N> recorded in concerns.md
-  Tests: <TEST_CMD> — <passed|failed>
-  Files changed: <list>
+## [Dev] Report Card
 
-## What's next?
-1. **Review (recommended)** — run /ship:review to review the full diff
-2. **QA** — run /ship:qa to test the running application
-3. **Full pipeline** — run /ship:auto to review, QA, and ship
+| Field | Value |
+|-------|-------|
+| Status | <DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT> |
+| Summary | <N>/<total> stories complete |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Stories | <N>/<total> |
+| Waves | <W> |
+| Concerns | <N> (in concerns.md) |
+| Tests | <passed / failed> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| .ship/tasks/<task_id>/concerns.md | Residual concerns (if any) |
+
+### Next Steps
+1. **Review (recommended)** — /ship:review to review the full diff
+2. **QA** — /ship:qa to test the running application
+3. **Full pipeline** — /ship:auto to review, QA, and ship
 ```
 
-In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.

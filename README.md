@@ -33,9 +33,9 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **setup** — Bootstrap repo infrastructure (detect languages, install tools, configure CI/CD, pre-commit hooks) and discover semantic constraints from code and git history. Generates AGENTS.md, verified learnings (injected at session start), and hookify safety rules. Audits existing harness for staleness.
 
-**design** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent peer challenger for 2 rounds of adversarial review. Scales process to task size: focused tasks (≤3 files) skip peer investigation and drill.
+**design** — Reads the codebase yourself (no delegation), traces call chains and integration surfaces, writes spec + plan with file:line references. Hands it to an independent peer challenger for 2 rounds of adversarial review. All tasks run the full peer investigation and execution drill — no shortcuts.
 
-**auto** — The full pipeline. Bootstraps a task directory, invokes design, then runs dev → review → QA → simplify → handoff autonomously. State tracked in `.ship/ship-auto.local.md` — stop-gate hook blocks exit while active. Every phase is a fresh subagent dispatch.
+**auto** — The full pipeline. Code-driven orchestrator where `scripts/auto-orchestrate.sh` owns all state management, artifact validation, and phase transitions. The SKILL.md is a thin relay that dispatches Agent() calls and reports verdicts back to the script. State tracked in `.ship/ship-auto.local.md` — stop-gate hook blocks exit while active.
 
 **dev** — Executes implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave.
 
@@ -45,7 +45,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **handoff** — Creates a PR with a concise verification summary, then enters the post-PR loop: monitor GitHub checks, fix failures, address review comments, resolve merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted.
 
-**refactor** — Diagnose structural cracks from concrete pain, then fix directly. Surgical (within-file) or structural (cross-file) execution — code changes, not documents.
+**refactor** — Diagnose code smells, classify by risk: quick (low risk, fix directly with verification) or planned (high risk, write execution card for alignment before executing). Applies Fowler techniques, verifies after every change.
 
 **learn** — Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Fully autonomous — no user interaction. Verified entries are rules; pending entries auto-verify when validated or auto-prune when stale.
 
@@ -63,7 +63,7 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 | `/ship:review` | Find every bug in the diff, then diagnose the structural deficiency that breeds them |
 | `/ship:qa` | Independent QA: tests code changes against the spec via the running application |
 | `/ship:handoff` | PR creation with verification summary, GitHub check loop, and review comment resolution |
-| `/ship:refactor` | Diagnose structural cracks and fix directly — surgical or structural execution |
+| `/ship:refactor` | Diagnose code smells, classify by risk (quick/planned), apply Fowler techniques with verification |
 | `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + verified learnings + hookify safety rules |
 | `/ship:learn` | Capture session learnings, route to permanent stores, auto-promote and auto-prune |
 | `/ship:write-design-docs` | Create and maintain design docs with structured frontmatter for AI indexing |
@@ -75,13 +75,13 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 Register the plugin source first:
 
 ```
-/plugin marketplace add tryship/ship
+/plugin marketplace add helio-pause/ship
 ```
 
 Then install the plugin:
 
 ```
-/plugin install ship@ship
+/plugin install helio-pause@ship
 ```
 
 ### Codex
@@ -89,7 +89,7 @@ Then install the plugin:
 Tell Codex:
 
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/tryship/ship/refs/heads/main/.codex/INSTALL.md
+Fetch and follow instructions from https://raw.githubusercontent.com/heliohq/ship/refs/heads/main/.codex/INSTALL.md
 ```
 
 Codex hook support is not plugin-based. Follow [`.codex/INSTALL.md`](./.codex/INSTALL.md) to symlink or append Ship's shipped `.codex/hooks.json` into your global `~/.codex/hooks.json`.
@@ -115,7 +115,7 @@ Current Cursor support includes skills plus `sessionStart` context injection. Cu
 Clone the repo and point Claude Code at it:
 
 ```bash
-git clone https://github.com/tryship/ship.git
+git clone https://github.com/heliohq/ship.git
 claude --plugin-dir ./ship
 ```
 
@@ -140,4 +140,4 @@ Ship is built on ideas from:
 ## Links
 
 - Website: https://www.ship.tech
-- Repository: https://github.com/tryship/ship
+- Repository: https://github.com/heliohq/ship

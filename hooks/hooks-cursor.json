@@ -5,6 +5,16 @@
       {
         "command": "./hooks/session-start"
       }
+    ],
+    "preToolUse": [
+      {
+        "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/phase-guardrail.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/stop-gate.sh"
+      }
     ]
   }
 }

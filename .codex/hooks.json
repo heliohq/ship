@@ -11,6 +11,17 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.codex/ship/scripts/phase-guardrail.sh\"",
+            "statusMessage": "Checking phase access rules"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

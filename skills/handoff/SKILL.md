@@ -174,22 +174,37 @@ Push and create:
 4. Create the PR if it does not exist.
 5. If the PR already exists, update the body or add a short comment with the latest verification summary.
 
-Output: `[Ship] PR created: <url>`
+Output: `[Handoff] PR created: <url>`
 
 ## Phase 5: Wait for GitHub Checks
 
 Inspect `.github/workflows` and the current PR checks once so you understand
 what this repo expects to run.
 
-Then monitor the PR on GitHub directly.
+Then monitor the PR on GitHub directly using `gh`:
 
-- `green` means the checks that matter for this repo's normal CI/CD path are
-  done and passing.
-- `pending` means keep waiting.
-- `action required` means enter the fix loop.
+```bash
+# Check PR status and all check runs
+gh pr view --json state,statusCheckRollup,reviews,mergeable
+
+# Read individual check run logs when a check fails
+gh run view <run-id> --log-failed
+
+# List review comments to see what reviewers said
+gh pr view --json reviews,comments
+
+# Check for merge conflicts
+gh pr view --json mergeable --jq '.mergeable'
+```
+
+Interpret the results:
+
+- `statusCheckRollup` all `SUCCESS` or `NEUTRAL` → green
+- Any check `IN_PROGRESS` or `QUEUED` → pending, keep waiting
+- Any check `FAILURE` or `ACTION_REQUIRED` → enter the fix loop
+- `mergeable` is `CONFLICTING` → merge conflict, enter the fix loop
 - If the wait times out, escalate as an external GitHub wait, not as a code fix failure.
-- Treat `cancelled` checks as informational unless they are the reason this
-  repo's normal CI/CD path cannot complete.
+- Treat `cancelled` checks as informational unless they block the normal CI/CD path.
 - Check roughly every 30 seconds.
 - Continue until the PR is green, clearly needs action, or the wait timeout is exceeded.
 
@@ -243,7 +258,37 @@ gh api graphql -f query='
   }' -F subjectId="<comment-node-id>"
 ```
 
-Output: `[Ship] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking CI...`
+Output: `[Handoff] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking CI...`
+
+---
+
+## Execution Handoff
+
+Output the report card (read `skills/shared/report-card.md` for the standard format):
+
+```
+## [Handoff] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | PR #<N> — checks <green / pending / failed> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| PR URL | <url> |
+| Check status | <green / N passing, M failed> |
+| Fix rounds | <N>/3 |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| PR on GitHub | Shipped code |
+| CHANGELOG.md | Updated changelog (if repo has one) |
+```
+
+Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
 
 ---
 

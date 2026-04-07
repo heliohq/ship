@@ -1,10 +1,11 @@
 ---
 name: refactor
-version: 2.0.0
+version: 3.0.0
 description: >
   Make code better — simpler, less duplication, clearer structure.
   Detects code smells, applies Fowler techniques, verifies each change.
-  Surgical mode for local cleanup, structural mode for cross-file issues.
+  Use when: refactor, clean up, simplify, reduce duplication, extract method,
+  dead code, code smells, make this cleaner.
 allowed-tools:
   - Bash
   - Read
@@ -55,33 +56,6 @@ SIMPLIFY FIRST. RESTRUCTURE ONLY WHEN NEEDED.
 VERIFY AFTER EVERY CHANGE.
 ```
 
-## Process Flow
-
-```dot
-digraph refactor {
-    rankdir=TB;
-
-    "Start" [shape=doublecircle];
-    "Detect scope + scan for smells" [shape=box];
-    "Classify" [shape=diamond];
-    "Redirect (not a refactor)" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
-    "Surgical: micro-plan + fix smells" [shape=box];
-    "Structural: write card + execute" [shape=box];
-    "Verify after each batch" [shape=diamond];
-    "Report metrics" [shape=doublecircle];
-
-    "Start" -> "Detect scope + scan for smells";
-    "Detect scope + scan for smells" -> "Classify";
-    "Classify" -> "Redirect (not a refactor)" [label="perf/bug/feature"];
-    "Classify" -> "Surgical: micro-plan + fix smells" [label="local smells"];
-    "Classify" -> "Structural: write card + execute" [label="cross-file structure"];
-    "Surgical: micro-plan + fix smells" -> "Verify after each batch";
-    "Structural: write card + execute" -> "Verify after each batch";
-    "Verify after each batch" -> "Report metrics" [label="pass"];
-    "Verify after each batch" -> "Surgical: micro-plan + fix smells" [label="fail: revert batch, try next smell"];
-}
-```
-
 ## Red Flag
 
 **Never:**
@@ -94,7 +68,6 @@ digraph refactor {
 - Refactor and add features in the same session
 - Move code between files without simplifying anything — that's reorganization, not refactoring
 - Disguise architectural redesign as refactoring
-- Write a 100-line spec for a single file cleanup
 - Skip running existing tests before AND after changes to establish baseline
 
 ## Phase 1: Scan
@@ -108,102 +81,118 @@ it hurts the next change).
 
 ## Phase 2: Classify
 
-| Signal | Classification | Action |
-|--------|---------------|--------|
-| All smells are within-file (long method, complex conditional, duplication, dead code, bad names) | **Surgical** | Fix directly |
-| Smells are cross-file (god file, circular dep, duplicated logic across files, dependency violation) | **Structural** | Write execution card, then execute |
-| Mix of both | **Structural** | Structural first (includes surgical cleanup at the end) |
-| Not a code smell (slow performance, runtime bug, feature request) | **Redirect** | Suggest /fix, /investigate, or /ship:auto |
+Decide the approach based on **risk**, not file count:
 
-Output: `[Refactor] Scope: <files>. Classification: <surgical|structural|redirect>. Smells found: <count>.`
+| Signal | Classification | Why |
+|--------|---------------|-----|
+| Smells are obvious, tests exist, changes are local | **Quick** | Low risk — fix directly, verify as you go |
+| Cross-file dependencies change, no test coverage, large blast radius, or user says "refactor this module/codebase" | **Planned** | High risk — write an execution card so user can review before you start |
+| Not a code smell (slow performance, runtime bug, feature request) | **Redirect** | Wrong tool — suggest /ship:dev or /ship:auto |
 
-## Phase 3a: Surgical Execution
+A 500-line god function is **planned** even though it's one file.
+A 3-file rename of duplicated utils is **quick** even though it's cross-file.
+Classify by risk, not by file boundaries.
 
-For local smells. No spec file. Direct edits with verification.
+Output: `[Refactor] Scope: <files>. Classification: <quick|planned|redirect>. Smells found: <count>.`
 
-1. Form micro-plan (in memory, not written to disk):
-   - Scope: file(s) to touch
-   - Smells: ordered list (simplest first)
-   - Verify command: test/typecheck/lint command for this repo
+## Phase 3: Execute
+
+### Quick path
+
+Low-risk smells with existing test coverage. No spec file. Direct edits.
+
+1. Form micro-plan (in memory):
+   - Smells ordered simplest first
+   - Verify command for this repo (test/typecheck/lint)
    - Abort rule: revert + skip if verify fails twice on same smell
 
 2. Fix one smell family at a time. Apply the technique from `references/smell-catalog.md`.
 
-3. After each batch: run verify command. If fail: revert, skip to next smell.
+3. After each batch: run verify. If fail: revert, skip to next smell.
 
 4. After all smells: run full verify. Report results.
 
-## Phase 3b: Structural Execution
+### Planned path
 
-For cross-file problems. Two sub-paths based on scope:
+High-risk changes. Write an execution card first, get alignment, then execute.
 
-**Single-seam** (user targets a specific structural issue, e.g., "split notifications.ts"):
-1. Read `references/structural-card.md` for the template.
-2. Fill the card (45-60 lines). Focus on the one seam.
+1. Write execution card:
+   - Read `references/structural-card.md` for the template (45-60 lines).
+   - For codebase-level work, read `references/rescue-playbook.md` for the full 8-step process.
+   - Save to `.ship/tasks/<task_id>/refactor/spec.md`.
+   - In standalone mode: show the card to the user via AskUserQuestion before executing.
+   - In /ship:auto mode: proceed after writing the card.
 
-**Codebase rescue** (user targets a directory or whole codebase, e.g., "refactor this codebase"):
-1. Read `references/rescue-playbook.md` for the full process.
-2. Follow all 8 steps: scan → rank → trace deps → propose structure → write card with Required Structural Reductions → execute → report.
-3. Address the primary contradiction PLUS all signals within its blast radius. Defer signals outside the blast radius.
+2. If no test coverage for the code being changed: write characterization tests first.
 
-**For both sub-paths, execute in this order:**
+3. Execute in order: **Move** → **Consolidate** → **Simplify** → **Clean**.
+   Run tests after each step. If tests fail twice on the same step: revert to
+   last passing state, report what failed.
 
-1. **Verify**: run existing tests to establish baseline. If no tests cover the code being moved/changed, write characterization tests first — this is unconditional for structural refactors regardless of blast radius.
-2. **Move**: relocate code per Target Structure. Update imports. Run tests.
-3. **Consolidate**: merge duplicated logic per Eliminate list. Run tests.
-4. **Simplify**: apply surgical techniques to every touched file. Run tests.
-5. **Clean**: delete dead code, stale imports. Run tests.
-
-If blast radius >5 files: write card to `.ship/tasks/<task_id>/plan/spec.md` and show user before executing. Otherwise keep in memory.
-
-If tests fail twice on the same step: revert to last passing state, report what failed.
+4. After all changes: run full verify. Report results.
 
 ## Execution Handoff
 
-After all changes, output summary and offer next steps:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Refactor] Complete.
-  Smells fixed: <N>
-  Functions extracted: <N>
-  Duplicated blocks eliminated: <N> (was in M files, now in 1)
-  Dead code deleted: <N> lines
-  Lines before/after: <N> → <M>
-  Files touched: <N>
-  Tests: <passed|failed|none>
-  Deferred: <smells outside blast radius, if structural>
+## [Refactor] Report Card
 
-## What's next?
-1. **Review** — run /ship:review to verify no behavior changed
-2. **Ship** — run /ship:handoff to create the PR
-3. **Continue** — run /ship:refactor on remaining deferred smells
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | <N> smells fixed, <M> lines saved |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Smells fixed | <N> |
+| Functions extracted | <N> |
+| Duplication eliminated | <N> blocks |
+| Dead code deleted | <N> lines |
+| Lines before/after | <N> → <M> |
+| Files touched | <N> |
+| Tests | <passed / failed / none> |
+| Deferred | <smells outside scope> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| .ship/tasks/<task_id>/refactor/spec.md | Execution card (planned path only) |
+
+### Next Steps
+1. **Review** — /ship:review to verify no behavior changed
+2. **Ship** — /ship:handoff to create the PR
+3. **Continue** — /ship:refactor on remaining deferred smells
 ```
+
+Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
 
 ## Quality Gates
 
 | Gate | Condition | Fail action |
 |------|-----------|-------------|
 | Scan → Classify | At least 1 smell found with file:line evidence | Report "no smells found" — code is clean |
-| Classify → Execute | Classification is surgical or structural (not redirect) | Redirect to appropriate skill |
+| Classify → Execute | Classification is quick or planned (not redirect) | Redirect to appropriate skill |
 | Execute → Next batch | Verify passes after changes | Revert batch, skip smell (max 2 retries) |
-| Structural card → Execute | Card has Evidence + Invariants + Target + Eliminate | Revise card |
+| Planned card → Execute | Card has Evidence + Invariants + Target + Eliminate | Revise card |
 | Execute → Report | At least 1 successful change was made | Report "all changes reverted — could not refactor safely" |
 
 ## Artifacts
 
 ```text
-# Surgical: no artifacts — changes are committed directly
+# Quick: no artifacts — changes are committed directly.
 
-# Structural (>5 file blast radius):
+# Planned:
 .ship/tasks/<task_id>/
-  plan/
+  refactor/
     spec.md       <- execution card (45-60 lines)
 ```
 
 ## Progress Reporting
 
 ```
-[Refactor] Scope: src/projects.ts. Classification: surgical. Smells found: 4.
+[Refactor] Scope: src/projects.ts. Classification: quick. Smells found: 4.
 [Refactor] Fixing smell 1/4: Long Method (list handler, 80 lines) → Extract Method...
 [Refactor] Verify: tests passed. Smell 1 fixed.
 [Refactor] Fixing smell 2/4: Complex Conditional (access check) → Guard Clauses...
@@ -217,6 +206,5 @@ After all changes, output summary and offer next steps:
 - Reverting immediately when verification fails
 - Reporting concrete metrics (lines, duplication count, functions extracted)
 - Using Fowler techniques by name (Extract Method, Guard Clauses, etc.)
-- Keeping structural execution cards short and actionable
-- Doing surgical cleanup as the last step of structural refactoring
+- Keeping execution cards short and actionable
 </Good>

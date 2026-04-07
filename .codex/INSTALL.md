@@ -11,7 +11,7 @@ Enable Ship workflow skills in Codex via native skill discovery. To install Code
 
 1. **Clone the Ship repository:**
    ```bash
-   git clone https://github.com/tryship/ship.git ~/.codex/ship
+   git clone https://github.com/heliohq/ship.git ~/.codex/ship
    ```
 
 2. **Create the skills symlink:**

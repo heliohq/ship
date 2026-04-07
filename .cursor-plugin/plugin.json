@@ -2,13 +2,13 @@
   "name": "ship",
   "displayName": "Ship",
   "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "author": {
-    "name": "Ship",
+    "name": "Helio Pause",
     "url": "https://www.ship.tech"
   },
   "homepage": "https://www.ship.tech",
-  "repository": "https://github.com/tryship/ship",
+  "repository": "https://github.com/heliohq/ship",
   "license": "MIT",
   "keywords": [
     "agent",
