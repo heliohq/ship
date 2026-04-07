@@ -10,7 +10,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff. Add diagnosis only when multiple findings share one structural root cause. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
-| [`/ship:refactor`](#refactor) | **Structural Diagnostician** | Traces from concrete pain to structural cracks. Diagnoses and fixes directly — surgical (within-file) or structural (cross-file) execution. |
+| [`/ship:refactor`](#refactor) | **Code Improver** | Diagnose code smells, classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
 | [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Auto-verifies durable entries and prunes stale ones. |
 | [`/ship:write-design-docs`](#write-design-docs) | **Design Doc Author** | Creates and maintains high-level design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
@@ -27,7 +27,7 @@ You describe what you want to build. Ship handles the rest — plan, implement, 
 
 AI coding agents are capable but unreliable. They skip tests, hallucinate about code they haven't read, review their own work and call it good, and declare victory without evidence. Ship makes these failure modes structurally impossible.
 
-The orchestrator delegates all code changes to fresh subagents. It may read code when investigating issues (e.g. NEEDS_CONTEXT from dev), but never writes code itself. State is tracked in `.ship/ship-auto.local.md` — the stop-gate hook prevents exit while the pipeline is active.
+The orchestrator is code-driven: `scripts/auto-orchestrate.sh` owns all state management, artifact validation, phase transitions, and retry logic. The SKILL.md is a thin relay that dispatches Agent() calls and reports verdicts back to the script. A `phase-guardrail.sh` PreToolUse hook enforces artifact access rules (QA independence, review read-only, state file protection). State is tracked in `.ship/ship-auto.local.md` — the stop-gate hook prevents exit while the pipeline is active.
 
 ### The independence architecture
 
@@ -46,10 +46,10 @@ Bootstrap → Design → Dev → Review → QA → Simplify → Handoff
 3. **Dev** — invoke `/ship:dev` to execute implementation stories
 4. **Review** — invoke `/ship:review` for staff-engineer code review
 5. **QA** — invoke `/ship:qa` against the running application
-6. **Simplify** — behavior-preserving cleanup via standalone simplify skill
+6. **Simplify** — behavior-preserving cleanup via /ship:refactor (or simplify as fallback)
 7. **Handoff** — invoke `/ship:handoff` to create PR and shepherd it until checks are green
 
-Review and QA have fix loops: if bugs/issues are found, auto dispatches dev to fix them, then re-runs the phase. No phase is ever skipped.
+Review and QA have fix loops: if bugs/issues are found, auto dispatches dev to fix them, then re-runs the phase. Every phase must produce its required artifacts — the orchestrator validates artifact existence before advancing.
 
 ### State lives on disk
 
@@ -60,8 +60,8 @@ The current phase is tracked in `.ship/ship-auto.local.md` — a YAML frontmatte
 ```
 You:   Add rate limiting to the /api/upload endpoint
 
-Assistant: [Ship] Bootstrapping task: rate-limit-upload
-        [Ship] Phase 2: Design — investigating codebase...
+Assistant: [Auto] Bootstrapping task: rate-limit-upload
+        [Auto] Starting design phase...
 
         [Design] Read src/routes/api/upload.ts, traced to middleware chain...
         [Design] Found existing rate limiter in src/middleware/rateLimit.ts
@@ -69,7 +69,7 @@ Assistant: [Ship] Bootstrapping task: rate-limit-upload
         [Design] Peer challenger confirmed: both plans agree on middleware approach.
         [Design] Execution drill passed — 3 stories, all implementable.
 
-        [Ship] Design complete — 3 stories extracted.
+        [Auto] Design complete — 3 stories extracted.
 
         ┌─ Spec: rate-limit-upload ─────────────────────────┐
         │ Story 1: Wire /api/upload through existing rate    │
@@ -83,23 +83,23 @@ Assistant: [Ship] Bootstrapping task: rate-limit-upload
         │ - SHOULD: Existing rate limiter tests still pass   │
         └───────────────────────────────────────────────────┘
 
-        [Ship] Dev: Implementing 3 stories...
+        [Dev] Implementing 3 stories...
         [Dev] Story 1: PASS — middleware wired, tests green
         [Dev] Story 2: PASS — quota logic added with Redis counter
         [Dev] Story 3: PASS — 429 + Retry-After verified
 
-        [Ship] Review: Code review...
+        [Review] Code review...
         [Review] 1 finding: Redis key missing TTL
-        [Ship] Dev: Fixing review bugs...
-        [Ship] Review: Re-reviewing... clean.
+        [Dev] Fixing review bugs...
+        [Review] Re-reviewing... clean.
 
-        [Ship] QA: Testing against running app...
+        [QA] Testing against running app...
         [QA] 3/3 MUST criteria passed (L1 evidence: curl responses)
         [QA] Verdict: PASS
 
-        [Ship] Simplify: No dead code found.
+        [Refactor] No dead code found.
 
-        [Ship] Handoff: Creating PR...
+        [Handoff] Creating PR...
         PR #48 created. CI passing. Ready for review.
 ```
 
