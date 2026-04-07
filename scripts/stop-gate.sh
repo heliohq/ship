@@ -245,23 +245,48 @@ DESCRIPTION=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 #   1. phase=learn (pipeline already past handoff)
 #   2. phase=handoff AND the task dir has handoff evidence (PR URL)
 
+
+# pr_is_mergeable: check if the current branch's PR is in a clean merge state.
+# Returns 0 if mergeable, 1 otherwise. Requires gh CLI.
+pr_is_mergeable() {
+  command -v gh >/dev/null 2>&1 || return 1
+  local state
+  state=$(gh pr view "$BRANCH" --json mergeStateStatus --jq '.mergeStateStatus' 2>/dev/null) || return 1
+  [ "$state" = "CLEAN" ] || [ "$state" = "HAS_HOOKS" ] || [ "$state" = "UNSTABLE" ]
+}
+
 case "$PHASE" in
-  learn)
-    # Pipeline is in its final phase — allow exit without deleting state
-    # (the orchestrator's normal flow handles cleanup)
-    exit 0
-    ;;
-  handoff)
-    # Check for PR evidence: a committed handoff state or PR URL in artifacts
-    TASK_DIR="$CWD/.ship/tasks/$TASK_ID"
-    if [ -d "$TASK_DIR" ]; then
+  learn|handoff)
+    # Check for PR evidence (handoff) and merge readiness (both).
+    # "Past handoff" does not mean the PR is merge-ready — the branch
+    # could be behind main, CI could have failed, etc.
+    if [ "$PHASE" = "handoff" ]; then
+      TASK_DIR="$CWD/.ship/tasks/$TASK_ID"
+      if [ ! -d "$TASK_DIR" ]; then
+        break  # no task dir — fall through to verifier
+      fi
       PR_EVIDENCE=$(grep -rls 'github\.com.*pull/' "$TASK_DIR/" 2>/dev/null | head -1)
-      if [ -n "$PR_EVIDENCE" ]; then
-        # Handoff has PR evidence — allow exit (don't delete state; learn still needs to run)
-        exit 0
+      if [ -z "$PR_EVIDENCE" ]; then
+        break  # no PR yet — fall through to verifier
       fi
     fi
-    # No PR evidence yet — fall through to full verifier
+
+    if pr_is_mergeable; then
+      exit 0
+    fi
+
+    # PR exists but is not mergeable — block with actionable hint
+    MERGE_STATE=$(gh pr view "$BRANCH" --json mergeStateStatus --jq '.mergeStateStatus' 2>/dev/null || echo "UNKNOWN")
+    REASON="[Ship] PR is not merge-ready (mergeStateStatus: $MERGE_STATE).
+Task: $TASK_ID
+Current phase: $PHASE
+Branch: $BRANCH
+Base branch: $BASE_BRANCH
+
+The PR needs to be updated before the pipeline can complete.
+If the branch is behind $BASE_BRANCH, rebase and push. Then resume /ship:auto."
+    block_with_reason "$REASON" "Ship: PR not merge-ready ($MERGE_STATE) — rebase and resume"
+    exit 0
     ;;
 esac
 
