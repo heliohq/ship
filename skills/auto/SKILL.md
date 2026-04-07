@@ -80,21 +80,24 @@ Then call:
 Agent(prompt=<contents of PROMPT_FILE>)
 ```
 
-**2c.** Read the agent's response and classify it as a **verdict**:
+**2c.** Read the agent's report card. Every sub-skill outputs a structured
+report card with a `Status` field. Map it to a verdict:
 
-| Verdict | When |
-|---------|------|
-| `success` | Phase goal clearly met |
-| `findings` | Specific fixable issues reported (review/QA only) |
-| `fail` | Cannot complete, missing context, broken |
-| `blocked` | Needs human decision or external dependency |
-| `skip` | Phase not applicable. Only valid for **qa** phase. |
+| Report Card Status | Verdict |
+|-------------------|---------|
+| DONE | `success` |
+| DONE_WITH_CONCERNS | `success` |
+| PASS | `success` |
+| FINDINGS | `findings` |
+| FAIL | `fail` |
+| BLOCKED | `blocked` |
+| NEEDS_CONTEXT | `fail` |
+| SKIP | `skip` (qa only) |
 
 **Edge cases:**
-- Agent says BLOCKED but also suggests a fix → classify as `fail` (let the script retry with the fix context)
-- Agent output is garbled or unparseable → classify as `fail`
-- Agent response mixes success and concerns → classify as `success` (concerns are logged, not blocking)
-- Agent says PASS but also lists issues → classify as `findings` (issues take priority)
+- No report card in response → classify as `fail`
+- Status is BLOCKED but response suggests a fix → classify as `fail`
+- Status is PASS but Metrics show issues → classify as `findings`
 - When in doubt, lean toward `fail` — the script will retry.
 
 **2d.** If the verdict is `findings` or `fail` and the agent listed specific issues,

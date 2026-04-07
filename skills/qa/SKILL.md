@@ -218,4 +218,4 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 3. **Full pipeline** — /ship:auto to handle fixes and shipping
 ```
 
-In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
+Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.

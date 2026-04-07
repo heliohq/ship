@@ -387,7 +387,7 @@ Verify `spec.md` and `plan.md` are non-empty on disk, then output the report car
 3. **Review the plan** — read the artifacts and give feedback
 ```
 
-In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
+Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
 
 ### Blocked (both modes)
 

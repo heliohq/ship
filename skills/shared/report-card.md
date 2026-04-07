@@ -24,7 +24,8 @@ This format is consistent across all skills so users always know where to look.
 | <path> | <what it is> |
 ```
 
-In standalone mode, append:
+Always include Next Steps — the orchestrator reads the report card the same
+way a human does. No separate auto/standalone output formats.
 
 ```markdown
 ### Next Steps
@@ -32,8 +33,6 @@ In standalone mode, append:
 2. **Alternative** — /ship:<other-skill>
 3. **Other** — <description>
 ```
-
-In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
 
 ## Phase-Specific Metrics
 
