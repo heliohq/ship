@@ -135,11 +135,13 @@ echo ""
 # ── Test 2: Complete design:success → dev ────────────────────
 echo "▸ Test 2: Design success → Dev dispatch"
 
-# Create mock artifacts
+# Create mock artifacts (all design artifacts required — no focused/broad split)
 TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan"
 printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
 printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
+printf '# Peer Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/peer-spec.md"
+printf '# Diff Report\n## Resolved\n- All aligned\n' > "$TASK_DIR/plan/diff-report.md"
 
 # Need a diff for dev validation later — create a dummy commit
 echo "test" > dummy.txt
@@ -302,6 +304,8 @@ TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan" "$TASK_DIR/qa"
 printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
 printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
+printf '# Peer Spec\n## Criteria\n- Must work\n' > "$TASK_DIR/plan/peer-spec.md"
+printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.md"
 echo "test" > dummy2.txt && git add dummy2.txt && git commit -q -m "dummy2"
 
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
@@ -361,6 +365,8 @@ TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan" "$TASK_DIR/qa"
 printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
 printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
+printf '# Peer Spec\n## Criteria\n- Must work\n' > "$TASK_DIR/plan/peer-spec.md"
+printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.md"
 echo "report" > "$TASK_DIR/qa/report.md"
 echo "test" > dummy3.txt && git add dummy3.txt && git commit -q -m "dummy3"
 echo "review" > "$TASK_DIR/review.md"
@@ -396,6 +402,8 @@ TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan"
 printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
 printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
+printf '# Peer Spec\n## Criteria\n- Must work\n' > "$TASK_DIR/plan/peer-spec.md"
+printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.md"
 echo "test" > dummy4.txt && git add dummy4.txt && git commit -q -m "dummy4"
 echo "P1: bug" > "$TASK_DIR/review.md"
 

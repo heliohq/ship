@@ -195,11 +195,11 @@ validate_artifacts() {
       # Plan must have at least one story/task
       grep -qiE "^##|^-|^[0-9]+\." "$task_dir/plan/plan.md" \
         || { echo "plan.md has no stories or tasks"; return 1; }
-      # If peer-spec exists, diff-report must also exist (broad task ran peer eval)
-      if [ -f "$task_dir/plan/peer-spec.md" ]; then
-        file_exists_nonempty "$task_dir/plan/diff-report.md" \
-          || { echo "peer-spec.md exists but diff-report.md missing — peer evaluation incomplete"; return 1; }
-      fi
+      # Peer evaluation artifacts are always required (no focused/broad split)
+      file_exists_nonempty "$task_dir/plan/peer-spec.md" \
+        || { echo "peer-spec.md missing — peer evaluation did not run"; return 1; }
+      file_exists_nonempty "$task_dir/plan/diff-report.md" \
+        || { echo "diff-report.md missing — spec divergence resolution did not run"; return 1; }
       ;;
     dev|dev_fix)
       local diff_count
