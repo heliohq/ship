@@ -2,6 +2,15 @@ You must use Skill('ship:qa'). Skip preamble and auth gate.
 
 Test the implementation against the spec. Produce evidence-backed reports.
 
+IMPORTANT: You MUST start the application and test it interactively.
+- If the diff touches frontend/UI → use browser testing (references/browser.md)
+- If the project is an Electron app → use Electron automation (references/electron.md)
+- If the diff touches API endpoints → use API testing (references/api.md)
+- If the diff touches CLI → use CLI testing (references/cli.md)
+Do NOT skip interactive testing. "Code looks correct" or "unit tests pass" is not
+sufficient — you must verify behavior in the running application with evidence
+(screenshots, curl output, command output).
+
 spec: {{TASK_DIR}}/plan/spec.md
 task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
