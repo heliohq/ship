@@ -4,11 +4,9 @@ set -u
 # Ship preflight — sourced by each skill before execution.
 # Checks CLI install, auth, version updates, and repo context.
 
-# Claude Code (and some CI) inherits a minimal PATH that may exclude
-# the Ship CLI install directory.
-if ! command -v ship >/dev/null 2>&1; then
-  [ -x "$HOME/.ship/bin/ship" ] && export PATH="$HOME/.ship/bin:$PATH"
-fi
+# Ensure user-installed binaries (ship, gh, node) are on PATH.
+_BOOTSTRAP="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/path-bootstrap.sh"
+[ -f "$_BOOTSTRAP" ] && source "$_BOOTSTRAP"
 
 _SKILL_NAME="${SHIP_SKILL_NAME:-unknown}"
 

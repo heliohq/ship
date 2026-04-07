@@ -15,6 +15,10 @@ set -u
 
 INPUT=$(cat)
 
+# Ensure user-installed binaries (gh, ship, node) are on PATH.
+_BOOTSTRAP="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/path-bootstrap.sh"
+[ -f "$_BOOTSTRAP" ] && source "$_BOOTSTRAP"
+
 # Verifier subprocesses bypass Ship hooks entirely to avoid recursive stop loops.
 [ "${SHIP_STOP_GATE_BYPASS:-0}" = "1" ] && exit 0
 

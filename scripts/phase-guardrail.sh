@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -u
 
+# Ensure user-installed binaries are on PATH.
+_BOOTSTRAP="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/path-bootstrap.sh"
+[ -f "$_BOOTSTRAP" ] && source "$_BOOTSTRAP"
+
 # Ship phase guardrail — PreToolUse hook that enforces artifact access
 # rules per pipeline phase.
 #
