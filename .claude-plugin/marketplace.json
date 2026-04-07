@@ -1,15 +1,15 @@
 {
-  "name": "ship-ai",
-  "description": "ShipAI plugin registry",
+  "name": "heliohq",
+  "description": "Helio Pause plugin registry",
   "owner": {
-    "name": "Ship",
+    "name": "Helio Pause",
     "url": "https://www.ship.tech"
   },
   "plugins": [
     {
       "name": "ship",
       "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
-      "version": "1.6.2",
+      "version": "1.7.0",
       "source": "./"
     }
   ]
