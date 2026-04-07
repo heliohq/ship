@@ -1,8 +1,8 @@
 {
   "name": "heliohq",
-  "description": "Helio Pause plugin registry",
+  "description": "Heliopause plugin registry",
   "owner": {
-    "name": "Helio Pause",
+    "name": "Heliopause",
     "url": "https://www.ship.tech"
   },
   "plugins": [
