@@ -320,9 +320,9 @@ best available independent review. Add a warning:
 .ship/tasks/<task_id>/
   plan/
     spec.md          — final merged spec (flexible sections, brainstorming style)
-    peer-spec.md     — peer agent's independent spec (always produced)
+    peer-spec.md     — peer agent's independent spec
     plan.md          — how to build it (TDD tasks, writing-plans style)
-    diff-report.md   — host spec vs peer spec divergences and resolutions (always produced)
+    diff-report.md   — host spec vs peer spec divergences and resolutions
 ```
 
 ## Timeouts
