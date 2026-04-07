@@ -354,31 +354,40 @@ best available independent review. Add a warning:
 
 ### Execution Handoff
 
-Verify `spec.md` and `plan.md` are non-empty on disk, then output:
+Verify `spec.md` and `plan.md` are non-empty on disk, then output the report card
+(read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Design] Planning complete for "<task title>".
+## [Design] Report Card
 
-## Summary
-- Investigation: <N> files traced, <M> existing defenses found
-- Independent replication: <M> divergences resolved (<N> by evidence, <N> by debate)
-- Execution drill: <N>/<total> steps CLEAR
-- Stories: <N> tasks in plan.md
+| Field | Value |
+|-------|-------|
+| Status | DONE |
+| Summary | <task title> — <N> stories planned |
 
-## Artifacts
-- spec.md: .ship/tasks/<task_id>/plan/spec.md
-- peer-spec.md: .ship/tasks/<task_id>/plan/peer-spec.md
-- plan.md: .ship/tasks/<task_id>/plan/plan.md
-- diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Files traced | <N> |
+| Divergences resolved | <N> (<M> by evidence, <K> by debate) |
+| Drill steps CLEAR | <N>/<total> |
+| Stories | <N> |
 
-## What's next?
+### Artifacts
+| File | Purpose |
+|------|---------|
+| .ship/tasks/<task_id>/plan/spec.md | Merged spec |
+| .ship/tasks/<task_id>/plan/peer-spec.md | Peer spec |
+| .ship/tasks/<task_id>/plan/plan.md | Executable plan |
+| .ship/tasks/<task_id>/plan/diff-report.md | Divergence resolutions |
+
+### Next Steps
 1. **Full pipeline (recommended)** — /ship:auto to implement, review, QA, and ship
 2. **Implement only** — /ship:dev to execute this plan
 3. **Review the plan** — read the artifacts and give feedback
 ```
 
-In /ship:auto mode (the calling prompt contains a task_id), skip the
-"What's next?" choices and return — Auto owns the flow.
+In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
 
 ### Blocked (both modes)
 

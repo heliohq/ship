@@ -189,15 +189,29 @@ context about recent operational discoveries without manual lookup.
 
 ## Execution Handoff
 
-Output summary:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Learn] Session captured.
-  New entries: <N> added to .learnings/LEARNINGS.md
-    - <N> verified (high confidence)
-    - <N> pending (needs validation)
-  Also generated: <N> hookify rules, <N> design doc updates
-  Auto-verified: <N> pending entries → verified
-  Auto-pruned: <N> stale/contradicted entries removed
-  Total: <N> entries (<N> verified, <N> pending)
+## [Learn] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | DONE |
+| Summary | <N> learnings captured |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| New entries | <N> |
+| Verified | <N> |
+| Pending | <N> |
+| Auto-promoted | <N> pending → verified |
+| Auto-pruned | <N> stale/contradicted removed |
+| Hookify rules | <N> generated |
+| Total entries | <N> (<V> verified, <P> pending) |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| .learnings/LEARNINGS.md | Persistent learnings store |
 ```

@@ -133,26 +133,40 @@ High-risk changes. Write an execution card first, get alignment, then execute.
 
 ## Execution Handoff
 
-After all changes, output summary and offer next steps:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Refactor] Complete.
-  Smells fixed: <N>
-  Functions extracted: <N>
-  Duplicated blocks eliminated: <N> (was in M files, now in 1)
-  Dead code deleted: <N> lines
-  Lines before/after: <N> → <M>
-  Files touched: <N>
-  Tests: <passed|failed|none>
-  Deferred: <smells skipped or outside scope>
+## [Refactor] Report Card
 
-## What's next?
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | <N> smells fixed, <M> lines saved |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Smells fixed | <N> |
+| Functions extracted | <N> |
+| Duplication eliminated | <N> blocks |
+| Dead code deleted | <N> lines |
+| Lines before/after | <N> → <M> |
+| Files touched | <N> |
+| Tests | <passed / failed / none> |
+| Deferred | <smells outside scope> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| .ship/tasks/<task_id>/refactor/spec.md | Execution card (planned path only) |
+
+### Next Steps
 1. **Review** — /ship:review to verify no behavior changed
 2. **Ship** — /ship:handoff to create the PR
 3. **Continue** — /ship:refactor on remaining deferred smells
 ```
 
-In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
 
 ## Quality Gates
 

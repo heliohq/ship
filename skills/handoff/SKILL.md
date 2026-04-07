@@ -262,6 +262,36 @@ Output: `[Handoff] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking
 
 ---
 
+## Execution Handoff
+
+Output the report card (read `skills/shared/report-card.md` for the standard format):
+
+```
+## [Handoff] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | PR #<N> — checks <green / pending / failed> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| PR URL | <url> |
+| Check status | <green / N passing, M failed> |
+| Fix rounds | <N>/3 |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| PR on GitHub | Shipped code |
+| CHANGELOG.md | Updated changelog (if repo has one) |
+```
+
+In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
+
+---
+
 ## Example Workflow
 
 ```

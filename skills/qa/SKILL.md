@@ -189,18 +189,33 @@ When invoked with `--recheck`:
 Never stop for individual criterion failures (record and continue)
 or a single service failing to start (test what you can).
 
-Output summary, then offer next steps in standalone mode:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[QA] <PASS|FAIL|BLOCKED|SKIP>
-  Criteria: <N>/<total> passed
-  Issues: <N> found beyond spec
-  Reports: <qa_dir>/
+## [QA] Report Card
 
-## What's next?
+| Field | Value |
+|-------|-------|
+| Status | <PASS / FAIL / BLOCKED / SKIP> |
+| Summary | <N>/<total> criteria passed |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Criteria passed | <N>/<total> |
+| Issues beyond spec | <N> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| <qa_dir>/browser-report.md | Web UI findings |
+| <qa_dir>/api-report.md | API findings |
+| <qa_dir>/*.png | Screenshot evidence |
+
+### Next Steps
 1. **Fix failures** — /ship:dev to fix the reported issues
 2. **Ship (if passing)** — /ship:handoff to create the PR
 3. **Full pipeline** — /ship:auto to handle fixes and shipping
 ```
 
-In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+In /ship:auto mode, skip the Next Steps section — Auto owns the flow.

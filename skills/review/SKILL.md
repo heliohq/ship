@@ -237,17 +237,32 @@ path must remember the same defensive work.
 
 ## Execution Handoff
 
-Output summary, then offer next steps in standalone mode:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Review] <Clean|Findings|Blocked>
-  Findings: <P1 count> P1, <P2 count> P2, <P3 count> P3
-  Review written to: <task_dir>/review.md
+## [Review] Report Card
 
-## What's next?
+| Field | Value |
+|-------|-------|
+| Status | <DONE / FINDINGS / BLOCKED> |
+| Summary | <Clean / N findings> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| P1 | <count> |
+| P2 | <count> |
+| P3 | <count> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| <task_dir>/review.md | Findings with evidence |
+
+### Next Steps
 1. **Fix findings** — /ship:dev to fix the reported bugs
 2. **QA (if clean)** — /ship:qa to test the running application
 3. **Ship (if clean)** — /ship:handoff to create the PR
 ```
 
-In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+In /ship:auto mode, skip the Next Steps section — Auto owns the flow.

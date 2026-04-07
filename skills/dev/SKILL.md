@@ -407,19 +407,33 @@ Use `[Dev]` prefix:
 
 ## Execution Handoff
 
-Output summary, then offer next steps in standalone mode:
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
-[Dev] <DONE|DONE_WITH_CONCERNS|BLOCKED|NEEDS_CONTEXT>
-  Stories: <N>/<total> complete, <W> waves
-  Concerns: <N> recorded in concerns.md
-  Tests: <TEST_CMD> — <passed|failed>
-  Files changed: <list>
+## [Dev] Report Card
 
-## What's next?
+| Field | Value |
+|-------|-------|
+| Status | <DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT> |
+| Summary | <N>/<total> stories complete |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Stories | <N>/<total> |
+| Waves | <W> |
+| Concerns | <N> (in concerns.md) |
+| Tests | <passed / failed> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| .ship/tasks/<task_id>/concerns.md | Residual concerns (if any) |
+
+### Next Steps
 1. **Review (recommended)** — /ship:review to review the full diff
 2. **QA** — /ship:qa to test the running application
 3. **Full pipeline** — /ship:auto to review, QA, and ship
 ```
 
-In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.
+In /ship:auto mode, skip the Next Steps section — Auto owns the flow.
