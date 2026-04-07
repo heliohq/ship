@@ -1,7 +1,12 @@
-You must use Skill('qa'). Skip preamble and auth gate.
+You must use Skill('ship:qa'). Skip preamble and auth gate.
 
 Recheck after fixes: re-test previously failing criteria + check for regressions.
 Skip exploratory testing (already done in first pass).
+
+IMPORTANT: You MUST start the application and re-test interactively — use the
+same testing method (browser, electron, API, CLI) as the original QA pass.
+Do NOT skip interactive testing. Verify fixes in the running application with
+evidence (screenshots, curl output, command output).
 
 spec: {{TASK_DIR}}/plan/spec.md
 task_dir: {{TASK_DIR}}

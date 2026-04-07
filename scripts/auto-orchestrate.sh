@@ -15,7 +15,8 @@ set -u
 #                            Validate artifacts, decide next action
 #   status [--json]          Print current state (debugging)
 
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
+_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$(dirname "$_SCRIPT_DIR")}}"
 STATE_FILE=".ship/ship-auto.local.md"
 STATE_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/auto-state.sh"
 TASK_ID_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/task-id.sh"

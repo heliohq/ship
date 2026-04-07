@@ -1,9 +1,13 @@
-You must use Skill('design'). Skip preamble and auth gate.
+You must use Skill('ship:design'). Skip preamble and auth gate.
 
 Planning request:
 ---
 {{DESCRIPTION}}
 ---
+
+IMPORTANT: You MUST write both spec.md and plan.md to the artifacts directory.
+The orchestrator validates these files exist and are non-empty before advancing
+to the dev phase. Do NOT respond conversationally — write the artifacts to disk.
 
 task_id: {{TASK_ID}}
 Artifacts: .ship/tasks/{{TASK_ID}}/plan/

@@ -4,6 +4,10 @@ set -u
 # Ship preflight — sourced by each skill before execution.
 # Checks CLI install, auth, version updates, and repo context.
 
+# Ensure user-installed binaries (ship, gh, node) are on PATH.
+_BOOTSTRAP="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/path-bootstrap.sh"
+[ -f "$_BOOTSTRAP" ] && source "$_BOOTSTRAP"
+
 _SKILL_NAME="${SHIP_SKILL_NAME:-unknown}"
 
 # --- User preferences ---
@@ -32,8 +36,11 @@ fi
 echo "SHIP_AUTO_LOGIN: $_AUTO_LOGIN"
 
 # --- Ship CLI check ---
-if command -v ship >/dev/null 2>&1; then
-  _CLI_VERSION=$(ship --version 2>/dev/null)
+_SHIP_BIN=""
+command -v ship >/dev/null 2>&1 && _SHIP_BIN="ship"
+
+if [ -n "$_SHIP_BIN" ]; then
+  _CLI_VERSION=$("$_SHIP_BIN" --version 2>/dev/null)
   if [ $? -ne 0 ] || [ -z "$_CLI_VERSION" ]; then
     echo "SHIP_CLI: broken"
     echo "ACTION_REQUIRED: Ship CLI is installed but broken. Reinstall: curl -fsSL https://www.ship.tech/install.sh | sh"
@@ -47,7 +54,7 @@ if command -v ship >/dev/null 2>&1; then
     fi
 
     # Check auth status (use --json for structured output; exit code is unreliable)
-    _AUTH_JSON=$(ship auth status --json 2>/dev/null || echo '{}')
+    _AUTH_JSON=$("$_SHIP_BIN" auth status --json 2>/dev/null || echo '{}')
     _LOGGED_IN=$(printf '%s' "$_AUTH_JSON" | jq -r '.logged_in // false')
 
     if [ "$_LOGGED_IN" = "true" ]; then

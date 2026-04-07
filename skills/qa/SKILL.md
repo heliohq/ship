@@ -98,7 +98,7 @@ Based on what the diff touched, use the matching references:
 | Frontend / UI | `references/browser.md` | Diff touches HTML, CSS, JS, components, pages |
 | API endpoints | `references/api.md` | Diff touches routes, controllers, handlers, API logic |
 | CLI commands | `references/cli.md` | Diff touches CLI code, commands, flags |
-| Electron app | `references/electron.md` | Project is an Electron app |
+| Electron app | `references/electron.md` | Project is an Electron app. Use `agent-browser` via CDP — do NOT use `computer-use`/`request_access` (Electron registers as "Electron Helper", not a named app). Read the reference first. |
 
 **Most projects have a frontend.** When you test through the browser,
 you implicitly test the API, auth, database, and most of the stack.

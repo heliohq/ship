@@ -7,6 +7,10 @@
 
 set -u
 
+# Ensure user-installed binaries are on PATH.
+_BOOTSTRAP="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/path-bootstrap.sh"
+[ -f "$_BOOTSTRAP" ] && source "$_BOOTSTRAP"
+
 INPUT=$(cat)
 
 CWD=""
