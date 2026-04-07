@@ -75,13 +75,13 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 Register the plugin source first:
 
 ```
-/plugin marketplace add helio-pause/ship
+/plugin marketplace add heliohq/ship
 ```
 
 Then install the plugin:
 
 ```
-/plugin install helio-pause@ship
+/plugin install heliohq@ship
 ```
 
 ### Codex
