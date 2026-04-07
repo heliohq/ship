@@ -7,6 +7,11 @@ review is clean (write a short "no findings" report). The orchestrator reads
 this file to decide the next phase — if it's missing, the pipeline stalls.
 Do NOT only output findings to the conversation; the file is the artifact.
 
+Report card Status rules:
+- Zero P1/P2 findings → Status: PASS
+- Any P1 or P2 findings → Status: FINDINGS (even if everything else is good)
+P2s are real issues that the pipeline must fix. Only P3s are advisory.
+
 spec: {{TASK_DIR}}/plan/spec.md
 task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
