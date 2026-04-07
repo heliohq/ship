@@ -1,6 +1,6 @@
 ---
 name: design
-version: 1.1.0
+version: 1.2.0
 description: "Adversarial pre-coding planning: the host agent and a peer agent independently investigate the codebase, diff specs, and validate the final plan with an execution drill."
 allowed-tools:
   - Bash
@@ -179,33 +179,19 @@ If `SPEC_EXISTS`:
 - Your job narrows: investigate to validate the spec's claims, then
   produce only `plan.md`. You may append an `## Investigation` section
   to the existing spec if it lacks one, but preserve all existing sections.
-- Skip peer parallel investigation — spec already exists and was
-  validated upstream. No `peer-spec.md` or `diff-report.md` produced.
-- Skip to Phase 5 (Write Plan) with the spec as your starting context.
-- The execution drill (Phase 6) still runs — plan.md always gets validated.
+- Peer investigation and diff still run — the peer validates the
+  upstream spec independently. Execution drill always runs.
 
-If `NO_SPEC`: proceed to scope assessment.
-
-### Scope assessment
-
-After reading the task description, assess scope:
-
-- **Focused** (≤3 files, well-scoped bug fix or small change):
-  Skip peer investigation (Phase 2 Step A), diff & verify (Phase 4),
-  and execution drill (Phase 6). Just: investigate → spec → plan.
-  No `peer-spec.md` or `diff-report.md` produced.
-- **Broad** (4+ files, new feature, architectural change):
-  Full process — all phases including peer investigation and drill.
+If `NO_SPEC`: proceed to Phase 2.
 
 ## Phase 2: Investigate (Parallel)
 
 **This is the most important phase. Do not rush it.**
 
-### Step A: Dispatch peer investigation (broad scope only)
+### Step A: Dispatch peer investigation
 
-Skip this step for **focused** tasks. For **broad** tasks, kick off the
-peer investigation **before** you start investigating. The peer works in
-parallel while you read code.
+Kick off the peer investigation **before** you start investigating.
+The peer works in parallel while you read code.
 
 Read `independent-investigator.md` for the dispatch pattern and
 prompt template. Fill in the task description, task_id, and repo root.
@@ -230,18 +216,15 @@ Investigate the codebase, then write `spec.md`. The reference covers
 investigation strategy (bug fixes, new features, all tasks), vagueness
 checks, spec structure, and self-review.
 
-If investigation reveals the task is broader than initially assessed
-(e.g., more files affected, hidden dependencies, cross-cutting concerns),
-escalate to the full process — dispatch peer investigation at that point.
+If investigation reveals hidden dependencies or cross-cutting concerns
+not apparent from the task description, note them for the spec.
 
 ## Phase 3: Write Spec
 
 Covered by `write-spec.md` — follow the spec writing and self-review
 guidance there.
 
-## Phase 4: Diff & Verify (broad scope only)
-
-Skip this phase for **focused** tasks — proceed directly to Phase 5.
+## Phase 4: Diff & Verify
 
 Read `peer-spec.md` (written by the peer investigation dispatched in Phase 2).
 Compare it against your `spec.md`.
@@ -295,9 +278,7 @@ Translate the validated spec.md into an executable plan.md. The reference
 covers the plan template, bite-sized steps, code completeness guidance,
 and the self-review checklist.
 
-## Phase 6: Execution Drill (broad scope only)
-
-Skip this phase for **focused** tasks — proceed directly to Execution Handoff.
+## Phase 6: Execution Drill
 
 The final gate. Give the plan to the peer agent and ask it to validate
 every step is implementable.
@@ -339,9 +320,9 @@ best available independent review. Add a warning:
 .ship/tasks/<task_id>/
   plan/
     spec.md          — final merged spec (flexible sections, brainstorming style)
-    peer-spec.md     — peer agent's independent spec (for diff comparison)
+    peer-spec.md     — peer agent's independent spec (always produced)
     plan.md          — how to build it (TDD tasks, writing-plans style)
-    diff-report.md   — host spec vs peer spec divergences and resolutions
+    diff-report.md   — host spec vs peer spec divergences and resolutions (always produced)
 ```
 
 ## Timeouts
@@ -379,16 +360,16 @@ Verify `spec.md` and `plan.md` are non-empty on disk, then output:
 [Design] Planning complete for "<task title>".
 
 ## Summary
-- Scope: <focused | broad>
 - Investigation: <N> files traced, <M> existing defenses found
-- Independent replication: <M> divergences resolved (<N> by evidence, <N> by debate)  [broad only]
-- Execution drill: <N>/<total> steps CLEAR  [broad only]
+- Independent replication: <M> divergences resolved (<N> by evidence, <N> by debate)
+- Execution drill: <N>/<total> steps CLEAR
 - Stories: <N> tasks in plan.md
 
 ## Artifacts
 - spec.md: .ship/tasks/<task_id>/plan/spec.md
+- peer-spec.md: .ship/tasks/<task_id>/plan/peer-spec.md
 - plan.md: .ship/tasks/<task_id>/plan/plan.md
-- diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md  [broad only]
+- diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md
 
 ## What's next?
 1. **Full pipeline (recommended)** — run /ship:auto to implement, review, QA, and ship
