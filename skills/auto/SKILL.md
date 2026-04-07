@@ -90,7 +90,12 @@ Agent(prompt=<contents of PROMPT_FILE>)
 | `blocked` | Needs human decision or external dependency |
 | `skip` | Phase not applicable. Only valid for **qa** phase. |
 
-When in doubt, lean toward `fail` — the script will retry.
+**Edge cases:**
+- Agent says BLOCKED but also suggests a fix → classify as `fail` (let the script retry with the fix context)
+- Agent output is garbled or unparseable → classify as `fail`
+- Agent response mixes success and concerns → classify as `success` (concerns are logged, not blocking)
+- Agent says PASS but also lists issues → classify as `findings` (issues take priority)
+- When in doubt, lean toward `fail` — the script will retry.
 
 **2d.** If the verdict is `findings` or `fail` and the agent listed specific issues,
 save them to a temp file:
@@ -127,10 +132,10 @@ If `ACTION` is `dispatch` → go back to **2a**.
 ── Step 1 ──
 Bash("$SHIP_ORCH init 'add dark mode toggle'")
 → ACTION:dispatch  PHASE:design  PROMPT_FILE:.ship/tasks/.../prompts/design.md
-  MESSAGE:[Ship] Task created. Starting design phase...
+  MESSAGE:[Auto] Task created. Starting design phase...
 
 ── Step 2a ──
-Output: [Ship] Task created. Starting design phase...
+Output: [Auto] Task created. Starting design phase...
 
 ── Step 2b ──
 Read(.ship/tasks/.../prompts/design.md) → prompt content
@@ -142,7 +147,7 @@ verdict = success
 ── Step 2e ──
 Bash("$SHIP_ORCH complete design --verdict=success --summary='3 stories'")
 → ACTION:dispatch  PHASE:dev  PROMPT_FILE:.ship/tasks/.../prompts/dev.md
-  MESSAGE:[Ship] Design complete. Starting dev...
+  MESSAGE:[Auto] Design complete. Starting dev...
 
 ── (loop continues: dev → review → qa → simplify → handoff → learn → done) ──
 ```

@@ -356,7 +356,7 @@ EOF
   local prompt_file
   prompt_file=$(generate_prompt "design")
 
-  emit_dispatch "design" "$prompt_file" "[Ship] Task \"$task_id\" created. Starting design phase..."
+  emit_dispatch "design" "$prompt_file" "[Auto] Task \"$task_id\" created. Starting design phase..."
 }
 
 # ── RESUME Command ──────────────────────────────────────────
@@ -418,7 +418,7 @@ cmd_resume() {
     prompt_file=$(generate_prompt "$template")
   fi
 
-  emit_dispatch "$dispatch_phase" "$prompt_file" "[Ship] Resuming task \"$task_id\" — phase: $phase"
+  emit_dispatch "$dispatch_phase" "$prompt_file" "[Auto] Resuming task \"$task_id\" — phase: $phase"
 }
 
 # ── COMPLETE Command ────────────────────────────────────────
@@ -461,21 +461,21 @@ cmd_complete() {
       state_set "phase" "dev"
       state_set "pre_dev_sha" "$(current_head)"
       local pf; pf=$(generate_prompt "dev")
-      emit_dispatch "dev" "$pf" "[Ship] Design complete. Starting dev..."
+      emit_dispatch "dev" "$pf" "[Auto] Design complete. Starting dev..."
       ;;
     design:fail|design:blocked) retry_or_escalate "design" "$summary" ;;
 
     dev:success)
       state_set "phase" "review"
       local pf; pf=$(generate_prompt "review")
-      emit_dispatch "review" "$pf" "[Ship] Dev complete. Starting review..."
+      emit_dispatch "review" "$pf" "[Auto] Dev complete. Starting review..."
       ;;
     dev:fail|dev:blocked) retry_or_escalate "dev" "$summary" ;;
 
     review:success)
       state_set "phase" "qa"
       local pf; pf=$(generate_prompt "qa")
-      emit_dispatch "qa" "$pf" "[Ship] Review clean. Starting QA..."
+      emit_dispatch "qa" "$pf" "[Auto] Review clean. Starting QA..."
       ;;
     review:findings)
       local round; round=$(state_get "review_fix_round")
@@ -491,7 +491,7 @@ cmd_complete() {
           retry_or_escalate "review" "findings reported but no findings file available"
         else
           local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
-          emit_dispatch "review_fix" "$pf" "[Ship] Review found issues (round $((round + 1))/$MAX_RETRIES). Fixing..."
+          emit_dispatch "review_fix" "$pf" "[Auto] Review found issues (round $((round + 1))/$MAX_RETRIES). Fixing..."
         fi
       fi
       ;;
@@ -500,7 +500,7 @@ cmd_complete() {
     dev_fix:success|review_fix:success)
       state_set "phase" "review"
       local pf; pf=$(generate_prompt "review")
-      emit_dispatch "review" "$pf" "[Ship] Review fixes applied. Re-reviewing..."
+      emit_dispatch "review" "$pf" "[Auto] Review fixes applied. Re-reviewing..."
       ;;
     dev_fix:fail|dev_fix:blocked|review_fix:fail|review_fix:blocked)
       state_bump "review_fix_round"
@@ -512,7 +512,7 @@ cmd_complete() {
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         [ -z "$findings_file" ] && [ -f "$task_dir/review.md" ] && ff_arg="--findings-file=$task_dir/review.md"
         local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
-        emit_dispatch "review_fix" "$pf" "[Ship] Review fix retry (round $round/$MAX_RETRIES)..."
+        emit_dispatch "review_fix" "$pf" "[Auto] Review fix retry (round $round/$MAX_RETRIES)..."
       fi
       ;;
 
@@ -520,7 +520,7 @@ cmd_complete() {
       state_set "phase" "simplify"
       state_set "pre_simplify_sha" "$(current_head)"
       local pf; pf=$(generate_prompt "simplify")
-      emit_dispatch "simplify" "$pf" "[Ship] QA passed. Running simplify..."
+      emit_dispatch "simplify" "$pf" "[Auto] QA passed. Running simplify..."
       ;;
     qa:fail)
       local round; round=$(state_get "qa_fix_round")
@@ -531,7 +531,7 @@ cmd_complete() {
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
-        emit_dispatch "qa_fix" "$pf" "[Ship] QA failed (round $((round + 1))/$MAX_RETRIES). Fixing..."
+        emit_dispatch "qa_fix" "$pf" "[Auto] QA failed (round $((round + 1))/$MAX_RETRIES). Fixing..."
       fi
       ;;
     qa:blocked) retry_or_escalate "qa" "$summary" ;;
@@ -539,7 +539,7 @@ cmd_complete() {
     qa_fix:success)
       state_set "phase" "qa"
       local pf; pf=$(generate_prompt "qa-recheck")
-      emit_dispatch "qa" "$pf" "[Ship] QA fixes applied. Re-testing..."
+      emit_dispatch "qa" "$pf" "[Auto] QA fixes applied. Re-testing..."
       ;;
     qa_fix:fail|qa_fix:blocked)
       state_bump "qa_fix_round"
@@ -550,7 +550,7 @@ cmd_complete() {
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
-        emit_dispatch "qa_fix" "$pf" "[Ship] QA fix retry (round $round/$MAX_RETRIES)..."
+        emit_dispatch "qa_fix" "$pf" "[Auto] QA fix retry (round $round/$MAX_RETRIES)..."
       fi
       ;;
 
@@ -559,7 +559,7 @@ cmd_complete() {
       # reverts if broken). simplify.md must exist (validated above).
       state_set "phase" "handoff"
       local pf; pf=$(generate_prompt "handoff")
-      emit_dispatch "handoff" "$pf" "[Ship] Simplify done. Starting handoff..."
+      emit_dispatch "handoff" "$pf" "[Auto] Simplify done. Starting handoff..."
       ;;
     simplify:fail|simplify:blocked|simplify:skip)
       # No skip allowed — simplify must always produce simplify.md.
@@ -570,7 +570,7 @@ cmd_complete() {
     handoff:success)
       state_set "phase" "learn"
       local pf; pf=$(generate_prompt "learn" "--outcome=completed")
-      emit_dispatch "learn" "$pf" "[Ship] Handoff complete. Capturing learnings..."
+      emit_dispatch "learn" "$pf" "[Auto] Handoff complete. Capturing learnings..."
       ;;
     handoff:fail|handoff:blocked) retry_or_escalate "handoff" "$summary" ;;
 
@@ -581,7 +581,7 @@ cmd_complete() {
       if [ -n "$esc_reason" ]; then
         emit_escalate "$esc_reason" "$esc_phase"
       else
-        emit_done "[Ship] Pipeline complete. $summary"
+        emit_done "[Auto] Pipeline complete. $summary"
       fi
       ;;
 
@@ -600,7 +600,7 @@ retry_or_escalate() {
     local template pf
     template=$(phase_template "$phase")
     pf=$(generate_prompt "$template" "--extra=$reason")
-    emit_dispatch "$phase" "$pf" "[Ship] Retrying $phase (attempt $count/$MAX_RETRIES)..."
+    emit_dispatch "$phase" "$pf" "[Auto] Retrying $phase (attempt $count/$MAX_RETRIES)..."
   fi
 }
 
@@ -612,7 +612,7 @@ dispatch_learn_then_escalate() {
   state_set "escalation_reason" "$reason"
   state_set "escalation_phase" "$orig_phase"
   local pf; pf=$(generate_prompt "learn" "--outcome=escalated at $orig_phase")
-  emit_dispatch "learn" "$pf" "[Ship] Capturing learnings before escalation..."
+  emit_dispatch "learn" "$pf" "[Auto] Capturing learnings before escalation..."
 }
 
 # ── STATUS Command ──────────────────────────────────────────

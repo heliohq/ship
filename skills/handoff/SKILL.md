@@ -174,7 +174,7 @@ Push and create:
 4. Create the PR if it does not exist.
 5. If the PR already exists, update the body or add a short comment with the latest verification summary.
 
-Output: `[Ship] PR created: <url>`
+Output: `[Handoff] PR created: <url>`
 
 ## Phase 5: Wait for GitHub Checks
 
@@ -243,7 +243,7 @@ gh api graphql -f query='
   }' -F subjectId="<comment-node-id>"
 ```
 
-Output: `[Ship] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking CI...`
+Output: `[Handoff] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking CI...`
 
 ---
 
