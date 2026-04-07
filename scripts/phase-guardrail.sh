@@ -15,6 +15,12 @@ set -u
 
 INPUT=$(cat)
 
+# Fast exit: only care about file-access tools (avoids jq on 90% of calls)
+case "$INPUT" in
+  *'"tool_name":"Read"'*|*'"tool_name":"Write"'*|*'"tool_name":"Edit"'*|*'"tool_name": "Read"'*|*'"tool_name": "Write"'*|*'"tool_name": "Edit"'*) ;;
+  *) exit 0 ;;
+esac
+
 STATE_FILE=".ship/ship-auto.local.md"
 
 # Only active during auto pipeline
@@ -25,12 +31,6 @@ AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""')
 [ -n "$AGENT_ID" ] || exit 0
 
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
-
-# Only care about file-access tools
-case "$TOOL" in
-  Read|Write|Edit) ;;
-  *) exit 0 ;;
-esac
 
 # Extract file path from tool input
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""')

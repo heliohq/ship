@@ -26,11 +26,14 @@ trap cleanup EXIT
 
 parse_output() {
   local output="$1"
-  ACTION=$(echo "$output" | grep "^ACTION:" | head -1 | cut -d: -f2-)
-  PHASE=$(echo "$output" | grep "^PHASE:" | head -1 | cut -d: -f2-)
-  PROMPT_FILE=$(echo "$output" | grep "^PROMPT_FILE:" | head -1 | cut -d: -f2-)
-  MESSAGE=$(echo "$output" | grep "^MESSAGE:" | head -1 | cut -d: -f2-)
-  REASON=$(echo "$output" | grep "^REASON:" | head -1 | cut -d: -f2-)
+  ACTION="" PHASE="" PROMPT_FILE="" MESSAGE="" REASON=""
+  eval "$(echo "$output" | awk -F: '
+    /^ACTION:/      { print "ACTION=\"" substr($0, index($0,":")+1) "\"" }
+    /^PHASE:/       { print "PHASE=\"" substr($0, index($0,":")+1) "\"" }
+    /^PROMPT_FILE:/ { print "PROMPT_FILE=\"" substr($0, index($0,":")+1) "\"" }
+    /^MESSAGE:/     { print "MESSAGE=\"" substr($0, index($0,":")+1) "\"" }
+    /^REASON:/      { print "REASON=\"" substr($0, index($0,":")+1) "\"" }
+  ')"
 }
 
 assert_eq() {

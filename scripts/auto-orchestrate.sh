@@ -96,6 +96,14 @@ current_branch() {
   git branch --show-current 2>/dev/null || echo ""
 }
 
+resolve_session_id() {
+  local sid
+  sid="$(cat .ship/session-id.local 2>/dev/null || printf '%s' "${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}")"
+  sid="$(printf '%s' "$sid" | tr -d '\r\n')"
+  [ -n "$sid" ] || sid="unknown"
+  printf '%s' "$sid"
+}
+
 # ── Template Engine ─────────────────────────────────────────
 
 generate_prompt() {
@@ -210,7 +218,7 @@ validate_artifacts() {
       file_exists_nonempty "$task_dir/review.md" || { echo "review.md missing or empty"; return 1; }
       ;;
     qa)
-      dir_has_files "$task_dir/qa" "*.md" || dir_has_files "$task_dir/qa" "*.txt" || dir_has_files "$task_dir/qa" "*.log" || dir_has_files "$task_dir/qa" "*.png" \
+      [ -d "$task_dir/qa" ] && [ -n "$(find "$task_dir/qa" -maxdepth 1 \( -name '*.md' -o -name '*.txt' -o -name '*.log' -o -name '*.png' \) -type f 2>/dev/null | head -1)" ] \
         || { echo "no QA reports in $task_dir/qa/"; return 1; }
       ;;
     handoff)
@@ -284,7 +292,7 @@ phase_template() {
     qa)               echo "qa" ;;
     qa_recheck)       echo "qa-recheck" ;;
     simplify)         echo "simplify" ;;
-    simplify_verify)  echo "simplify" ;; # legacy — simplify handles its own verify now
+    # simplify_verify removed — simplify handles its own verification
     handoff)          echo "handoff" ;;
     learn)            echo "learn" ;;
     *)                echo "" ;;
@@ -328,9 +336,7 @@ cmd_init() {
   fi
 
   local session_id
-  session_id="$(cat .ship/session-id.local 2>/dev/null || printf '%s' "${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}")"
-  session_id="$(printf '%s' "$session_id" | tr -d '\r\n')"
-  [ -n "$session_id" ] || session_id="unknown"
+  session_id=$(resolve_session_id)
 
   local started_at
   started_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -376,9 +382,7 @@ cmd_resume() {
   fi
 
   local session_id
-  session_id="$(cat .ship/session-id.local 2>/dev/null || printf '%s' "${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}")"
-  session_id="$(printf '%s' "$session_id" | tr -d '\r\n')"
-  [ -n "$session_id" ] || session_id="unknown"
+  session_id=$(resolve_session_id)
   state_set "session_id" "$session_id"
 
   if ! git rev-parse --verify --quiet "$branch" >/dev/null 2>&1; then
