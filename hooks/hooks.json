@@ -11,6 +11,16 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/phase-guardrail.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
