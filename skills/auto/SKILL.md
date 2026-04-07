@@ -97,7 +97,11 @@ report card with a `Status` field. Map it to a verdict:
 **Edge cases:**
 - No report card in response → classify as `fail`
 - Status is BLOCKED but response suggests a fix → classify as `fail`
-- Status is PASS but Metrics show issues → classify as `findings`
+- **Review phase:** if the response contains ANY P1 or P2 findings, classify
+  as `findings` regardless of the Status field. P2s are real issues that must
+  be fixed. Only classify review as `success` when there are zero P1/P2
+  findings (P3s alone are acceptable). (The orchestrator script also enforces
+  this deterministically, but catching it here avoids a wasted round-trip.)
 - When in doubt, lean toward `fail` — the script will retry.
 
 **2d.** If the verdict is `findings` or `fail` and the agent listed specific issues,
