@@ -52,7 +52,9 @@ block() {
 }
 
 # ── Rule 1: QA must not read review.md or plan.md ────────────
-if [ "$PHASE" = "qa" ] || [ "$PHASE" = "qa_fix" ]; then
+# Only applies during qa phase itself, NOT qa_fix (which runs dev-fix
+# agent that legitimately needs plan.md for context).
+if [ "$PHASE" = "qa" ]; then
   if [ "$TOOL" = "Read" ]; then
     case "$BASENAME" in
       review.md)
