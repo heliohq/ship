@@ -175,12 +175,21 @@ After all stories in a wave pass review:
 ```bash
 # For each story branch in the wave:
 git merge story-<i> --no-edit
-# If merge conflict → dispatch peer targeted fix to resolve, then retry
 git worktree remove .ship/worktrees/story-<i>
 git branch -d story-<i>
 ```
 
-If a merge conflict cannot be resolved in 2 rounds → BLOCKED.
+### Merge conflict resolution
+
+If `git merge` fails with conflicts:
+
+1. Read BOTH sides of the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+2. Preserve the behavior this PR ships — both sides may have valid changes.
+3. Dispatch a targeted fix to the peer implementer: provide the conflicting
+   files, both branch HEAs, and the story context.
+4. After resolution, run `TEST_CMD` to verify the merged result.
+5. If the fix doesn't resolve cleanly, try once more (round 2/2).
+6. If 2 rounds fail → BLOCKED. Do NOT use `--ours` or `--theirs` blindly.
 
 ### Step A: Implement
 
@@ -408,9 +417,9 @@ Output summary, then offer next steps in standalone mode:
   Files changed: <list>
 
 ## What's next?
-1. **Review (recommended)** — run /ship:review to review the full diff
-2. **QA** — run /ship:qa to test the running application
-3. **Full pipeline** — run /ship:auto to review, QA, and ship
+1. **Review (recommended)** — /ship:review to review the full diff
+2. **QA** — /ship:qa to test the running application
+3. **Full pipeline** — /ship:auto to review, QA, and ship
 ```
 
 In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.

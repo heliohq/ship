@@ -6,7 +6,8 @@ description: >
   Reflects on what went wrong or was discovered, routes each learning
   to .learnings/LEARNINGS.md (and hookify/design docs when applicable).
   Use when: learn, what did we learn, capture learning, session retro,
-  avoid this mistake, remember this.
+  avoid this mistake, remember this, show learnings, list learnings,
+  what do we know, current learnings.
   Auto-invoked at the end of /ship:auto pipelines.
 allowed-tools:
   - Bash

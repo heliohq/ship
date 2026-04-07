@@ -491,7 +491,7 @@ Harness:
     2. <name> — <what it blocks>
 
 ## What's next?
-1. **Start building** — run /ship:auto with a task description
+1. **Start building** — /ship:auto with a task description
 2. **Review harness** — read AGENTS.md and .learnings/LEARNINGS.md
 3. **Customize** — edit conventions or hookify rules
 ```

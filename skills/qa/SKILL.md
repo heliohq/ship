@@ -198,9 +198,9 @@ Output summary, then offer next steps in standalone mode:
   Reports: <qa_dir>/
 
 ## What's next?
-1. **Fix failures** — run /ship:dev to fix the reported issues
-2. **Ship (if passing)** — run /ship:handoff to create the PR
-3. **Full pipeline** — run /ship:auto to handle fixes and shipping
+1. **Fix failures** — /ship:dev to fix the reported issues
+2. **Ship (if passing)** — /ship:handoff to create the PR
+3. **Full pipeline** — /ship:auto to handle fixes and shipping
 ```
 
 In /ship:auto mode, skip the "What's next?" choices and return — Auto owns the flow.

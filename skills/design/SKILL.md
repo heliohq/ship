@@ -372,8 +372,8 @@ Verify `spec.md` and `plan.md` are non-empty on disk, then output:
 - diff-report.md: .ship/tasks/<task_id>/plan/diff-report.md
 
 ## What's next?
-1. **Full pipeline (recommended)** — run /ship:auto to implement, review, QA, and ship
-2. **Implement only** — run /ship:dev to execute this plan without review/QA/handoff
+1. **Full pipeline (recommended)** — /ship:auto to implement, review, QA, and ship
+2. **Implement only** — /ship:dev to execute this plan
 3. **Review the plan** — read the artifacts and give feedback
 ```
 

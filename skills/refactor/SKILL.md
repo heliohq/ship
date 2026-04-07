@@ -154,7 +154,11 @@ For cross-file problems. Two sub-paths based on scope:
 4. **Simplify**: apply surgical techniques to every touched file. Run tests.
 5. **Clean**: delete dead code, stale imports. Run tests.
 
-If blast radius >5 files: write card to `.ship/tasks/<task_id>/plan/spec.md` and show user before executing. Otherwise keep in memory.
+### Artifacts
+
+- **Surgical** (within-file): no artifact file — changes are committed directly.
+- **Structural** (cross-file, >5 files): write execution card to `.ship/tasks/<task_id>/refactor/spec.md` and show user before executing.
+- **Structural** (cross-file, ≤5 files): keep execution card in memory, no file needed.
 
 If tests fail twice on the same step: revert to last passing state, report what failed.
 
@@ -174,9 +178,9 @@ After all changes, output summary and offer next steps:
   Deferred: <smells outside blast radius, if structural>
 
 ## What's next?
-1. **Review** — run /ship:review to verify no behavior changed
-2. **Ship** — run /ship:handoff to create the PR
-3. **Continue** — run /ship:refactor on remaining deferred smells
+1. **Review** — /ship:review to verify no behavior changed
+2. **Ship** — /ship:handoff to create the PR
+3. **Continue** — /ship:refactor on remaining deferred smells
 ```
 
 ## Quality Gates
