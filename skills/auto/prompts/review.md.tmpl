@@ -2,6 +2,11 @@ You must use Skill('ship:review'). Skip preamble and auth gate.
 
 Review the current diff against the spec. Write findings to the path below.
 
+IMPORTANT: You MUST write your findings to {{TASK_DIR}}/review.md even if the
+review is clean (write a short "no findings" report). The orchestrator reads
+this file to decide the next phase — if it's missing, the pipeline stalls.
+Do NOT only output findings to the conversation; the file is the artifact.
+
 spec: {{TASK_DIR}}/plan/spec.md
 task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}

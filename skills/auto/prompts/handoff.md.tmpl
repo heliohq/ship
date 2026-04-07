@@ -2,6 +2,11 @@ You must use Skill('ship:handoff'). Skip preamble and auth gate.
 
 Ship the implementation: commit, push, create/update PR, work CI loop until green.
 
+IMPORTANT: Before pushing, rebase onto {{BASE_BRANCH}} if the branch is behind.
+The PR must have a clean mergeStateStatus (CLEAN or HAS_HOOKS) before you finish.
+If CI fails, fix and re-push. If there are merge conflicts after rebase, resolve them.
+Do NOT finish until the PR is merge-ready.
+
 task_id: {{TASK_ID}}
 task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
