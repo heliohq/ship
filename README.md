@@ -89,7 +89,7 @@ Then install the plugin:
 Tell Codex:
 
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/tryship/ship/refs/heads/main/.codex/INSTALL.md
+Fetch and follow instructions from https://raw.githubusercontent.com/heliohq/ship/refs/heads/main/.codex/INSTALL.md
 ```
 
 Codex hook support is not plugin-based. Follow [`.codex/INSTALL.md`](./.codex/INSTALL.md) to symlink or append Ship's shipped `.codex/hooks.json` into your global `~/.codex/hooks.json`.
@@ -115,7 +115,7 @@ Current Cursor support includes skills plus `sessionStart` context injection. Cu
 Clone the repo and point Claude Code at it:
 
 ```bash
-git clone https://github.com/tryship/ship.git
+git clone https://github.com/heliohq/ship.git
 claude --plugin-dir ./ship
 ```
 
@@ -140,4 +140,4 @@ Ship is built on ideas from:
 ## Links
 
 - Website: https://www.ship.tech
-- Repository: https://github.com/tryship/ship
+- Repository: https://github.com/heliohq/ship
