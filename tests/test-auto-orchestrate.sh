@@ -235,10 +235,14 @@ assert_eq "state advanced to simplify" "simplify" "$(get_state phase)"
 
 echo ""
 
-# ── Test 8: Simplify skip → handoff ─────────────────────────
-echo "▸ Test 8: Simplify skip → Handoff dispatch"
+# ── Test 8: Simplify success → handoff ───────────────────────
+echo "▸ Test 8: Simplify success → Handoff dispatch"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete simplify --verdict=skip --summary="nothing to simplify" 2>/dev/null)
+# simplify.md must exist for success
+TASK_ID_T8=$(get_state task_id)
+echo "# Simplify\nNo changes needed — code is clean." > ".ship/tasks/$TASK_ID_T8/simplify.md"
+
+OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete simplify --verdict=success --summary="code already clean" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -353,8 +357,8 @@ assert_contains "message mentions resume" "Resuming" "$MESSAGE"
 
 echo ""
 
-# ── Test 15: Simplify fail → handoff (non-fatal) ────────────
-echo "▸ Test 15: Simplify fail is non-fatal → Handoff"
+# ── Test 15: Simplify fail → retry (not skip) ────────────────
+echo "▸ Test 15: Simplify fail retries (simplify.md required)"
 reset_state
 git checkout -q -B main 2>/dev/null
 
@@ -375,10 +379,9 @@ bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase simplify > /dev/null
 OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete simplify --verdict=fail --summary="simplify crashed" 2>/dev/null)
 parse_output "$OUT"
 
-assert_eq "action is dispatch" "dispatch" "$ACTION"
-assert_eq "phase is handoff" "handoff" "$PHASE"
-assert_eq "state skipped to handoff" "handoff" "$(get_state phase)"
-assert_contains "message mentions skip" "skipped" "$MESSAGE"
+assert_eq "action is dispatch (retry)" "dispatch" "$ACTION"
+assert_eq "phase is simplify (retry)" "simplify" "$PHASE"
+assert_contains "message mentions retry" "Retrying" "$MESSAGE"
 
 echo ""
 
@@ -387,7 +390,7 @@ echo "▸ Test 16: Status command"
 
 OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" status 2>/dev/null)
 assert_contains "status has TASK_ID" "TASK_ID" "$OUT"
-assert_contains "status has PHASE" "PHASE:handoff" "$OUT"
+assert_contains "status has PHASE" "PHASE:simplify" "$OUT"
 
 echo ""
 

@@ -88,7 +88,7 @@ Agent(prompt=<contents of PROMPT_FILE>)
 | `findings` | Specific fixable issues reported (review/QA only) |
 | `fail` | Cannot complete, missing context, broken |
 | `blocked` | Needs human decision or external dependency |
-| `skip` | Phase not applicable (qa/simplify only) |
+| `skip` | Phase not applicable. Only valid for **qa** phase. |
 
 When in doubt, lean toward `fail` — the script will retry.
 

@@ -3,10 +3,12 @@ Skip preamble and auth gate.
 
 Do behavior-preserving cleanup on files changed in this task.
 After making changes, run the repo's test command to verify nothing broke.
-If tests fail after your changes, revert them and report skip instead.
+If tests fail after your changes, revert them.
+
+You MUST always write {{TASK_DIR}}/simplify.md with a summary of what was done.
+Even if no changes were needed, write a brief explanation of why the code is already clean.
 
 Scope: git diff {{BASE_BRANCH}}...HEAD --name-only
 task_dir: {{TASK_DIR}}
 base_branch: {{BASE_BRANCH}}
-Output: {{TASK_DIR}}/simplify.md
 Mode: /ship:auto pipeline — no user questions.

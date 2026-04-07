@@ -224,7 +224,10 @@ validate_artifacts() {
         fi
       fi
       ;;
-    simplify|simplify_verify|learn) ;;
+    simplify)
+      file_exists_nonempty "$task_dir/simplify.md" || { echo "simplify.md missing or empty"; return 1; }
+      ;;
+    learn) ;;
   esac
   return 0
 }
@@ -551,15 +554,17 @@ cmd_complete() {
       fi
       ;;
 
-    simplify:success|simplify:skip|simplify:fail|simplify:blocked)
+    simplify:success)
       # Simplify handles its own verification internally (runs tests after changes,
-      # reverts if broken). Any outcome advances to handoff.
+      # reverts if broken). simplify.md must exist (validated above).
       state_set "phase" "handoff"
       local pf; pf=$(generate_prompt "handoff")
-      local msg="[Ship] Simplify done. Starting handoff..."
-      [ "$verdict" = "skip" ] && msg="[Ship] Nothing to simplify. Starting handoff..."
-      [ "$verdict" = "fail" ] || [ "$verdict" = "blocked" ] && msg="[Ship] Simplify skipped. Starting handoff..."
-      emit_dispatch "handoff" "$pf" "$msg"
+      emit_dispatch "handoff" "$pf" "[Ship] Simplify done. Starting handoff..."
+      ;;
+    simplify:fail|simplify:blocked|simplify:skip)
+      # No skip allowed — simplify must always produce simplify.md.
+      # Even if nothing changed, the agent should write a brief summary.
+      retry_or_escalate "simplify" "$summary"
       ;;
 
     handoff:success)
