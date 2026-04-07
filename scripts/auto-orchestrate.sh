@@ -458,6 +458,16 @@ cmd_complete() {
     fi
   fi
 
+  # Deterministic override: if the relay says review passed but review.md
+  # contains P1/P2 findings, force the verdict to "findings".
+  if [ "$phase" = "review" ] && [ "$verdict" = "success" ]; then
+    if [ -f "$task_dir/review.md" ] && grep -qiE '\bP[12][-:]' "$task_dir/review.md"; then
+      verdict="findings"
+      findings_file="$task_dir/review.md"
+      summary="Review contains P1/P2 findings (relay misclassified as success)"
+    fi
+  fi
+
   case "${phase}:${verdict}" in
     design:success)
       # Design skill has its own internal evaluation (peer investigation, diff-report,
