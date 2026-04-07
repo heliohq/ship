@@ -2,7 +2,7 @@
   "name": "ship",
   "displayName": "Ship",
   "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "author": {
     "name": "Heliopause",
     "url": "https://www.ship.tech"
