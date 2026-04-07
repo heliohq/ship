@@ -189,6 +189,17 @@ validate_artifacts() {
     design)
       file_exists_nonempty "$task_dir/plan/spec.md" || { echo "spec.md missing or empty"; return 1; }
       file_exists_nonempty "$task_dir/plan/plan.md" || { echo "plan.md missing or empty"; return 1; }
+      # Spec must have acceptance criteria
+      grep -qi "acceptance\|criteria\|requirements\|must\|should" "$task_dir/plan/spec.md" \
+        || { echo "spec.md lacks acceptance criteria"; return 1; }
+      # Plan must have at least one story/task
+      grep -qiE "^##|^-|^[0-9]+\." "$task_dir/plan/plan.md" \
+        || { echo "plan.md has no stories or tasks"; return 1; }
+      # If peer-spec exists, diff-report must also exist (broad task ran peer eval)
+      if [ -f "$task_dir/plan/peer-spec.md" ]; then
+        file_exists_nonempty "$task_dir/plan/diff-report.md" \
+          || { echo "peer-spec.md exists but diff-report.md missing — peer evaluation incomplete"; return 1; }
+      fi
       ;;
     dev|dev_fix)
       local diff_count
@@ -202,7 +213,18 @@ validate_artifacts() {
       dir_has_files "$task_dir/qa" "*.md" || dir_has_files "$task_dir/qa" "*.txt" || dir_has_files "$task_dir/qa" "*.log" || dir_has_files "$task_dir/qa" "*.png" \
         || { echo "no QA reports in $task_dir/qa/"; return 1; }
       ;;
-    simplify|simplify_verify|handoff|learn) ;;
+    handoff)
+      # Deep check: use gh CLI to verify PR status if available
+      if command -v gh >/dev/null 2>&1; then
+        local branch; branch=$(state_get "branch")
+        local pr_state
+        pr_state=$(gh pr view "$branch" --json state,statusCheckRollup --jq '.state' 2>/dev/null || true)
+        if [ -n "$pr_state" ] && [ "$pr_state" != "OPEN" ] && [ "$pr_state" != "MERGED" ]; then
+          echo "PR is $pr_state, not OPEN or MERGED"; return 1
+        fi
+      fi
+      ;;
+    simplify|simplify_verify|learn) ;;
   esac
   return 0
 }
@@ -430,6 +452,9 @@ cmd_complete() {
 
   case "${phase}:${verdict}" in
     design:success)
+      # Design skill has its own internal evaluation (peer investigation, diff-report,
+      # execution drill). Artifact validation already checks spec quality and peer
+      # eval completeness. No separate evaluator needed.
       state_set "phase" "dev"
       state_set "pre_dev_sha" "$(current_head)"
       local pf; pf=$(generate_prompt "dev")

@@ -138,8 +138,8 @@ echo "▸ Test 2: Design success → Dev dispatch"
 # Create mock artifacts
 TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan"
-echo "# Spec" > "$TASK_DIR/plan/spec.md"
-echo "# Plan" > "$TASK_DIR/plan/plan.md"
+printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
+printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
 
 # Need a diff for dev validation later — create a dummy commit
 echo "test" > dummy.txt
@@ -300,8 +300,8 @@ TASK_DIR=".ship/tasks/$TASK_ID"
 
 # Fast-forward to QA phase
 mkdir -p "$TASK_DIR/plan" "$TASK_DIR/qa"
-echo "spec" > "$TASK_DIR/plan/spec.md"
-echo "plan" > "$TASK_DIR/plan/plan.md"
+printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
+printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
 echo "test" > dummy2.txt && git add dummy2.txt && git commit -q -m "dummy2"
 
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
@@ -359,8 +359,8 @@ TASK_ID=$(get_state task_id)
 TASK_DIR=".ship/tasks/$TASK_ID"
 
 mkdir -p "$TASK_DIR/plan" "$TASK_DIR/qa"
-echo "spec" > "$TASK_DIR/plan/spec.md"
-echo "plan" > "$TASK_DIR/plan/plan.md"
+printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
+printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
 echo "report" > "$TASK_DIR/qa/report.md"
 echo "test" > dummy3.txt && git add dummy3.txt && git commit -q -m "dummy3"
 echo "review" > "$TASK_DIR/review.md"
@@ -394,8 +394,8 @@ OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "test escalation" 2>/dev/
 TASK_ID=$(get_state task_id)
 TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan"
-echo "spec" > "$TASK_DIR/plan/spec.md"
-echo "plan" > "$TASK_DIR/plan/plan.md"
+printf '# Spec\n## Acceptance Criteria\n- Must work\n' > "$TASK_DIR/plan/spec.md"
+printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
 echo "test" > dummy4.txt && git add dummy4.txt && git commit -q -m "dummy4"
 echo "P1: bug" > "$TASK_DIR/review.md"
 
