@@ -34,6 +34,36 @@ Techniques are ordered by LLM reliability (best first).
 | Shotgun Surgery | One change requires editing 3+ files | Consolidate into single owner | Medium |
 | Catch-all Module | utils/helpers/common serving unrelated domains | Split by concern | Low — mechanical but wide blast radius |
 
+## Reuse Smells (search for existing code that makes new code redundant)
+
+| Smell | How to detect | Technique | Notes |
+|-------|--------------|-----------|-------|
+| Duplicated existing utility | New code reimplements functionality already available in the codebase | Replace with existing utility | Search utility dirs, shared modules, adjacent files |
+| Inline reimplementation | Hand-rolled logic that could use an existing helper — string manipulation, path handling, environment checks, type guards | Replace with existing utility | Common in new code that wasn't aware of existing helpers |
+
+## Quality Smells (hacky patterns that erode maintainability)
+
+| Smell | How to detect | Technique | Notes |
+|-------|--------------|-----------|-------|
+| Redundant state | State that duplicates existing state, cached values that could be derived, observers/effects that could be direct calls | Remove / derive instead | |
+| Parameter sprawl | Adding new parameters to a function instead of generalizing or restructuring existing ones | Introduce Parameter Object / restructure | |
+| Copy-paste with slight variation | Near-duplicate code blocks that should be unified with a shared abstraction | Extract shared function, parameterize differences | Lower threshold than structural duplication — flag at 2 sites, not just 3+ |
+| Leaky abstractions | Exposing internal details that should be encapsulated, or breaking existing abstraction boundaries | Encapsulate / restore boundary | |
+| Stringly-typed code | Using raw strings where constants, enums, string unions, or branded types already exist in the codebase | Replace with Named Constant / Enum / Union type | |
+| Unnecessary comments | Comments explaining WHAT the code does (well-named identifiers already do that), narrating the change, or referencing the task/caller | Remove Comment | Keep only non-obvious WHY (hidden constraints, subtle invariants, workarounds) |
+
+## Efficiency Smells (unnecessary work, missed concurrency, resource waste)
+
+| Smell | How to detect | Technique | Notes |
+|-------|--------------|-----------|-------|
+| Unnecessary work | Redundant computations, repeated file reads, duplicate network/API calls, N+1 patterns | Cache / batch / deduplicate | |
+| Missed concurrency | Independent operations run sequentially when they could run in parallel | Use parallel / concurrent execution | |
+| Hot-path bloat | New blocking work added to startup or per-request/per-render hot paths | Defer / lazy-init / move off hot path | |
+| Recurring no-op updates | State/store updates inside polling loops, intervals, or event handlers that fire unconditionally | Add change-detection guard | Also verify wrapper functions honor "no change" signals |
+| Unnecessary existence checks | Pre-checking file/resource existence before operating (TOCTOU anti-pattern) | Operate directly and handle the error | |
+| Memory leaks | Unbounded data structures, missing cleanup, event listener leaks | Add cleanup / bound size / remove listener | |
+| Overly broad operations | Reading entire files when only a portion is needed, loading all items when filtering for one | Add projection / filter / stream | |
+
 ## When NOT to refactor
 
 | Signal | Why | Redirect to |

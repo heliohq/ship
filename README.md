@@ -45,7 +45,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **handoff** — Creates a PR with a concise verification summary, then enters the post-PR loop: monitor GitHub checks, fix failures, address review comments, resolve merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted.
 
-**refactor** — Diagnose code smells, classify by risk: quick (low risk, fix directly with verification) or planned (high risk, write execution card for alignment before executing). Applies Fowler techniques, verifies after every change.
+**refactor** — Four-lens parallel scan (structure, reuse, quality, efficiency — inspired by the built-in `/simplify` skill) diagnoses code smells across all dimensions. Classifies by risk: quick (low risk, fix directly with verification) or planned (high risk, write execution card for alignment before executing). Applies Fowler techniques, verifies after every change.
 
 **learn** — Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Fully autonomous — no user interaction. Verified entries are rules; pending entries auto-verify when validated or auto-prune when stale.
 

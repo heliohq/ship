@@ -73,11 +73,39 @@ VERIFY AFTER EVERY CHANGE.
 ## Phase 1: Scan
 
 Read the target (file, directory, or codebase as indicated by user).
-Identify code smells. Reference `references/smell-catalog.md` for the
-smell-to-technique mapping.
+Determine the diff or file set to review.
 
-For each smell found, record: smell name, file:line, severity (how much
-it hurts the next change).
+Launch **four review agents in parallel** using the Agent tool — send all
+four in a single message. Pass each agent the target files/diff so each
+has full context. Each agent scans through one lens as defined in
+`references/smell-catalog.md`:
+
+### Agent 1: Structure Review
+Scan for structural smells: Long Method, Dead Code, Duplication, Complex
+Conditional, God File, Circular Dependency, Feature Envy, etc. (Surgical +
+Structural sections of the smell catalog.)
+
+### Agent 2: Reuse Review
+Search for existing utilities and helpers that could replace newly written
+code. Flag any new function that duplicates existing functionality. Flag
+inline logic that could use an existing utility — string manipulation, path
+handling, environment checks, type guards, and similar patterns.
+
+### Agent 3: Quality Review
+Review for: redundant state, parameter sprawl, copy-paste with slight
+variation, leaky abstractions, stringly-typed code, unnecessary comments.
+
+### Agent 4: Efficiency Review
+Review for: unnecessary work (redundant computations, repeated reads, N+1),
+missed concurrency, hot-path bloat, recurring no-op updates, unnecessary
+existence checks (TOCTOU), memory leaks, overly broad operations.
+
+Wait for all four agents. Aggregate findings into a single list.
+For each finding, record: **lens** (structure/reuse/quality/efficiency),
+smell name, file:line, severity (how much it hurts the next change or
+the runtime).
+
+Order findings: structure first, then reuse, quality, efficiency.
 
 ## Phase 2: Classify
 
