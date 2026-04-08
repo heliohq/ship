@@ -107,6 +107,37 @@ The HTML must be fully self-contained (inline CSS, no external dependencies) and
 
 If the design system has a dark mode or dark sections, also generate `preview-dark.html` with dark surface backgrounds.
 
+## Execution Handoff
+
+Output the report card:
+
+```
+## [Visual Design] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | DESIGN.md created via <mode: scratch / url / codebase> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Mode | <From Scratch / From URL / From Codebase> |
+| Sections completed | <N>/9 |
+| Colors documented | <N> |
+| Typography levels | <N> |
+| Component variants | <N> |
+| Preview generated | <yes / no> |
+| Dark mode preview | <yes / no / n/a> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| DESIGN.md | Visual design system (9-section format) |
+| preview.html | Self-contained HTML preview of the design system |
+| preview-dark.html | Dark mode variant (if applicable) |
+```
+
 ## Reference Files
 
 Read these as needed — they contain the detailed templates, mode processes, and examples:
