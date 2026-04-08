@@ -139,6 +139,7 @@ Ship is built on ideas from:
 - [agent-browser](https://github.com/vercel-labs/agent-browser) — Vercel's headless browser CLI for AI agents
 - [Superpowers](https://github.com/obra/superpowers) — Jesse Vincent's skill library for Claude Code
 - [gstack](https://github.com/garrytan/gstack) — Garry Tan's full-stack AI development harness
+- [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — The 9-section DESIGN.md format used by `/ship:visual-design`
 
 ## Links
 
