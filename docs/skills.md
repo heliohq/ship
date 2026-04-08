@@ -10,10 +10,11 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff. Add diagnosis only when multiple findings share one structural root cause. |
 | [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
-| [`/ship:refactor`](#refactor) | **Code Improver** | Diagnose code smells, classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
+| [`/ship:refactor`](#refactor) | **Code Improver** | Four-lens parallel scan (structure, reuse, quality, efficiency), classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
 | [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Auto-verifies durable entries and prunes stale ones. |
-| [`/ship:write-design-docs`](#write-design-docs) | **Design Doc Author** | Creates and maintains high-level design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
+| [`/ship:arch-design`](#arch-design) | **Arch Design Doc Author** | Creates and maintains architectural design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
+| [`/ship:visual-design`](#visual-design) | **Visual Design Author** | Creates DESIGN.md files — structured visual design systems (colors, typography, spacing, components) that AI agents read to generate consistent UI. |
 
 ---
 
@@ -46,7 +47,7 @@ Bootstrap → Design → Dev → Review → QA → Simplify → Handoff
 3. **Dev** — invoke `/ship:dev` to execute implementation stories
 4. **Review** — invoke `/ship:review` for staff-engineer code review
 5. **QA** — invoke `/ship:qa` against the running application
-6. **Simplify** — behavior-preserving cleanup via /ship:refactor (or simplify as fallback)
+6. **Refactor** — behavior-preserving cleanup via /ship:refactor (four-lens scan: structure, reuse, quality, efficiency)
 7. **Handoff** — invoke `/ship:handoff` to create PR and shepherd it until checks are green
 
 Review and QA have fix loops: if bugs/issues are found, auto dispatches dev to fix them, then re-runs the phase. Every phase must produce its required artifacts — the orchestrator validates artifact existence before advancing.
@@ -483,17 +484,17 @@ No user interaction. The skill reflects on the session, classifies each learning
 
 `.learnings/LEARNINGS.md` is a staging area, not a permanent store. Learnings that prove durable (repeated, aged + still valid) get auto-promoted to permanent stores. Learnings that go stale (scope deleted, already covered, contradicted) get auto-pruned. The staging file stays lean.
 
-### Three layers of harness memory
+### Harness memory layers
 
-All injected at session start:
+All injected at session start via `session-start.sh`:
 
-1. **.learnings/LEARNINGS.md** — code-level guardrails
-2. **DESIGN_INDEX.md** — architecture-level guardrails
-3. **LEARNINGS.md** — operational knowledge from recent sessions
+1. **.learnings/LEARNINGS.md** — code-level guardrails (semantic rules + operational knowledge)
+2. **docs/DESIGN_INDEX.md** — architecture-level guardrails (auto-generated from design doc frontmatter)
+3. **DESIGN.md** — visual design system (colors, typography, spacing, components — if present at project root)
 
 ---
 
-## `write-design-docs`
+## `arch-design`
 
 This is **architectural guardrails for AI and humans**.
 
@@ -511,3 +512,55 @@ Every design doc has YAML frontmatter with fields designed for machine consumpti
 ### Index injection
 
 `generate-design-index.sh` builds a compact table from all design doc frontmatter. `session-start.sh` injects this table at session start, so AI agents know what design docs exist without reading each one.
+
+---
+
+## `visual-design`
+
+This is **visual consistency for AI-generated UI**.
+
+A DESIGN.md is like AGENTS.md for visual identity: drop it in your project root and any AI coding agent generates UI that matches your design language. No Figma exports, no JSON schemas — just markdown.
+
+### Three modes
+
+| Mode | When to use | Process |
+|------|------------|---------|
+| **From Scratch** | User describes a vision | Collaborative discovery: one question at a time, propose 2-3 directions, validate palette and typography before completing all 9 sections |
+| **From URL** | User provides a website | DOM inspection: clarify scope and intent, extract exact values from computed styles, validate extracted foundation with user |
+| **From Codebase** | Existing project needs a DESIGN.md | Reverse-engineering: detect tech stack, extract tokens from config/CSS/theme, validate with user, fill gaps from framework defaults |
+
+All three modes share the same output: a 9-section DESIGN.md + a self-contained `preview.html`.
+
+### The 9-section format
+
+Every DESIGN.md follows the same structure: Visual Theme, Color Palette, Typography, Component Stylings, Layout Principles, Depth & Elevation, Do's and Don'ts, Responsive Behavior, and Agent Prompt Guide. Section 9 (Agent Prompt Guide) is the cheat sheet — an agent reading just that section can produce on-brand components.
+
+### Session-start injection
+
+When DESIGN.md exists at project root, `session-start.sh` injects it into every agent session — including pipeline implementers during `/ship:auto`. This means dev agents automatically reference the design system when writing frontend code.
+
+### Example
+
+```
+You:   /ship:visual-design — capture the design of linear.app
+
+Assistant: [Visual Design] Scope: linear.app homepage + features page
+        Intent: inspiration (not exact recreation)
+
+        [Visual Design] Inspecting site...
+        Extracted 18 colors, 2 font families, 6 shadow levels
+
+        [Visual Design] Extracted palette:
+        - **Void Black** (#0A0A0B): Primary background
+        - **Linear Blue** (#5E6AD2): Brand primary, CTAs
+        - **Soft Gray** (#8A8F98): Body text
+        ... (15 more)
+
+        Does this capture the palette? [user confirms]
+
+        [Visual Design] Writing DESIGN.md (9 sections)...
+        [Visual Design] Generating preview.html...
+        [Visual Design] Complete.
+
+        DESIGN.md + preview.html written to project root.
+```

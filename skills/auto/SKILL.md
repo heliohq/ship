@@ -104,7 +104,56 @@ report card with a `Status` field. Map it to a verdict:
   this deterministically, but catching it here avoids a wasted round-trip.)
 - When in doubt, lean toward `fail` — the script will retry.
 
-**2d.** If the verdict is `findings` or `fail` and the agent listed specific issues,
+**2d. Verify (independent check).**
+
+If the initial verdict is `success` or `skip`, run a lightweight verification
+before advancing. This catches cases where the phase agent claims success but
+missed explicit requirements from the prompt.
+
+Read `references/phase-verifier.md` for the full verifier prompt. Dispatch a
+verification Agent with:
+
+```
+Agent(prompt="""
+<verifier prompt from references/phase-verifier.md>
+
+## Phase: <PHASE>
+
+## Original Prompt:
+<contents of PROMPT_FILE>
+
+## Agent Response:
+<the phase agent's full response>
+
+## Artifacts to check:
+<list the files the phase should have produced — see artifact map below>
+""")
+```
+
+**Artifact map** (what each phase must produce):
+
+| Phase | Required artifacts |
+|-------|-------------------|
+| design | `{{TASK_DIR}}/plan/spec.md`, `{{TASK_DIR}}/plan/plan.md`, `{{TASK_DIR}}/plan/peer-spec.md`, `{{TASK_DIR}}/plan/diff-report.md` |
+| dev | Code changes on branch (git diff non-empty) |
+| review | `{{TASK_DIR}}/review.md` |
+| qa | Files in `{{TASK_DIR}}/qa/` |
+| simplify | `{{TASK_DIR}}/simplify.md` |
+| handoff | PR exists, checks green |
+| learn | Entry in `.learnings/LEARNINGS.md` |
+
+**Map verifier verdict to action:**
+
+| Verifier verdict | Action |
+|-----------------|--------|
+| `pass` | Keep the original verdict, proceed |
+| `pass_with_concerns` | Keep the original verdict, log concerns in summary |
+| `fail` | **Downgrade** verdict to `fail` — include the verifier's gap list as findings |
+
+**Skip verification for:** `review_fix`, `qa_fix`, `learn` phases (these are
+retry/terminal phases where verification adds overhead but little value).
+
+**2e.** If the verdict is `findings` or `fail` and the agent listed specific issues,
 save them to a temp file:
 
 ```bash
@@ -113,7 +162,7 @@ cat > /tmp/ship-findings-$$.md << 'FINDINGS_EOF'
 FINDINGS_EOF
 ```
 
-**2e.** Report the verdict back to the script:
+**2f.** Report the verdict back to the script:
 
 ```bash
 "${SHIP_PLUGIN_ROOT}/scripts/auto-orchestrate.sh" complete <PHASE> \
@@ -122,7 +171,7 @@ FINDINGS_EOF
   --findings-file=/tmp/ship-findings-$$.md   # only if findings file was created
 ```
 
-**2f.** Parse the script output for `ACTION`, `PHASE`, `PROMPT_FILE`, `MESSAGE` again.
+**2g.** Parse the script output for `ACTION`, `PHASE`, `PROMPT_FILE`, `MESSAGE` again.
 If `ACTION` is `dispatch` → go back to **2a**.
 
 ## Step 3: Terminal
@@ -146,13 +195,18 @@ Output: [Auto] Task created. Starting design phase...
 
 ── Step 2b ──
 Read(.ship/tasks/.../prompts/design.md) → prompt content
-Agent(prompt=<prompt content>) → "Design complete. 3 stories."
+Agent(prompt=<prompt content>) → "Design complete. 3 stories. [report card: DONE]"
 
 ── Step 2c ──
-verdict = success
+verdict = success (from report card)
 
-── Step 2e ──
-Bash("$SHIP_ORCH complete design --verdict=success --summary='3 stories'")
+── Step 2d (verify) ──
+Agent(prompt=<verifier prompt + original prompt + agent response + artifact paths>)
+→ "Mandate: fulfilled. Gaps: None. Verdict: pass"
+verdict stays success
+
+── Step 2f ──
+Bash("$SHIP_ORCH complete design --verdict=success --summary='3 stories, verified'")
 → ACTION:dispatch  PHASE:dev  PROMPT_FILE:.ship/tasks/.../prompts/dev.md
   MESSAGE:[Auto] Design complete. Starting dev...
 

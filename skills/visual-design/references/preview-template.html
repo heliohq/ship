@@ -1,0 +1,423 @@
+<!--
+  DESIGN.md Preview Template
+
+  Usage: Copy this template and replace all {{PLACEHOLDER}} values with actual
+  design tokens from the DESIGN.md you just created. CSS custom properties are
+  already wired up — just fill in the :root block.
+
+  The template is fully self-contained (no external dependencies).
+  Sections: Nav, Hero, Colors, Typography, Buttons, Cards, Forms, Spacing,
+  Border Radius, Elevation.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design System Preview — {{BRAND_NAME}}</title>
+<style>
+  /* ===== DESIGN TOKENS — FILL THESE IN ===== */
+  :root {
+    /* Primary */
+    --color-primary: {{PRIMARY_HEX}};
+    --color-primary-hover: {{PRIMARY_HOVER_HEX}};
+    --color-heading: {{HEADING_HEX}};
+    --color-body: {{BODY_TEXT_HEX}};
+    --color-muted: {{MUTED_TEXT_HEX}};
+
+    /* Surfaces */
+    --color-bg: {{BG_HEX}};
+    --color-surface: {{SURFACE_HEX}};
+    --color-surface-elevated: {{ELEVATED_SURFACE_HEX}};
+
+    /* Accent */
+    --color-accent: {{ACCENT_HEX}};
+    --color-accent-light: {{ACCENT_LIGHT_HEX}};
+
+    /* Semantic */
+    --color-success: {{SUCCESS_HEX}};
+    --color-warning: {{WARNING_HEX}};
+    --color-error: {{ERROR_HEX}};
+
+    /* Borders */
+    --color-border: {{BORDER_HEX}};
+    --color-border-active: {{BORDER_ACTIVE_HEX}};
+
+    /* Shadows */
+    --shadow-subtle: {{SHADOW_SUBTLE_CSS}};
+    --shadow-standard: {{SHADOW_STANDARD_CSS}};
+    --shadow-elevated: {{SHADOW_ELEVATED_CSS}};
+
+    /* Typography */
+    --font-primary: {{FONT_PRIMARY}};
+    --font-mono: {{FONT_MONO}};
+
+    /* Radii */
+    --radius-sm: {{RADIUS_SM}}px;
+    --radius-md: {{RADIUS_MD}}px;
+    --radius-lg: {{RADIUS_LG}}px;
+
+    /* Spacing base */
+    --space-unit: {{SPACE_BASE}}px;
+  }
+
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body {
+    font-family: var(--font-primary), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--color-body);
+    background: var(--color-bg);
+    line-height: 1.5;
+  }
+
+  /* ===== NAV ===== */
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    backdrop-filter: blur(12px);
+  }
+  .nav-brand { font-size: 20px; font-weight: 600; color: var(--color-heading); text-decoration: none; }
+  .nav-cta {
+    padding: 8px 20px; border-radius: var(--radius-md);
+    background: var(--color-primary); color: #fff;
+    font-size: 14px; font-weight: 500; border: none; cursor: pointer;
+  }
+  .nav-cta:hover { background: var(--color-primary-hover); }
+
+  /* ===== LAYOUT ===== */
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  section { padding: 64px 0; }
+  section + section { border-top: 1px solid var(--color-border); }
+  .section-title {
+    font-size: 13px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--color-muted); margin-bottom: 32px;
+  }
+
+  /* ===== HERO ===== */
+  .hero { text-align: center; padding: 80px 0; }
+  .hero h1 {
+    font-size: 56px; font-weight: 300; color: var(--color-heading);
+    line-height: 1.1; letter-spacing: -1.4px; margin-bottom: 16px;
+  }
+  .hero p { font-size: 18px; color: var(--color-body); line-height: 1.5; max-width: 600px; margin: 0 auto 32px; }
+  .hero-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ===== COLORS ===== */
+  .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .color-swatch {
+    border-radius: var(--radius-md); overflow: hidden;
+    border: 1px solid var(--color-border);
+  }
+  .color-swatch-block { height: 80px; }
+  .color-swatch-info { padding: 12px; background: var(--color-surface); }
+  .color-swatch-name { font-size: 14px; font-weight: 600; color: var(--color-heading); }
+  .color-swatch-hex { font-size: 12px; color: var(--color-muted); font-family: var(--font-mono), monospace; }
+  .color-swatch-role { font-size: 12px; color: var(--color-body); margin-top: 4px; }
+
+  /* ===== TYPOGRAPHY ===== */
+  .type-sample { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--color-border); }
+  .type-sample:last-child { border-bottom: none; }
+  .type-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: var(--color-muted); margin-bottom: 4px; }
+  .type-meta { font-size: 12px; color: var(--color-muted); font-family: var(--font-mono), monospace; margin-top: 4px; }
+
+  /* ===== BUTTONS ===== */
+  .button-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 24px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 20px; border-radius: var(--radius-md);
+    font-size: 16px; font-weight: 500; font-family: inherit;
+    cursor: pointer; border: none; transition: all 0.15s ease;
+  }
+  .btn-primary { background: var(--color-primary); color: #fff; }
+  .btn-primary:hover { background: var(--color-primary-hover); }
+  .btn-ghost { background: transparent; color: var(--color-primary); border: 1px solid var(--color-border-active); }
+  .btn-ghost:hover { background: var(--color-surface-elevated); }
+  .btn-subtle { background: var(--color-surface-elevated); color: var(--color-heading); }
+  .btn-subtle:hover { opacity: 0.85; }
+  .btn-sm { padding: 6px 14px; font-size: 14px; }
+  .btn-label { font-size: 12px; color: var(--color-muted); min-width: 100px; }
+
+  /* ===== CARDS ===== */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .card-elevated { box-shadow: var(--shadow-standard); }
+  .card-deep { box-shadow: var(--shadow-elevated); }
+  .card h3 { font-size: 20px; font-weight: 500; color: var(--color-heading); margin-bottom: 8px; }
+  .card p { font-size: 14px; color: var(--color-body); line-height: 1.5; }
+
+  /* ===== BADGES ===== */
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500;
+  }
+  .badge-success { background: rgba(21,190,83,0.15); color: var(--color-success); }
+  .badge-warning { background: rgba(245,166,35,0.15); color: var(--color-warning); }
+  .badge-error { background: rgba(220,38,38,0.15); color: var(--color-error); }
+  .badge-neutral { background: var(--color-surface-elevated); color: var(--color-body); }
+
+  /* ===== FORMS ===== */
+  .form-group { margin-bottom: 20px; max-width: 400px; }
+  .form-label { display: block; font-size: 14px; font-weight: 500; color: var(--color-heading); margin-bottom: 6px; }
+  .form-input {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+    font-size: 14px; font-family: inherit; color: var(--color-heading);
+    background: var(--color-surface); outline: none; transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(83,58,253,0.1); }
+  .form-input-error { border-color: var(--color-error); }
+  .form-hint { font-size: 12px; color: var(--color-muted); margin-top: 4px; }
+  .form-error { font-size: 12px; color: var(--color-error); margin-top: 4px; }
+
+  /* ===== SPACING ===== */
+  .spacing-scale { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .spacing-item { text-align: center; }
+  .spacing-block { background: var(--color-primary); border-radius: 2px; opacity: 0.7; margin-bottom: 4px; }
+  .spacing-label { font-size: 11px; color: var(--color-muted); font-family: var(--font-mono), monospace; }
+
+  /* ===== BORDER RADIUS ===== */
+  .radius-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+  .radius-item { text-align: center; }
+  .radius-block {
+    width: 80px; height: 80px;
+    background: var(--color-surface-elevated);
+    border: 2px solid var(--color-primary);
+    margin-bottom: 8px;
+  }
+  .radius-label { font-size: 12px; color: var(--color-muted); }
+  .radius-value { font-size: 11px; color: var(--color-muted); font-family: var(--font-mono), monospace; }
+
+  /* ===== ELEVATION ===== */
+  .elevation-grid { display: flex; gap: 32px; flex-wrap: wrap; }
+  .elevation-item { text-align: center; }
+  .elevation-block {
+    width: 120px; height: 80px;
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--color-muted);
+    margin-bottom: 8px;
+  }
+  .elevation-label { font-size: 12px; color: var(--color-heading); font-weight: 500; }
+  .elevation-value { font-size: 11px; color: var(--color-muted); max-width: 140px; }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center; padding: 48px 32px;
+    font-size: 12px; color: var(--color-muted);
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 36px; letter-spacing: -0.8px; }
+    .hero p { font-size: 16px; }
+    section { padding: 40px 0; }
+    .container { padding: 0 16px; }
+    .color-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .card-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="#" class="nav-brand">{{BRAND_NAME}}</a>
+  <button class="nav-cta">Get Started</button>
+</nav>
+
+<!-- HERO -->
+<div class="container">
+  <div class="hero">
+    <h1>{{BRAND_NAME}} Design System</h1>
+    <p>A comprehensive design system preview showcasing colors, typography, components, and spatial relationships.</p>
+    <div class="hero-buttons">
+      <button class="btn btn-primary">Primary Action</button>
+      <button class="btn btn-ghost">Secondary Action</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLORS -->
+<section>
+  <div class="container">
+    <div class="section-title">Color Palette</div>
+    <div class="color-grid">
+      <!--
+        For each color in Section 2 of the DESIGN.md, add a swatch:
+        <div class="color-swatch">
+          <div class="color-swatch-block" style="background: #HEX;"></div>
+          <div class="color-swatch-info">
+            <div class="color-swatch-name">Color Name</div>
+            <div class="color-swatch-hex">#HEX</div>
+            <div class="color-swatch-role">Role description</div>
+          </div>
+        </div>
+      -->
+    </div>
+  </div>
+</section>
+
+<!-- TYPOGRAPHY -->
+<section>
+  <div class="container">
+    <div class="section-title">Typography Scale</div>
+    <!--
+      For each row in the Section 3 hierarchy table, add a sample:
+      <div class="type-sample">
+        <div class="type-label">ROLE NAME</div>
+        <div style="font-size: XXpx; font-weight: WGT; line-height: LH; letter-spacing: LS; color: var(--color-heading);">
+          The quick brown fox jumps over the lazy dog
+        </div>
+        <div class="type-meta">XXpx / weight WGT / line-height LH / letter-spacing LS</div>
+      </div>
+    -->
+  </div>
+</section>
+
+<!-- BUTTONS -->
+<section>
+  <div class="container">
+    <div class="section-title">Buttons</div>
+    <div class="button-row">
+      <span class="btn-label">Primary</span>
+      <button class="btn btn-primary">Button</button>
+      <button class="btn btn-primary btn-sm">Small</button>
+    </div>
+    <div class="button-row">
+      <span class="btn-label">Ghost</span>
+      <button class="btn btn-ghost">Button</button>
+      <button class="btn btn-ghost btn-sm">Small</button>
+    </div>
+    <div class="button-row">
+      <span class="btn-label">Subtle</span>
+      <button class="btn btn-subtle">Button</button>
+      <button class="btn btn-subtle btn-sm">Small</button>
+    </div>
+  </div>
+</section>
+
+<!-- BADGES -->
+<section>
+  <div class="container">
+    <div class="section-title">Badges & Tags</div>
+    <div class="badge-row">
+      <span class="badge badge-success">Success</span>
+      <span class="badge badge-warning">Warning</span>
+      <span class="badge badge-error">Error</span>
+      <span class="badge badge-neutral">Neutral</span>
+    </div>
+  </div>
+</section>
+
+<!-- CARDS -->
+<section>
+  <div class="container">
+    <div class="section-title">Cards & Elevation</div>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Flat Card</h3>
+        <p>A card with no shadow, using only border for definition. Suitable for dense layouts where elevation would be overwhelming.</p>
+      </div>
+      <div class="card card-elevated">
+        <h3>Elevated Card</h3>
+        <p>Standard shadow for interactive cards, content panels, and dropdowns. The primary card treatment for most use cases.</p>
+      </div>
+      <div class="card card-deep">
+        <h3>Deep Card</h3>
+        <p>Maximum elevation for modals, popovers, and hero feature cards. Use sparingly to maintain hierarchy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORMS -->
+<section>
+  <div class="container">
+    <div class="section-title">Form Inputs</div>
+    <div class="form-group">
+      <label class="form-label">Default Input</label>
+      <input class="form-input" type="text" placeholder="Enter a value..." />
+      <div class="form-hint">Helper text for this field</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Focused Input</label>
+      <input class="form-input" type="text" value="Active value" autofocus />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Error Input</label>
+      <input class="form-input form-input-error" type="text" value="Invalid value" />
+      <div class="form-error">This field has an error</div>
+    </div>
+  </div>
+</section>
+
+<!-- SPACING -->
+<section>
+  <div class="container">
+    <div class="section-title">Spacing Scale</div>
+    <div class="spacing-scale">
+      <!--
+        For each value in the spacing scale, add a block:
+        <div class="spacing-item">
+          <div class="spacing-block" style="width: Xpx; height: Xpx;"></div>
+          <div class="spacing-label">Xpx</div>
+        </div>
+      -->
+    </div>
+  </div>
+</section>
+
+<!-- BORDER RADIUS -->
+<section>
+  <div class="container">
+    <div class="section-title">Border Radius Scale</div>
+    <div class="radius-grid">
+      <!--
+        For each radius value, add a block:
+        <div class="radius-item">
+          <div class="radius-block" style="border-radius: Xpx;"></div>
+          <div class="radius-label">Category</div>
+          <div class="radius-value">Xpx</div>
+        </div>
+      -->
+    </div>
+  </div>
+</section>
+
+<!-- ELEVATION -->
+<section>
+  <div class="container">
+    <div class="section-title">Shadow Elevation</div>
+    <div class="elevation-grid">
+      <!--
+        For each shadow level, add a block:
+        <div class="elevation-item">
+          <div class="elevation-block" style="box-shadow: SHADOW_VALUE;">Level N</div>
+          <div class="elevation-label">Level Name</div>
+          <div class="elevation-value">CSS value preview</div>
+        </div>
+      -->
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<div class="footer">
+  Design System Preview &mdash; Generated from DESIGN.md
+</div>
+
+</body>
+</html>
