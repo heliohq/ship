@@ -13,9 +13,14 @@ Files in blast radius: [list files]
 Test command: [command or "none — write characterization tests first"]
 
 ## Evidence
-[List each smell with file:line. Only smells you verified by reading code.]
+[List findings from all four lenses, grouped by lens. Only smells you verified by reading code.]
+
+### Structure
 1. [smell] — file:line — [what's wrong]
 2. ...
+
+### Reuse / Quality / Efficiency
+- [lens]: [smell] — file:line — [what's wrong]
 
 ## Invariants
 [Max 5 critical behaviors that MUST NOT change. Each with file:line.]
@@ -33,10 +38,10 @@ Test command: [command or "none — write characterization tests first"]
 
 ## Execution Order
 1. Verify: run tests (or write characterization tests if none exist)
-2. Move: relocate code per Target Structure, update imports, run tests
-3. Consolidate: merge duplicates per Eliminate list, run tests
-4. Simplify: apply surgical techniques to every touched file, run tests
-5. Clean: delete dead code and stale imports, run tests
+2. Structure: relocate, consolidate, simplify, clean per Target Structure — run tests after each
+3. Reuse: replace new code with existing utilities — run tests
+4. Quality: fix stringly-typed code, comments, naming, copy-paste — run tests
+5. Efficiency: fix resource-per-call, projections, batching, concurrency — run tests
 
 ## Abort If
 - Tests fail twice on the same step after attempted fix

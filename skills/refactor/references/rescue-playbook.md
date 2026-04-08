@@ -8,9 +8,13 @@ The main SKILL.md says "one structural seam per invocation." This playbook overr
 for codebase-wide rescue: address the PRIMARY contradiction plus all signals that fall within
 its blast radius. Signals outside the blast radius are deferred.
 
-## Step 1: Scan for structural signals
+## Step 1: Scan across all four lenses
 
-Read every source file in the target directory. Look for:
+Read every source file in the target directory. Launch the four parallel scan agents
+as described in SKILL.md Phase 1 (Structure, Reuse, Quality, Efficiency). For
+codebase-wide rescue, each agent covers the full directory.
+
+The structure agent looks for the primary structural signals:
 
 1. **God files** — files over ~300 lines with mixed concerns
 2. **Duplication clusters** — repeated code blocks across files
@@ -18,6 +22,10 @@ Read every source file in the target directory. Look for:
 4. **Mixed responsibilities** — one file owning unrelated reasons to change
 5. **Circular or lateral dependencies** — A imports B, B imports A
 6. **Dead code** — exports never imported, functions never called
+
+The reuse, quality, and efficiency agents scan the same files through their lenses
+(see `smell-catalog.md` for what each lens covers). Deduplicate findings after all
+four agents report back.
 
 ## Step 2: Read the top candidates
 
@@ -72,10 +80,20 @@ Files in blast radius: [list all affected files]
 Test command: [command]
 
 ## Evidence
-[Every signal with file:line. Ranked by leverage.]
+[All findings from all four lenses, grouped by lens. Ranked by leverage within each group.]
+
+### Structure
 1. [primary contradiction] — file:line — [what's wrong]
 2. [secondary signal in blast radius] — file:line
-3. ...
+
+### Reuse
+- [finding] — file:line
+
+### Quality
+- [finding] — file:line
+
+### Efficiency
+- [finding] — file:line
 
 ## Invariants
 [Max 5 critical behaviors that must not change]
@@ -94,16 +112,16 @@ Every signal MUST be classified:
 
 - **Eliminate**: resolved in this refactor. Must include consolidation or deletion, not just code movement.
 - **Defer**: not addressed, with concrete reason (e.g., "no test coverage, too risky").
-- **Out of scope**: not structural (e.g., performance).
+- **Out of scope**: not addressable by refactoring (e.g., algorithmic redesign).
 
 If all signals are Defer/Out of scope, reconsider whether this refactor is worth doing.
 
 ## Execution Order
 1. Verify: run tests to establish baseline
-2. Move: relocate code per Target Structure, update imports, run tests
-3. Consolidate: merge duplicates per Eliminate list, run tests
-4. Simplify: apply surgical techniques to every touched file, run tests
-5. Clean: delete dead code and stale imports, run tests
+2. Structure: relocate, consolidate, simplify, clean per Target Structure — run tests after each
+3. Reuse: replace new code with existing utilities — run tests
+4. Quality: fix stringly-typed code, comments, naming, copy-paste — run tests
+5. Efficiency: fix resource-per-call, projections, batching, concurrency — run tests
 
 ## Abort If
 - Tests fail twice on the same step

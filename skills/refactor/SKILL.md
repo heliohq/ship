@@ -76,6 +76,14 @@ VERIFY AFTER EVERY CHANGE.
 Read the target (file, directory, or codebase as indicated by user).
 Determine the diff or file set to review.
 
+**Small target shortcut:** If the target is a single file under ~200 lines,
+scan through all four lenses yourself in one pass instead of dispatching
+four agents. The parallel dispatch is valuable for large scopes; for a
+small file, sequential scan is faster because it avoids agent round-trip
+overhead. Use the same smell catalog — just apply all four lenses in order.
+
+**Standard scan (multiple files, directories, or codebase):**
+
 Launch **four review agents in parallel** using the Agent tool — send all
 four in a single message. Pass each agent the target files/diff so each
 has full context. Each agent scans through one lens as defined in
