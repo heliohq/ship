@@ -51,19 +51,21 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **arch-design** — Creates high-level architectural design documents that prevent AI drift. Structured frontmatter enables AI indexing; status lifecycle tracks trust; the Boundaries section is the core anti-drift mechanism.
 
+**visual-design** — Creates DESIGN.md files — structured visual design systems (colors, typography, spacing, components) that AI agents read to generate consistent UI. Three modes: from scratch (collaborative discovery), from a website URL (DOM extraction), or from the current codebase (reverse-engineer implicit tokens). Injected at session start when present so every agent writes on-brand frontend code.
+
 Skills trigger automatically based on what you're doing. The harness enforces the workflow — you don't need to remember the process.
 
 ## Skills
 
 | Skill | Description |
 |-------|-------------|
-| `/ship:auto` | Full pipeline orchestrator: design → dev → review → QA → simplify → handoff |
+| `/ship:auto` | Full pipeline orchestrator: design → dev → review → QA → refactor → handoff |
 | `/ship:design` | Parallel investigation by host + peer agents, adversarial spec diff with debate, executable TDD plan validated by drill |
 | `/ship:dev` | Execute implementation stories from a plan — peer implements, fresh reviewer checks |
 | `/ship:review` | Find every bug in the diff, then diagnose the structural deficiency that breeds them |
 | `/ship:qa` | Independent QA: tests code changes against the spec via the running application |
 | `/ship:handoff` | PR creation with verification summary, GitHub check loop, and review comment resolution |
-| `/ship:refactor` | Diagnose code smells, classify by risk (quick/planned), apply Fowler techniques with verification |
+| `/ship:refactor` | Four-lens parallel scan (structure, reuse, quality, efficiency), classify by risk (quick/planned), apply Fowler techniques with verification |
 | `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + verified learnings + hookify safety rules |
 | `/ship:learn` | Capture session learnings, route to permanent stores, auto-promote and auto-prune |
 | `/ship:arch-design` | Create and maintain architectural design docs with structured frontmatter for AI indexing |
