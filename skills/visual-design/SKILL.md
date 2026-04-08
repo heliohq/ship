@@ -17,19 +17,19 @@ Determine which mode applies, then read the corresponding reference file for the
 
 The user describes their vision — mood, colors, fonts, brand references. You explore the vision through structured discovery, propose 2-3 directions, and build the DESIGN.md incrementally with user validation at each stage.
 
-**Read `references/mode-a-from-scratch.md` for the full process.**
+**Read `references/from-scratch.md` for the full process.**
 
 ### B. From a Website URL
 
 The user provides a URL and wants the site's design system captured. You clarify scope and intent, inspect the DOM for actual values, validate the extracted foundation with the user, and assemble the DESIGN.md.
 
-**Read `references/mode-b-from-url.md` for the full process.**
+**Read `references/from-url.md` for the full process.**
 
 ### C. From Current Codebase
 
 The user has an existing project and wants a DESIGN.md extracted from the code. You discover the tech stack, systematically extract tokens, validate with the user, fill gaps, and document what the project actually looks like.
 
-**Read `references/mode-c-from-codebase.md` for the full process.**
+**Read `references/from-codebase.md` for the full process.**
 
 ## The 9-Section Format
 
@@ -111,9 +111,9 @@ If the design system has a dark mode or dark sections, also generate `preview-da
 
 Read these as needed — they contain the detailed templates, mode processes, and examples:
 
-- **`references/mode-a-from-scratch.md`** — Full process for creating a DESIGN.md from scratch through collaborative discovery.
-- **`references/mode-b-from-url.md`** — Full process for extracting a design system from a live website.
-- **`references/mode-c-from-codebase.md`** — Full process for reverse-engineering a design system from existing code.
+- **`references/from-scratch.md`** — Full process for creating a DESIGN.md from scratch through collaborative discovery.
+- **`references/from-url.md`** — Full process for extracting a design system from a live website.
+- **`references/from-codebase.md`** — Full process for reverse-engineering a design system from existing code.
 - **`references/template.md`** — The complete 9-section template with fill-in placeholders. Read this when writing any DESIGN.md.
 - **`references/section-guide.md`** — Deep guidance on what makes each section excellent. Read this for quality standards and common pitfalls.
 - **`references/preview-template.html`** — HTML scaffold for the preview file. Read this when generating the preview.
