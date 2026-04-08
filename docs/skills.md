@@ -13,7 +13,8 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:refactor`](#refactor) | **Code Improver** | Diagnose code smells, classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
 | [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Auto-verifies durable entries and prunes stale ones. |
-| [`/ship:write-design-docs`](#write-design-docs) | **Design Doc Author** | Creates and maintains high-level design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
+| [`/ship:arch-design`](#arch-design) | **Arch Design Doc Author** | Creates and maintains architectural design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
+| [`/ship:visual-design`](#visual-design) | **Visual Design Author** | Creates DESIGN.md files — structured visual design systems (colors, typography, spacing, components) that AI agents read to generate consistent UI. |
 
 ---
 
@@ -493,7 +494,7 @@ All injected at session start:
 
 ---
 
-## `write-design-docs`
+## `arch-design`
 
 This is **architectural guardrails for AI and humans**.
 

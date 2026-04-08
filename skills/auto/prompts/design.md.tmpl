@@ -9,6 +9,10 @@ IMPORTANT: You MUST write both spec.md and plan.md to the artifacts directory.
 The orchestrator validates these files exist and are non-empty before advancing
 to the dev phase. Do NOT respond conversationally — write the artifacts to disk.
 
+If this task involves frontend/UI changes and no DESIGN.md exists at project root,
+note in spec.md that one should be created via /ship:visual-design before or
+after this pipeline run.
+
 task_id: {{TASK_ID}}
 Artifacts: .ship/tasks/{{TASK_ID}}/plan/
 Branch: {{BRANCH}}

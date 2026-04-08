@@ -49,7 +49,7 @@ You describe what you want to build. Ship handles the constraints that make AI o
 
 **learn** — Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Fully autonomous — no user interaction. Verified entries are rules; pending entries auto-verify when validated or auto-prune when stale.
 
-**write-design-docs** — Creates high-level design documents that prevent AI drift. Structured frontmatter enables AI indexing; status lifecycle tracks trust; the Boundaries section is the core anti-drift mechanism.
+**arch-design** — Creates high-level architectural design documents that prevent AI drift. Structured frontmatter enables AI indexing; status lifecycle tracks trust; the Boundaries section is the core anti-drift mechanism.
 
 Skills trigger automatically based on what you're doing. The harness enforces the workflow — you don't need to remember the process.
 
@@ -66,7 +66,8 @@ Skills trigger automatically based on what you're doing. The harness enforces th
 | `/ship:refactor` | Diagnose code smells, classify by risk (quick/planned), apply Fowler techniques with verification |
 | `/ship:setup` | Bootstrap infra + discover semantic constraints, generate AGENTS.md + verified learnings + hookify safety rules |
 | `/ship:learn` | Capture session learnings, route to permanent stores, auto-promote and auto-prune |
-| `/ship:write-design-docs` | Create and maintain design docs with structured frontmatter for AI indexing |
+| `/ship:arch-design` | Create and maintain architectural design docs with structured frontmatter for AI indexing |
+| `/ship:visual-design` | Create DESIGN.md — visual design system (colors, typography, spacing, components) for consistent UI generation |
 
 ## Installation
 

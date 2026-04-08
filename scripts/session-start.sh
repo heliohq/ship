@@ -56,6 +56,20 @@ if [[ -f "$DESIGN_INDEX_FILE" ]]; then
 $(cat "$DESIGN_INDEX_FILE")"
 fi
 
+# Part 3: Visual design system (DESIGN.md)
+DESIGN_MD_FILE="$REPO_ROOT/DESIGN.md"
+if [[ -f "$DESIGN_MD_FILE" ]]; then
+  SEPARATOR=""
+  [[ -n "$PARTS" ]] && SEPARATOR="
+
+---
+
+"
+  PARTS="${PARTS}${SEPARATOR}Visual design system loaded. When writing frontend code (components, styles, layouts), refer to the design tokens, color palette, typography, and component patterns below to maintain visual consistency.
+
+$(cat "$DESIGN_MD_FILE")"
+fi
+
 # Nothing to inject
 if [[ -z "$PARTS" ]]; then
   exit 0

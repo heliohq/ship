@@ -1,6 +1,6 @@
 ---
-name: write-design-docs
-description: Use when creating, editing, or reviewing design docs under docs/design/ — enforces frontmatter format, numbering, status lifecycle, and writing conventions
+name: arch-design
+description: Use when creating, editing, or reviewing architectural design docs under docs/design/ — enforces frontmatter format, numbering, status lifecycle, and writing conventions. Note: this is for engineering/architecture decisions, NOT visual design (use /ship:visual-design for that).
 ---
 
 # Design Document Standard
