@@ -2,7 +2,8 @@
 # Ship plugin — SessionStart hook
 # Injects project context into conversation:
 #   1. .learnings/LEARNINGS.md — project learnings (verified rules + pending observations)
-#   2. docs/DESIGN_INDEX.md — design doc index for architectural guardrails
+#   2. docs/DOCS_INDEX.md — design doc index for architectural guardrails
+#   3. DESIGN.md — pointer only (title + section list); full content read on demand
 # If no files exist, outputs nothing (no-op).
 
 set -u
@@ -32,7 +33,7 @@ if [[ -n "$SESSION_ID" ]]; then
 fi
 
 LEARNINGS_FILE="$REPO_ROOT/.learnings/LEARNINGS.md"
-DESIGN_INDEX_FILE="$REPO_ROOT/docs/DESIGN_INDEX.md"
+DOCS_INDEX_FILE="$REPO_ROOT/docs/DOCS_INDEX.md"
 
 PARTS=""
 
@@ -44,7 +45,7 @@ $(cat "$LEARNINGS_FILE")"
 fi
 
 # Part 2: Design doc index
-if [[ -f "$DESIGN_INDEX_FILE" ]]; then
+if [[ -f "$DOCS_INDEX_FILE" ]]; then
   SEPARATOR=""
   [[ -n "$PARTS" ]] && SEPARATOR="
 
@@ -53,10 +54,10 @@ if [[ -f "$DESIGN_INDEX_FILE" ]]; then
 "
   PARTS="${PARTS}${SEPARATOR}Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding.
 
-$(cat "$DESIGN_INDEX_FILE")"
+$(cat "$DOCS_INDEX_FILE")"
 fi
 
-# Part 3: Visual design system (DESIGN.md)
+# Part 3: Visual design system (DESIGN.md) — pointer only, read on demand
 DESIGN_MD_FILE="$REPO_ROOT/DESIGN.md"
 if [[ -f "$DESIGN_MD_FILE" ]]; then
   SEPARATOR=""
@@ -65,9 +66,7 @@ if [[ -f "$DESIGN_MD_FILE" ]]; then
 ---
 
 "
-  PARTS="${PARTS}${SEPARATOR}Visual design system loaded. When writing frontend code (components, styles, layouts), refer to the design tokens, color palette, typography, and component patterns below to maintain visual consistency.
-
-$(cat "$DESIGN_MD_FILE")"
+  PARTS="${PARTS}${SEPARATOR}DESIGN.md (visual design system) exists at project root. When writing frontend code, read it first."
 fi
 
 # Nothing to inject
