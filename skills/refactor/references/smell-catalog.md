@@ -26,7 +26,7 @@ Structural smells — code organization problems that make the next change harde
 | Long Parameter List (>4) | Function signature too wide | Introduce Parameter Object | Group related params into an object. *Owns all parameter-count issues — Quality lens skips these.* |
 | Mixed Concerns in Function | One function doing two unrelated things | Split Phase | Separate into prepare + execute |
 | Flag Arguments | Boolean param that changes function behavior | Remove Flag Argument / Split into two functions | Each function does one thing |
-| Magic Numbers | Literal numeric values in logic | Replace with Named Constant | Group related constants. *Owns numeric literals — Quality lens owns string literals.* |
+| Magic Numbers | Literal numeric values in logic (not strings) | Replace with Named Constant | Group related constants. *Structure owns numeric literals only. Quality owns string literals (Stringly-typed code).* |
 
 **Safety rule for signature-changing techniques** (Introduce Parameter Object, Remove Flag Argument, Split into two functions, Move Function): these change the function's calling interface. Only apply when the function is internal/private AND every caller is within the files you are editing. If the function is exported or has callers outside your scope, preserve the original signature — or skip the technique entirely.
 
@@ -64,7 +64,7 @@ Hacky patterns that erode maintainability. **Lower threshold than Structure** �
 | Redundant state | State that duplicates existing state, cached values that could be derived, observers/effects that could be direct calls | Remove / derive instead | |
 | Copy-paste with slight variation | Near-duplicate code blocks in 2 sites (not 3+) that should be unified | Extract shared function, parameterize differences | *Owns 2-site near-duplicates ��� Structure lens owns 3+ site duplicates.* |
 | Leaky abstractions | Exposing internal details that should be encapsulated, or breaking existing abstraction boundaries | Encapsulate / restore boundary | |
-| Stringly-typed code | Using raw strings where constants, enums, string unions, or branded types already exist in the codebase | Replace with Named Constant / Enum / Union type | *Owns string literal issues — Structure lens owns numeric literals (Magic Numbers).* |
+| Stringly-typed code | Using raw strings where constants, enums, string unions, or branded types already exist in the codebase | Replace with Named Constant / Enum / Union type | *Quality owns string literals only. Structure owns numeric literals (Magic Numbers).* |
 | Unnecessary comments | Comments explaining WHAT the code does, narrating the change, or referencing the task/caller | Remove Comment | Keep only non-obvious WHY (hidden constraints, subtle invariants, workarounds) |
 | Inconsistent naming | Same concept named differently across the codebase (e.g., `user_id` vs `userId` vs `uid`) | Rename to consistent term | Check across files, not just within one |
 

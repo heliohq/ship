@@ -61,7 +61,7 @@ For values that aren't directly inspectable (design philosophy, the *why* behind
 - Read `references/section-guide.md` for quality standards per section
 - Name every color descriptively — not "Color 1" but "Midnight Navy" or "Signal Green". The name should evoke the color and hint at its role.
 - Generate the companion `preview.html` using `references/preview-template.html`
-- Run the Quality Checklist before presenting the final result
+- Run the Quality Checklist (defined in SKILL.md) before presenting the final result
 - Present both files to the user for final approval
 
 ## Key principles

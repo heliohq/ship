@@ -103,7 +103,7 @@ Real codebases rarely have every design token explicitly defined — some values
 - Group by semantic role, not by source file
 - Document the actual values being used, not what the config *could* support
 - Generate the companion `preview.html` using `references/preview-template.html`
-- Run the Quality Checklist before presenting
+- Run the Quality Checklist (defined in SKILL.md) before presenting
 
 **Present with a diff summary** — show the user what you found and any gaps or inconsistencies:
 - "Your codebase uses 14 distinct colors. 3 appear to be unused in the theme config."

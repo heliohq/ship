@@ -134,7 +134,7 @@ Agent(prompt="""
 
 | Phase | Required artifacts |
 |-------|-------------------|
-| design | `{{TASK_DIR}}/plan/spec.md`, `plan.md`, `peer-spec.md`, `diff-report.md` |
+| design | `{{TASK_DIR}}/plan/spec.md`, `{{TASK_DIR}}/plan/plan.md`, `{{TASK_DIR}}/plan/peer-spec.md`, `{{TASK_DIR}}/plan/diff-report.md` |
 | dev | Code changes on branch (git diff non-empty) |
 | review | `{{TASK_DIR}}/review.md` |
 | qa | Files in `{{TASK_DIR}}/qa/` |

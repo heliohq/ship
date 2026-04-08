@@ -81,6 +81,9 @@ scan through all four lenses yourself in one pass instead of dispatching
 four agents. The parallel dispatch is valuable for large scopes; for a
 small file, sequential scan is faster because it avoids agent round-trip
 overhead. Use the same smell catalog — just apply all four lenses in order.
+Note: the Reuse lens still requires searching the broader codebase for
+existing utilities, even for a small target. "Small target" means scan
+inline (no agents), not limit search scope.
 
 **Standard scan (multiple files, directories, or codebase):**
 
@@ -131,9 +134,9 @@ Decide the approach based on **risk**, not file count or lens:
 | Cross-file dependencies change, no test coverage, large blast radius, or user says "refactor this module/codebase" | **Planned** | High risk — write an execution card so user can review before you start |
 | Not a code smell (algorithmic problem, runtime bug, feature request) | **Redirect** | Wrong tool — suggest /ship:dev or /ship:auto |
 
-**Lens-specific classification guidance:**
+**Lens-specific classification guidance** (classify determines quick vs planned path — NOT execution order within a path. Execution order is always structure → reuse → quality → efficiency regardless of classification):
 - **Structure**: surgical smells → quick; structural smells → planned (as before)
-- **Reuse**: replacing code with existing utility → quick (even if cross-file — it's a deletion, not a restructure)
+- **Reuse**: replacing code with existing utility → quick (it's a deletion, low risk even if cross-file)
 - **Quality**: almost always quick — these are local, low-risk fixes
 - **Efficiency**: quick if the fix is local (add projection, hoist a resource); planned if it changes call patterns across files (batching N+1 across a call chain)
 
@@ -179,9 +182,8 @@ High-risk changes. Write an execution card first, get alignment, then execute.
    - Read `references/structural-card.md` for the template (45-60 lines).
    - For codebase-level work, read `references/rescue-playbook.md` for the full 8-step process.
    - Include findings from ALL lenses in the Evidence section, grouped by lens.
-   - Save to `.ship/tasks/<task_id>/refactor/spec.md`.
-   - In standalone mode: show the card to the user via AskUserQuestion before executing.
-   - In /ship:auto mode: proceed after writing the card.
+   - In /ship:auto mode: save to `.ship/tasks/<task_id>/refactor/spec.md` and proceed.
+   - In standalone mode: save to `.ship/refactor-card.md` (no task_id needed) and show the card to the user via AskUserQuestion before executing.
 
 2. If no test coverage for the code being changed: write characterization tests first.
 

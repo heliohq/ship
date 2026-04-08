@@ -70,7 +70,7 @@ If they decline, proceed with text-only descriptions.
 - Read `references/template.md` for the exact 9-section structure
 - Read `references/section-guide.md` for quality standards per section
 - Generate the companion `preview.html` (and optionally `preview-dark.html`) using `references/preview-template.html`
-- Run the Quality Checklist before presenting the final result
+- Run the Quality Checklist (defined in SKILL.md) before presenting the final result
 - Present both files to the user for final approval
 
 ## Key principles
