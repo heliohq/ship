@@ -29,9 +29,12 @@ for _CANDIDATE in \
   fi
 done
 _AUTO_LOGIN="false"
+_CLI_PROMPT="true"
 if [ -n "$_SETTINGS_FILE" ] && [ -f "$_SETTINGS_FILE" ]; then
   _FM=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$_SETTINGS_FILE")
   _AUTO_LOGIN=$(echo "$_FM" | grep '^auto_login:' | sed 's/auto_login:[[:space:]]*//' || echo "false")
+  _CLI_PROMPT_VAL=$(echo "$_FM" | grep '^cli_prompt:' | sed 's/cli_prompt:[[:space:]]*//' || echo "")
+  [ "$_CLI_PROMPT_VAL" = "never" ] && _CLI_PROMPT="false"
 fi
 echo "SHIP_AUTO_LOGIN: $_AUTO_LOGIN"
 
@@ -70,6 +73,7 @@ if [ -n "$_SHIP_BIN" ]; then
   fi
 else
   echo "SHIP_CLI: not_installed"
+  echo "SHIP_CLI_PROMPT: $_CLI_PROMPT"
 fi
 
 # --- Repo context ---
