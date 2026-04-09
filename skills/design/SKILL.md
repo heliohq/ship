@@ -30,11 +30,6 @@ SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$H
 SHIP_SKILL_NAME=design source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
-### Ship CLI (optional)
-
-The Ship CLI enables cloud features (team channels, task assignment) but is **not required** — all local skills work without it. Always proceed with the skill regardless of CLI status.
-If `SHIP_CLI: not_installed` AND `SHIP_CLI_PROMPT: true`: AskUserQuestion — "Ship has an optional CLI for cloud coding sessions, team chat, and a skill marketplace. All plugin skills work fully without it. Interested?" Options: A: "Sure, set it up" B: "No thanks" C: "Don't ask again". A → run `curl -fsSL https://www.ship.tech/install.sh | sh`, then continue. B → continue. C → run `ship-config-set cli_prompt never`, then continue.
-If `SHIP_TOKEN_EXPIRY` ≤ 3 days: mention token expiry to user.
 
 # Ship: Design
 

@@ -13,7 +13,7 @@
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start, phase-guardrail), orchestrator (auto-orchestrate), and utilities (task-id, preflight, auto-state, auth-headers) |
+| `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start, phase-guardrail), orchestrator (auto-orchestrate), and utilities (task-id, preflight, auto-state) |
 | `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, PreToolUse, Stop) |
 | `.codex/` | `INSTALL.md`, `hooks.json` | Codex install docs and shipped Codex hook manifest |
 | `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:design, etc.) |
