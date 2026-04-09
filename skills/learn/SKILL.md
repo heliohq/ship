@@ -184,7 +184,7 @@ Read `.learnings/LEARNINGS.md` and present:
 ## Session Start Integration
 
 `.learnings/LEARNINGS.md` is injected into every session by `session-start.sh`
-alongside DESIGN_INDEX.md. This gives the AI
+alongside DOCS_INDEX.md. This gives the AI
 context about recent operational discoveries without manual lookup.
 
 ## Execution Handoff

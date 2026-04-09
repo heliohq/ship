@@ -489,8 +489,8 @@ No user interaction. The skill reflects on the session, classifies each learning
 All injected at session start via `session-start.sh`:
 
 1. **.learnings/LEARNINGS.md** — code-level guardrails (semantic rules + operational knowledge)
-2. **docs/DESIGN_INDEX.md** — architecture-level guardrails (auto-generated from design doc frontmatter)
-3. **DESIGN.md** — visual design system (colors, typography, spacing, components — if present at project root)
+2. **docs/DOCS_INDEX.md** — architecture-level guardrails (auto-generated from design doc frontmatter)
+3. **DESIGN.md** — visual design system pointer (title + section list; full content read on demand when writing frontend code)
 
 ---
 
@@ -507,11 +507,11 @@ Every design doc has YAML frontmatter with fields designed for machine consumpti
 - **description** — one sentence for AI relevance filtering
 - **status** — trust signal (current, draft, partially-outdated, superseded, not-implemented)
 - **services** — which directories this design covers
-- **last_verified** — when the doc was last checked against code
+- **last_modified** — when the doc was last updated
 
 ### Index injection
 
-`generate-design-index.sh` builds a compact table from all design doc frontmatter. `session-start.sh` injects this table at session start, so AI agents know what design docs exist without reading each one.
+`generate-docs-index.sh` builds a compact table from all design doc frontmatter. `session-start.sh` injects this table at session start, so AI agents know what design docs exist without reading each one.
 
 ---
 
@@ -537,7 +537,7 @@ Every DESIGN.md follows the same structure: Visual Theme, Color Palette, Typogra
 
 ### Session-start injection
 
-When DESIGN.md exists at project root, `session-start.sh` injects it into every agent session — including pipeline implementers during `/ship:auto`. This means dev agents automatically reference the design system when writing frontend code.
+When DESIGN.md exists at project root, `session-start.sh` injects a lightweight pointer (title + section list) into every agent session — not the full file. When writing frontend code, agents read DESIGN.md on demand for the actual design tokens and values.
 
 ### Example
 

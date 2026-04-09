@@ -28,23 +28,36 @@ title: "Human-readable title"
 description: "One sentence, under 120 chars — enough for an AI to decide whether to read the doc."
 number: "029"
 status: current | partially-outdated | superseded | draft | not-implemented
-superseded_by: "034"        # only if status is superseded
-related: ["001", "023"]     # other design doc numbers
-services: [backend, agent-service]  # affected go-services/ directories or top-level dirs
-last_verified: "2026-04-02" # date when doc was last checked against code
+services: [scripts, hooks]  # only when specific dirs/components are affected
+superseded_by: "034"        # only when status is superseded
+related: ["001", "023"]     # only when related docs exist
+last_modified: "2026-04-02"
 ---
 ```
 
-### Field Rules
+### Required Fields
 
 - **title**: Match the `# heading` below the frontmatter. Use quotes if it contains special chars.
 - **description**: One concise sentence. This gets injected into session context as an index — write it for an AI that needs to decide "should I read this doc?" without opening it. Max 120 chars.
-- **number**: Unique across `docs/design/`. Sub-docs in a directory (e.g., `017-multi-instance-isolation/`) share the parent number. Agent docs use `"agents/001"` format.
+- **number**: Unique across `docs/design/`. Used for file naming (`029-topic.md`) and cross-referencing.
 - **status**: One of the 5 allowed values. See Status Lifecycle below.
+
+### Conditional Fields
+
+- **services**: Array of affected directories or components. Helps agents match "I'm editing X, does a design doc cover this?"
 - **superseded_by**: Required when status is `superseded`. Points to the replacement doc number.
-- **related**: Array of doc numbers that cover related topics. Helps navigation.
-- **services**: Array of directory names from `go-services/` (e.g., `backend`, `gateway-service`, `agent-service`) or top-level dirs (e.g., `agent`, `frontend`, `shipcli-ts`, `deploy`). Tells you which code this doc describes.
-- **last_verified**: ISO date when someone last confirmed the doc matches the codebase.
+- **related**: Include when related docs exist. Array of doc numbers for navigation.
+- **last_modified**: ISO date when the doc was last updated.
+
+### Docs Index
+
+After creating or updating a design doc, regenerate the index:
+
+```bash
+bash scripts/generate-docs-index.sh
+```
+
+This produces `docs/DOCS_INDEX.md` — a compact table (Name, Description, Status, Path) injected at session start so agents know what design docs exist without reading each one. Superseded docs are excluded from the index.
 
 ## Status Lifecycle
 
@@ -61,7 +74,7 @@ draft → current → partially-outdated → superseded
 | `superseded` | Replaced by another doc — must set `superseded_by` |
 | `not-implemented` | Design was approved but never built |
 
-When changing status, also update `last_verified` to today's date.
+When changing status, also update `last_modified` to today's date.
 
 ## Numbering
 
@@ -124,12 +137,6 @@ Directories for multi-doc topics:
 
 - Reference other design docs by number: "see 023-agent-broker-architecture"
 - When renaming/renumbering, update ALL references. Use: `grep -r "old-name" docs/ AGENTS.md README.md deploy/`
-- The `docs/README.md` index must include every design doc. Add your doc there when creating it.
-
-## Updating docs/README.md
-
-When creating a new doc, add it to the appropriate section in `docs/README.md`:
-- Core Architecture, Agent, PTY And Terminal, Runtime, Platform, Channels, Guides, Desktop, Tooling, Historical
 
 ## Verification
 
@@ -139,4 +146,4 @@ Before marking a doc as `current`, verify key claims against code:
 - Do referenced API endpoints exist?
 - Does the described architecture match the actual service boundaries?
 
-Update `last_verified` when you complete verification.
+Update `last_modified` when you complete verification.
