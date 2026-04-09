@@ -507,7 +507,7 @@ Every design doc has YAML frontmatter with fields designed for machine consumpti
 - **description** — one sentence for AI relevance filtering
 - **status** — trust signal (current, draft, partially-outdated, superseded, not-implemented)
 - **services** — which directories this design covers
-- **last_verified** — when the doc was last checked against code
+- **last_modified** — when the doc was last updated
 
 ### Index injection
 
