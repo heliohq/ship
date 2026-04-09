@@ -25,15 +25,10 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
 SHIP_SKILL_NAME=auto source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
-### Auth Gate
-
-If `SHIP_AUTH: not_logged_in`: AskUserQuestion — "Ship requires authentication to use all skills. Login now? (A: Yes / B: Not now)". A → run `ship auth login`, verify with `ship auth status --json`, proceed if logged_in, stop if failed. B → stop.
-If `SHIP_AUTO_LOGIN: true`: skip AskUserQuestion, run `ship auth login` directly.
-If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
 # Ship: Auto
 
@@ -91,6 +86,8 @@ else
   "$SHIP_ORCH" init '<user description goes here>'
 fi
 ```
+
+The pipeline works from whatever branch you're on. On main → creates a new `ship/<task-id>` branch. On a feature branch → stays on it and works there. This means spec files on the current branch are always accessible to the design agent.
 
 The script outputs KEY:VALUE lines. Extract these four values:
 - `ACTION` — what to do next (`dispatch`, `done`, `escalate`, `error`)

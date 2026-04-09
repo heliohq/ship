@@ -40,6 +40,14 @@ emit_dispatch() {
 }
 
 emit_done() {
+  # Archive the state file so init can start a fresh task.
+  if [ -f "$STATE_FILE" ]; then
+    local task_id
+    task_id=$(state_get "task_id" 2>/dev/null || echo "unknown")
+    local archive_dir=".ship/tasks/$task_id"
+    mkdir -p "$archive_dir"
+    mv "$STATE_FILE" "$archive_dir/ship-auto.completed.md"
+  fi
   emit "ACTION" "done"
   emit "MESSAGE" "$1"
 }
@@ -306,8 +314,21 @@ cmd_init() {
   local description="$1"
 
   if [ -f "$STATE_FILE" ]; then
-    emit_error "Active task already exists. Use 'resume' instead."
-    exit 1
+    # Check if the old task's branch still exists — if not, state is stale.
+    local old_branch
+    old_branch=$(awk '/^branch:/{print $2}' "$STATE_FILE" 2>/dev/null)
+    if [ -n "$old_branch" ] && git rev-parse --verify --quiet "$old_branch" >/dev/null 2>&1; then
+      emit_error "Active task already exists. Use 'resume' instead, or delete $STATE_FILE to start fresh."
+      exit 1
+    else
+      # Stale state — branch is gone (merged/deleted). Archive and continue.
+      local old_task_id
+      old_task_id=$(awk '/^task_id:/{print $2}' "$STATE_FILE" 2>/dev/null || echo "unknown")
+      local archive_dir=".ship/tasks/$old_task_id"
+      mkdir -p "$archive_dir"
+      mv "$STATE_FILE" "$archive_dir/ship-auto.stale.md"
+      emit "INFO" "Cleared stale task '$old_task_id' (branch '$old_branch' no longer exists)."
+    fi
   fi
 
   local task_id
@@ -325,15 +346,15 @@ cmd_init() {
   local cur_branch branch
   cur_branch=$(current_branch)
   if [ -z "$cur_branch" ] || [ "$cur_branch" = "$base_branch" ]; then
+    # On base branch (main/master) — create a new task branch
     if ! git checkout -b "ship/$task_id" "$base_branch" >/dev/null 2>&1; then
       git checkout -b "ship/$task_id" >/dev/null 2>&1
     fi
     branch="ship/$task_id"
-  elif [ "$cur_branch" = "ship/$task_id" ]; then
-    branch="$cur_branch"
   else
-    emit_error "Current branch '$cur_branch' is unrelated to this new task. Switch to '$base_branch' first."
-    exit 1
+    # On a feature branch — stay on it, work here
+    branch="$cur_branch"
+    base_branch="$cur_branch"
   fi
 
   local session_id

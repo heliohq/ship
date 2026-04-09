@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Resolve the ship plugin root directory.
+# This script lives in <plugin-root>/bin/ and is on PATH automatically
+# (Claude Code adds each plugin's bin/ to PATH). Skills call this to
+# locate the plugin without relying on CLAUDE_PLUGIN_ROOT, which is
+# only available in hook contexts.
+printf '%s\n' "$(cd "$(dirname "$0")/.." && pwd)"

@@ -26,15 +26,10 @@ allowed-tools:
 ## Preamble (run first)
 
 ```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}"
+SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
 SHIP_SKILL_NAME=design source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
-### Auth Gate
-
-If `SHIP_AUTH: not_logged_in`: AskUserQuestion — "Ship requires authentication to use all skills. Login now? (A: Yes / B: Not now)". A → run `ship auth login`, verify with `ship auth status --json`, proceed if logged_in, stop if failed. B → stop.
-If `SHIP_AUTO_LOGIN: true`: skip AskUserQuestion, run `ship auth login` directly.
-If `SHIP_TOKEN_EXPIRY` ≤ 3 days: warn user their token expires soon.
 
 # Ship: Design
 
@@ -194,7 +189,7 @@ TodoWrite([
 1. If invoked by /ship:auto, the task_id is provided.
 2. If invoked standalone, generate `task_id` using the shared script:
    ```bash
-   TASK_ID=$(bash "${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex/ship}}/scripts/task-id.sh" "<description>")
+   TASK_ID=$(bash "${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}/scripts/task-id.sh" "<description>")
    ```
 
 Artifacts go to `.ship/tasks/<task_id>/plan/`. The Write tool creates
