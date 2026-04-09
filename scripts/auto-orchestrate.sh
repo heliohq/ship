@@ -346,15 +346,15 @@ cmd_init() {
   local cur_branch branch
   cur_branch=$(current_branch)
   if [ -z "$cur_branch" ] || [ "$cur_branch" = "$base_branch" ]; then
+    # On base branch (main/master) — create a new task branch
     if ! git checkout -b "ship/$task_id" "$base_branch" >/dev/null 2>&1; then
       git checkout -b "ship/$task_id" >/dev/null 2>&1
     fi
     branch="ship/$task_id"
-  elif [ "$cur_branch" = "ship/$task_id" ]; then
-    branch="$cur_branch"
   else
-    emit_error "Current branch '$cur_branch' is unrelated to this new task. Switch to '$base_branch' first."
-    exit 1
+    # On a feature branch — stay on it, work here
+    branch="$cur_branch"
+    base_branch="$cur_branch"
   fi
 
   local session_id

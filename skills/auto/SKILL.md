@@ -92,6 +92,8 @@ else
 fi
 ```
 
+The pipeline works from whatever branch you're on. On main → creates a new `ship/<task-id>` branch. On a feature branch → stays on it and works there. This means spec files on the current branch are always accessible to the design agent.
+
 The script outputs KEY:VALUE lines. Extract these four values:
 - `ACTION` — what to do next (`dispatch`, `done`, `escalate`, `error`)
 - `PHASE` — current phase name
