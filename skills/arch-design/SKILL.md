@@ -1,6 +1,13 @@
 ---
 name: arch-design
-description: Use when creating, editing, or reviewing architectural design docs under docs/design/ — enforces frontmatter format, numbering, status lifecycle, and writing conventions. Note: this is for engineering/architecture decisions, NOT visual design (use /ship:visual-design for that).
+description: >
+  Use when creating, editing, or reviewing architectural design docs under docs/design/ —
+  enforces frontmatter format, numbering, status lifecycle, and writing conventions. Use
+  when: "write a design doc", "create an ADR", "document this decision", "architecture
+  doc", "design document", or when capturing engineering decisions, trade-offs, or system
+  design rationale. Note: this is for engineering/architecture decisions, NOT visual
+  design (use /ship:visual-design for that) or implementation planning (use /ship:design
+  for that).
 ---
 
 # Design Document Standard
