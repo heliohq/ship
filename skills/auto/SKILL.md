@@ -1,6 +1,6 @@
 ---
 name: auto
-version: 0.8.0
+version: 0.9.0
 description: >
   Full pipeline orchestrator: design → dev → review → QA → simplify → handoff.
   Code-driven coordinator — all state management, artifact validation, phase transitions,
@@ -14,6 +14,7 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
+  - TodoWrite
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -38,6 +39,40 @@ Code-driven orchestrator. You are a thin dispatch relay between
 (which do the actual work). Follow the loop below exactly.
 
 **Never** write code, manage state, decide phase transitions, or dispatch agents in background.
+
+---
+
+## Progress Tracking
+
+Use `TodoWrite` to track your own progress across the pipeline.
+Long-running orchestration spans many agent dispatches — todos help you
+stay oriented on what's done, what's next, and where you are in the loop.
+
+**Initialize after Step 1** (once you know the task_id):
+
+```
+TodoWrite([
+  { content: "Design phase",   status: "in_progress", activeForm: "Running design phase" },
+  { content: "Dev phase",      status: "pending",     activeForm: "Running dev phase" },
+  { content: "Review phase",   status: "pending",     activeForm: "Running review phase" },
+  { content: "QA phase",       status: "pending",     activeForm: "Running QA phase" },
+  { content: "Simplify phase", status: "pending",     activeForm: "Running simplify phase" },
+  { content: "Handoff phase",  status: "pending",     activeForm: "Running handoff phase" },
+  { content: "Capture learnings", status: "pending",  activeForm: "Capturing learnings" }
+])
+```
+
+**Update rules:**
+- When a phase dispatches → mark it `in_progress`, mark the prior phase `completed`
+- Update `activeForm` with hints from the script's MESSAGE output —
+  e.g., `"Design — investigating codebase"` instead of just `"Running design phase"`.
+  This gives sub-phase awareness without managing sub-phase todos.
+- When `review_fix` or `qa_fix` dispatches → insert a dynamic item:
+  `"Fix review findings (round N/3)"` or `"Fix QA issues (round N/3)"`
+  with status `in_progress`. Remove it when done.
+- On `escalate` → mark the current phase item as `in_progress` (it stays
+  visible so the user sees where the pipeline stopped)
+- On `done` → mark all remaining items `completed`
 
 ---
 

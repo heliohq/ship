@@ -1,6 +1,6 @@
 ---
 name: handoff
-version: 0.2.0
+version: 0.3.0
 description: >
   Use when code is ready to ship: creates a PR, waits for CI/CD, addresses
   review comments and merge conflicts, and iterates until the PR is ready.
@@ -15,6 +15,7 @@ allowed-tools:
   - Glob
   - Agent
   - AskUserQuestion
+  - TodoWrite
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -88,6 +89,37 @@ Done means:
 - Sync with base preemptively — only when drift, conflicts, or repo policy require it
 - Loop past 3 fix rounds — escalate instead
 - Leave doc debt implicit — carry it into the PR
+
+---
+
+## Progress Tracking
+
+Use `TodoWrite` to track your own progress through the handoff phases.
+Create todos at the start based on what the repo actually needs.
+Not every repo has a CHANGELOG, CI, or docs to update — only include
+items for work that will actually happen.
+
+**Principle**: one todo per phase the user would wait on. Fix rounds
+are dynamic — add them only when a check fails.
+
+**Example** (repo with CHANGELOG and CI):
+
+```
+TodoWrite([
+  { content: "Pre-flight (resolve branch and scope)", status: "in_progress", activeForm: "Resolving branch and scope" },
+  { content: "Run local verification",                status: "pending",     activeForm: "Running local verification" },
+  { content: "Update CHANGELOG and docs",             status: "pending",     activeForm: "Updating CHANGELOG and docs" },
+  { content: "Push and create PR",                    status: "pending",     activeForm: "Pushing and creating PR" },
+  { content: "Wait for GitHub checks",                status: "pending",     activeForm: "Waiting for GitHub checks" }
+])
+```
+
+**Adaptations** (not exhaustive — use judgment):
+- No CHANGELOG.md and no doc changes needed → drop that item entirely
+- No CI workflows in the repo → drop "Wait for GitHub checks"
+- Check fails → insert `"Fix round N/3 — <issue summary>"` with `in_progress`
+- PR already exists (update flow) → rename "Push and create PR" to
+  "Push update to existing PR"
 
 ---
 
