@@ -1,6 +1,6 @@
 ---
 name: design
-version: 1.2.0
+version: 1.3.0
 description: "Adversarial pre-coding planning: the host agent and a peer agent independently investigate the codebase, diff specs, and validate the final plan with an execution drill."
 allowed-tools:
   - Bash
@@ -11,6 +11,7 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
+  - TodoWrite
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -128,6 +129,34 @@ digraph plan {
 | Drill → Ready | Zero BLOCKED steps, zero UNCLEAR steps | Revise plan (max 1 loop) |
 
 No artifact passes to the next phase without meeting its gate.
+
+## Progress Tracking
+
+Use `TodoWrite` to track your own progress through the design phases.
+After Phase 1 (init), create todos that reflect the actual work ahead.
+Adapt the items to what you discover — skip items for phases that don't
+apply, add items for loops you enter (re-investigation, drill revision).
+
+**Principle**: one todo per major phase the user would care about.
+Update `activeForm` to reflect what's happening within a phase.
+
+**Example** (full run with peer available):
+
+```
+TodoWrite([
+  { content: "Investigate codebase (host + peer)", status: "in_progress", activeForm: "Investigating codebase" },
+  { content: "Write spec",                         status: "pending",     activeForm: "Writing spec" },
+  { content: "Diff host vs peer specs",            status: "pending",     activeForm: "Diffing specs" },
+  { content: "Write implementation plan",          status: "pending",     activeForm: "Writing implementation plan" },
+  { content: "Execution drill",                    status: "pending",     activeForm: "Running execution drill" }
+])
+```
+
+**Adaptations** (not exhaustive — use judgment):
+- Peer unavailable → drop "Diff" item, rename "Investigate" to reflect self-produced peer spec
+- Upstream spec already exists → drop "Write spec", start with "Validate existing spec"
+- Re-investigation needed → re-mark "Investigate" as `in_progress`
+- Drill revision needed → keep "Execution drill" as `in_progress`
 
 ## Red Flag
 

@@ -1,6 +1,6 @@
 ---
 name: dev
-version: 0.5.0
+version: 0.6.0
 description: Execute implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves that run in parallel via git worktrees; each story is reviewed independently, and waves merge before proceeding.
 allowed-tools:
   - Bash
@@ -11,6 +11,7 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
+  - TodoWrite
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -78,6 +79,42 @@ Resolve once at the start:
 - Let the peer modify tests to make them pass instead of fixing code
 - Omit prior stories context from the implementer prompt
 - Reuse a reviewer across stories — fresh Agent each time
+
+---
+
+## Progress Tracking
+
+Use `TodoWrite` to track your own progress through implementation.
+Build the todo list after Phase 1 (setup), once you know the actual
+wave/story structure. The items should reflect the real work — don't
+use a canned template.
+
+**Principle**: one todo per wave (not per story) to keep the list short.
+Use `activeForm` to show which story within a wave is active.
+Always end with a regression test item when there are multiple stories.
+
+**Example** (3-wave normal run):
+
+```
+TodoWrite([
+  { content: "Wave 1: \"Add User model\", \"Add Product model\"",
+    status: "in_progress", activeForm: "Implementing Story 1" },
+  { content: "Wave 2: \"User API\", \"Product API\"",
+    status: "pending", activeForm: "Implementing Wave 2" },
+  { content: "Wave 3: \"Auth middleware\"",
+    status: "pending", activeForm: "Implementing Wave 3" },
+  { content: "Cross-story regression test",
+    status: "pending", activeForm: "Running regression test" }
+])
+```
+
+**Adaptations** (not exhaustive — use judgment):
+- Single-story task → one item for the story + one for regression, no wave labels
+- Fix mode (invoked with findings) → single item: `"Fix <review/QA> findings"`
+- Targeted fix within a wave → update that wave's `activeForm`:
+  `"Fixing Story N (round R/2)"`
+- All stories in one wave (no parallelism) → list stories individually
+  instead of grouping by wave
 
 ---
 
