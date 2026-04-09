@@ -52,7 +52,7 @@ if [[ -f "$DOCS_INDEX_FILE" ]]; then
 ---
 
 "
-  PARTS="${PARTS}${SEPARATOR}Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding.
+  PARTS="${PARTS}${SEPARATOR}Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding. To create or edit design docs, use /ship:arch-design and run bash scripts/generate-docs-index.sh after.
 
 $(cat "$DOCS_INDEX_FILE")"
 fi
