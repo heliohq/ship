@@ -35,7 +35,7 @@ if [ -n "$_SETTINGS_FILE" ] && [ -f "$_SETTINGS_FILE" ]; then
 fi
 echo "SHIP_AUTO_LOGIN: $_AUTO_LOGIN"
 
-# --- Ship CLI check ---
+# --- Ship CLI check (optional — skills work without it) ---
 _SHIP_BIN=""
 command -v ship >/dev/null 2>&1 && _SHIP_BIN="ship"
 
@@ -43,7 +43,6 @@ if [ -n "$_SHIP_BIN" ]; then
   _CLI_VERSION=$("$_SHIP_BIN" --version 2>/dev/null)
   if [ $? -ne 0 ] || [ -z "$_CLI_VERSION" ]; then
     echo "SHIP_CLI: broken"
-    echo "ACTION_REQUIRED: Ship CLI is installed but broken. Reinstall: curl -fsSL https://www.ship.tech/install.sh | sh"
   else
     echo "SHIP_CLI: $_CLI_VERSION"
 
@@ -67,14 +66,10 @@ if [ -n "$_SHIP_BIN" ]; then
       fi
     else
       echo "SHIP_AUTH: not_logged_in"
-      echo "SHIP_LOGIN_CMD: ship auth login"
-      echo "SHIP_LOGIN_INLINE: Run inline with: ! ship auth login"
-      echo "SHIP_VERIFY_CMD: ship auth status --json"
     fi
   fi
 else
   echo "SHIP_CLI: not_installed"
-  echo "ACTION_REQUIRED: Ship CLI not found. Ask user to install: curl -fsSL https://www.ship.tech/install.sh | sh"
 fi
 
 # --- Repo context ---
