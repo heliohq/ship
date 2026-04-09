@@ -1,7 +1,14 @@
 ---
 name: dev
 version: 0.6.0
-description: Execute implementation stories from a plan via parallel waves. Dependency analysis groups independent stories into waves that run in parallel via git worktrees; each story is reviewed independently, and waves merge before proceeding.
+description: >
+  Execute implementation stories from a plan via parallel waves. Dependency analysis
+  groups independent stories into waves that run in parallel via git worktrees; each
+  story is reviewed independently, and waves merge before proceeding. Use when:
+  "implement this plan", "execute the stories", "code this up", "build from the plan",
+  or when a plan/stories already exist and need implementation. Note: if no plan exists
+  yet, use /ship:design first. For the full pipeline (plan → code → review → QA → ship),
+  use /ship:auto.
 allowed-tools:
   - Bash
   - Read

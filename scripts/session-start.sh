@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Ship plugin — SessionStart hook
-# Injects project context into conversation:
-#   1. .learnings/LEARNINGS.md — project learnings (verified rules + pending observations)
-#   2. docs/DOCS_INDEX.md — design doc index for architectural guardrails
-#   3. DESIGN.md — pointer only (title + section list); full content read on demand
-# If no files exist, outputs nothing (no-op).
+# Injects project context into conversation (4 layers, cleanly separated):
+#   1. Skill routing — when to use each /ship:* skill (always injected)
+#   2. .learnings/LEARNINGS.md — project learnings (verified rules + pending observations)
+#   3. docs/DOCS_INDEX.md — design doc index for architectural guardrails
+#   4. DESIGN.md — pointer only (title + section list); full content read on demand
+# If no context files exist, only the skill routing layer is injected.
 
 set -u
 
@@ -37,36 +38,57 @@ DOCS_INDEX_FILE="$REPO_ROOT/docs/DOCS_INDEX.md"
 
 PARTS=""
 
-# Part 1: Learnings (verified rules + pending observations)
+# ── Layer 1: Skill routing (always injected) ──────────────────────────
+# Tells the agent WHEN to invoke each /ship:* skill.
+# Descriptions focus on trigger conditions, not workflow internals.
+PARTS="Ship skill routing — use the Skill tool to invoke these when the trigger condition matches:
+
+| Trigger condition | Invoke |
+|---|---|
+| User wants to plan/scope/investigate before coding (\"plan this\", \"how should we implement\", \"what's the best approach\", \"scope the work\") | /ship:design |
+| User wants the full pipeline end-to-end — plan, code, review, test, ship (\"ship this\", \"build end to end\", \"implement and ship\", \"full pipeline\") | /ship:auto |
+| A plan/stories already exist and need implementation (\"implement this plan\", \"execute the stories\", \"code this up from the plan\") | /ship:dev |
+| Code changes need correctness review — static analysis, not runtime (\"review the code\", \"check for bugs\", \"is this correct\", \"code review\") | /ship:review |
+| Code needs runtime testing — start the app and verify behavior (\"test this\", \"QA the changes\", \"does it actually work\", \"run QA\") | /ship:qa |
+| Code is done, needs PR creation and CI (\"ship it\", \"create a PR\", \"open a pull request\", \"push and merge\") | /ship:handoff |
+| Refactoring or cleanup — no new features (\"refactor\", \"clean up\", \"simplify\", \"reduce duplication\", \"dead code\") | /ship:refactor |
+| Creating/editing architecture decision docs under docs/design/ (\"write a design doc\", \"create an ADR\", \"document this decision\") | /ship:arch-design |
+| Creating/editing DESIGN.md visual design systems (\"design tokens\", \"color palette\", \"typography\", \"visual design system\") | /ship:visual-design |
+| Bootstrapping repo infrastructure (\"setup\", \"init\", \"bootstrap\", \"configure CI\") | /ship:setup |
+| Capturing session learnings (\"what did we learn\", \"capture learning\", \"avoid this mistake\") | /ship:learn |
+
+If you think a /ship:* skill applies, invoke it. When unsure between /ship:auto and individual skills: use /ship:auto for end-to-end feature work, use individual skills when the user asks for a specific phase only."
+
+# ── Layer 2: Learnings (verified rules + pending observations) ────────
 if [[ -f "$LEARNINGS_FILE" ]]; then
-  PARTS="Project learnings loaded. Verified entries are rules that MUST be followed — violations cause bugs, security issues, or architectural breakage. Pending entries are recent observations — check them before making decisions in the affected areas.
+  PARTS="${PARTS}
+
+---
+
+Project learnings loaded. Verified entries are rules that MUST be followed — violations cause bugs, security issues, or architectural breakage. Pending entries are recent observations — check them before making decisions in the affected areas.
 
 $(cat "$LEARNINGS_FILE")"
 fi
 
-# Part 2: Design doc index
+# ── Layer 3: Design doc index ─────────────────────────────────────────
 if [[ -f "$DOCS_INDEX_FILE" ]]; then
-  SEPARATOR=""
-  [[ -n "$PARTS" ]] && SEPARATOR="
+  PARTS="${PARTS}
 
 ---
 
-"
-  PARTS="${PARTS}${SEPARATOR}Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding. To create or edit design docs, use /ship:arch-design and run bash scripts/generate-docs-index.sh after.
+Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding. To create or edit design docs, use /ship:arch-design and run bash scripts/generate-docs-index.sh after.
 
 $(cat "$DOCS_INDEX_FILE")"
 fi
 
-# Part 3: Visual design system (DESIGN.md) — pointer only, read on demand
+# ── Layer 4: Visual design system (pointer only, read on demand) ──────
 DESIGN_MD_FILE="$REPO_ROOT/DESIGN.md"
 if [[ -f "$DESIGN_MD_FILE" ]]; then
-  SEPARATOR=""
-  [[ -n "$PARTS" ]] && SEPARATOR="
+  PARTS="${PARTS}
 
 ---
 
-"
-  PARTS="${PARTS}${SEPARATOR}DESIGN.md (visual design system) exists at project root. When writing frontend code, read it first."
+DESIGN.md (visual design system) exists at project root. When writing frontend code, read it first."
 fi
 
 # Nothing to inject

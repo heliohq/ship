@@ -2,8 +2,12 @@
 name: review
 version: 0.2.1
 description: >
-  Review the active change scope, report concrete correctness findings,
-  rank them P1/P2/P3, and add diagnosis only when it explains multiple findings.
+  Review the active change scope, report concrete correctness findings, rank them
+  P1/P2/P3, and add diagnosis only when it explains multiple findings. Use when:
+  "review the code", "check for bugs", "review my changes", "is this correct",
+  "code review", or after implementation to verify correctness before QA. Note: this
+  checks code correctness via static analysis, not runtime behavior (use /ship:qa for
+  runtime testing).
 allowed-tools:
   - Bash
   - Read

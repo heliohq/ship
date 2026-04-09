@@ -1,7 +1,14 @@
 ---
 name: design
 version: 1.3.0
-description: "Adversarial pre-coding planning: the host agent and a peer agent independently investigate the codebase, diff specs, and validate the final plan with an execution drill."
+description: >
+  Adversarial pre-coding planning: the host agent and a peer agent independently
+  investigate the codebase, diff specs, and validate the final plan with an execution
+  drill. Use when: "plan this", "design the approach", "how should we implement",
+  "write a plan", "scope the work", "what's the best approach", or any task that needs
+  investigation and planning before writing code. This is the default for tasks that
+  need a plan but not the full pipeline. Note: this is for implementation planning,
+  NOT visual design (use /ship:visual-design) or full pipeline execution (use /ship:auto).
 allowed-tools:
   - Bash
   - Read

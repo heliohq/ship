@@ -2,10 +2,11 @@
 name: handoff
 version: 0.3.0
 description: >
-  Use when code is ready to ship: creates a PR, waits for CI/CD, addresses
-  review comments and merge conflicts, and iterates until the PR is ready.
-  Called by /ship:auto at the end, or invoked
-  directly via /ship:handoff after manual work.
+  Use when code is ready to ship: creates a PR, waits for CI/CD, addresses review
+  comments and merge conflicts, and iterates until the PR is ready. Use when: "ship it",
+  "create a PR", "open a pull request", "push and merge", "handoff", or when code changes
+  are complete and need to go through PR creation and CI. Called by /ship:auto at the end,
+  or invoked directly via /ship:handoff after manual work.
 allowed-tools:
   - Bash
   - Read

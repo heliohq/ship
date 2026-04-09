@@ -5,8 +5,11 @@ description: >
   Full pipeline orchestrator: design → dev → review → QA → simplify → handoff.
   Code-driven coordinator — all state management, artifact validation, phase transitions,
   and retry logic live in scripts/auto-orchestrate.sh. You are a thin relay that
-  dispatches Agent() calls and interprets sub-skill responses.
-  Use when the task involves a scoped code change.
+  dispatches Agent() calls and interprets sub-skill responses. Use when: "ship this",
+  "build this feature end to end", "implement and ship", "full pipeline", or any scoped
+  code change that should go through the complete design-to-handoff workflow. This is the
+  default entry point for most feature work. For individual phases only, invoke
+  /ship:design, /ship:dev, /ship:review, /ship:qa, or /ship:handoff directly.
 allowed-tools:
   - Bash
   - Read

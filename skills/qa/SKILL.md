@@ -2,9 +2,12 @@
 name: qa
 version: 3.0.0
 description: >
-  Independent QA: starts the application, tests the code changes against
-  the spec, and explores beyond the spec for edge cases. Reports verdict
-  with evidence. All testing logic lives in reference files.
+  Independent QA: starts the application, tests the code changes against the spec, and
+  explores beyond the spec for edge cases. Reports verdict with evidence. All testing
+  logic lives in reference files. Use when: "test this", "QA the changes", "does it
+  actually work", "run QA", "exploratory testing", or after code review to verify runtime
+  behavior. Note: this runs the app and tests behavior end-to-end, not just code
+  correctness (use /ship:review for static review).
 allowed-tools:
   - Bash
   - Read
