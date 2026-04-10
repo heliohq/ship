@@ -2,6 +2,8 @@
 
 Detailed guides for every Ship skill — philosophy, workflow, and examples.
 
+**Start here:** Run `/ship:auto` to see the full pipeline end-to-end. Use individual skills (`/ship:design`, `/ship:review`, etc.) when you only need one phase. Skills also trigger automatically based on what you're doing — say "plan this" and design kicks in, say "ship it" and handoff takes over.
+
 | Skill | Role | What it does |
 |-------|------|--------------|
 | [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
@@ -12,13 +14,13 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
 | [`/ship:refactor`](#refactor) | **Code Improver** | Four-lens parallel scan (structure, reuse, quality, efficiency), classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
-| [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into `.learnings/LEARNINGS.md`. Auto-verifies durable entries and prunes stale ones. |
+| [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into .learnings/LEARNINGS.md. Auto-verifies durable entries and prunes stale ones. |
 | [`/ship:arch-design`](#arch-design) | **Arch Design Doc Author** | Creates and maintains architectural design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
 | [`/ship:visual-design`](#visual-design) | **Visual Design Author** | Creates DESIGN.md files — structured visual design systems (colors, typography, spacing, components) that AI agents read to generate consistent UI. |
 
 ---
 
-## `auto`
+## auto
 
 This is the **full pipeline**.
 
@@ -28,7 +30,7 @@ You describe what you want to build. Ship handles the rest — plan, implement, 
 
 AI coding agents are capable but unreliable. They skip tests, hallucinate about code they haven't read, review their own work and call it good, and declare victory without evidence. Ship makes these failure modes structurally impossible.
 
-The orchestrator is code-driven: `scripts/auto-orchestrate.sh` owns all state management, artifact validation, phase transitions, and retry logic. The SKILL.md is a thin relay that dispatches Agent() calls and reports verdicts back to the script. A `phase-guardrail.sh` PreToolUse hook enforces artifact access rules (QA independence, review read-only, state file protection). State is tracked in `.ship/ship-auto.local.md` — the stop-gate hook prevents exit while the pipeline is active.
+The orchestrator is code-driven: scripts/auto-orchestrate.sh owns all state management, artifact validation, phase transitions, and retry logic. The SKILL.md is a thin relay that dispatches Agent() calls and reports verdicts back to the script. A phase-guardrail.sh PreToolUse hook enforces artifact access rules (QA independence, review read-only, state file protection). State is tracked in .ship/ship-auto.local.md — the stop-gate hook prevents exit while the pipeline is active.
 
 ### The independence architecture
 
@@ -38,77 +40,61 @@ The QA evaluator is contractually forbidden from reading the review or the plan.
 
 ### Seven phases
 
-```
-Bootstrap → Design → Dev → Review → QA → Simplify → Handoff
-```
+    Bootstrap -> Design -> Dev -> Review -> QA -> Simplify -> Handoff
 
 1. **Bootstrap** — init task directory, detect base branch, create feature branch, write state file
-2. **Design** — invoke `/ship:design` for adversarial planning
-3. **Dev** — invoke `/ship:dev` to execute implementation stories
-4. **Review** — invoke `/ship:review` for staff-engineer code review
-5. **QA** — invoke `/ship:qa` against the running application
+2. **Design** — invoke /ship:design for adversarial planning
+3. **Dev** — invoke /ship:dev to execute implementation stories
+4. **Review** — invoke /ship:review for staff-engineer code review
+5. **QA** — invoke /ship:qa against the running application
 6. **Refactor** — behavior-preserving cleanup via /ship:refactor (four-lens scan: structure, reuse, quality, efficiency)
-7. **Handoff** — invoke `/ship:handoff` to create PR and shepherd it until checks are green
+7. **Handoff** — invoke /ship:handoff to create PR and shepherd it until checks are green
 
 Review and QA have fix loops: if bugs/issues are found, auto dispatches dev to fix them, then re-runs the phase. Every phase must produce its required artifacts — the orchestrator validates artifact existence before advancing.
 
 ### State lives on disk
 
-The current phase is tracked in `.ship/ship-auto.local.md` — a YAML frontmatter file with task_id, branch, base_branch, and phase. The stop-gate hook reads this file and blocks session exit while the pipeline is active. On resume, auto reads the phase field and jumps directly to that phase.
+The current phase is tracked in .ship/ship-auto.local.md — a YAML frontmatter file with task_id, branch, base_branch, and phase. The stop-gate hook reads this file and blocks session exit while the pipeline is active. On resume, auto reads the phase field and jumps directly to that phase.
 
 ### Example
 
-```
-You:   Add rate limiting to the /api/upload endpoint
+    You:   Add rate limiting to the /api/upload endpoint
 
-Assistant: [Auto] Bootstrapping task: rate-limit-upload
-        [Auto] Starting design phase...
+    Assistant: [Auto] Bootstrapping task: rate-limit-upload
+            [Auto] Starting design phase...
 
-        [Design] Read src/routes/api/upload.ts, traced to middleware chain...
-        [Design] Found existing rate limiter in src/middleware/rateLimit.ts
-               but /api/upload bypasses it (line 42, direct route mount).
-        [Design] Peer challenger confirmed: both plans agree on middleware approach.
-        [Design] Execution drill passed — 3 stories, all implementable.
+            [Design] Read src/routes/api/upload.ts, traced to middleware chain...
+            [Design] Found existing rate limiter in src/middleware/rateLimit.ts
+                   but /api/upload bypasses it (line 42, direct route mount).
+            [Design] Peer challenger confirmed: both plans agree on middleware approach.
+            [Design] Execution drill passed — 3 stories, all implementable.
 
-        [Auto] Design complete — 3 stories extracted.
+            [Auto] Design complete — 3 stories extracted.
 
-        ┌─ Spec: rate-limit-upload ─────────────────────────┐
-        │ Story 1: Wire /api/upload through existing rate    │
-        │          limiter middleware                         │
-        │ Story 2: Add per-user upload quota (100/hour)      │
-        │ Story 3: Return 429 with Retry-After header        │
-        │                                                    │
-        │ Acceptance criteria:                               │
-        │ - MUST: 429 response after 100 uploads/hour/user   │
-        │ - MUST: Retry-After header present in 429          │
-        │ - SHOULD: Existing rate limiter tests still pass   │
-        └───────────────────────────────────────────────────┘
+            [Dev] Implementing 3 stories...
+            [Dev] Story 1: PASS — middleware wired, tests green
+            [Dev] Story 2: PASS — quota logic added with Redis counter
+            [Dev] Story 3: PASS — 429 + Retry-After verified
 
-        [Dev] Implementing 3 stories...
-        [Dev] Story 1: PASS — middleware wired, tests green
-        [Dev] Story 2: PASS — quota logic added with Redis counter
-        [Dev] Story 3: PASS — 429 + Retry-After verified
+            [Review] Code review...
+            [Review] 1 finding: Redis key missing TTL
+            [Dev] Fixing review bugs...
+            [Review] Re-reviewing... clean.
 
-        [Review] Code review...
-        [Review] 1 finding: Redis key missing TTL
-        [Dev] Fixing review bugs...
-        [Review] Re-reviewing... clean.
+            [QA] Testing against running app...
+            [QA] 3/3 MUST criteria passed (L1 evidence: curl responses)
+            [QA] Verdict: PASS
 
-        [QA] Testing against running app...
-        [QA] 3/3 MUST criteria passed (L1 evidence: curl responses)
-        [QA] Verdict: PASS
+            [Refactor] No dead code found.
 
-        [Refactor] No dead code found.
-
-        [Handoff] Creating PR...
-        PR #48 created. CI passing. Ready for review.
-```
+            [Handoff] Creating PR...
+            PR #48 created. CI passing. Ready for review.
 
 One command. Task description to a PR with checks green. Fully autonomous.
 
 ---
 
-## `design`
+## design
 
 This is where **adversarial rigor** meets planning.
 
@@ -128,8 +114,8 @@ The merged spec follows brainstorming style — flexible sections scaled to comp
 
 This is not a review. It is two independent investigations of the same problem by separate runtimes, ideally on different providers.
 
-- **Specs diverge** → resolution by code evidence first. If still unresolved, debate with the peer agent on the same thread/session when possible (max 2 rounds, both sides cite file:line). Dispositions: patched, proven-false, conceded, or escalated to user.
-- **Debate exhausted** → escalated items go to the user in standalone mode, or block in auto mode.
+- **Specs diverge** — resolution by code evidence first. If still unresolved, debate with the peer agent on the same thread/session when possible (max 2 rounds, both sides cite file:line). Dispositions: patched, proven-false, conceded, or escalated to user.
+- **Debate exhausted** — escalated items go to the user in standalone mode, or block in auto mode.
 
 ### The execution drill
 
@@ -139,39 +125,37 @@ Tasks flagged UNCLEAR get revised and re-drilled once. Plans that survive are im
 
 ### Example
 
-```
-You:   Design adding WebSocket support for real-time notifications
+    You:   Design adding WebSocket support for real-time notifications
 
-Assistant: [Design] Dispatching peer investigation...
-        [Design] Investigating codebase...
-        Read src/server.ts — Express app, no existing WS setup.
-        Read src/routes/notifications.ts — polling endpoint, 5s interval.
-        Read src/services/notificationService.ts — pushes to Redis pub/sub.
-        Read package.json — no ws/socket.io dependency.
+    Assistant: [Design] Dispatching peer investigation...
+            [Design] Investigating codebase...
+            Read src/server.ts — Express app, no existing WS setup.
+            Read src/routes/notifications.ts — polling endpoint, 5s interval.
+            Read src/services/notificationService.ts — pushes to Redis pub/sub.
+            Read package.json — no ws/socket.io dependency.
 
-        [Design] Writing spec.md...
+            [Design] Writing spec.md...
 
-        [Design] Reading peer spec...
-        [Design] Diffing specs...
+            [Design] Reading peer spec...
+            [Design] Diffing specs...
 
-        DIVERGENCE: Host spec modifies server.ts directly.
-                    Peer spec creates separate ws-server.ts.
-                    → Code evidence: server.ts:14 already has upgrade
-                      handler for health checks. Peer is right.
-                    → Disposition: conceded. spec.md updated.
+            DIVERGENCE: Host spec modifies server.ts directly.
+                        Peer spec creates separate ws-server.ts.
+                        -> Code evidence: server.ts:14 already has upgrade
+                          handler for health checks. Peer is right.
+                        -> Disposition: conceded. spec.md updated.
 
-        [Design] Writing plan.md (3 TDD tasks)...
-        [Design] Execution drill...
-        Peer flagged: "Task 2 Step 1 test references NotificationType
-        but doesn't specify which file." → UNCLEAR
-        → Revised: added src/types/notification.ts:8. Re-drilled: CLEAR.
+            [Design] Writing plan.md (3 TDD tasks)...
+            [Design] Execution drill...
+            Peer flagged: "Task 2 Step 1 test references NotificationType
+            but doesn't specify which file." -> UNCLEAR
+            -> Revised: added src/types/notification.ts:8. Re-drilled: CLEAR.
 
-        Design complete. spec.md + plan.md ready.
-```
+            Design complete. spec.md + plan.md ready.
 
 ---
 
-## `dev`
+## dev
 
 This is the **implementation engine**.
 
@@ -187,39 +171,37 @@ Stories are analyzed for dependencies (shared files, import chains) and grouped 
 4. **Wave merge** — merge all story branches back after review passes
 5. **Cross-story regression** — full test suite after all waves complete
 
-If FAIL → targeted fix (max 2 rounds), not a full rewrite.
+If FAIL — targeted fix (max 2 rounds), not a full rewrite.
 
 ### Example
 
-```
-You:   /ship:dev
+    You:   /ship:dev
 
-Assistant: [Dev] Reading plan: 3 stories for rate-limit-upload
+    Assistant: [Dev] Reading plan: 3 stories for rate-limit-upload
 
-        [Dev] Dependency analysis: 2 waves
-              Wave 1: [Story 1, Story 2] ← parallel (no shared files)
-              Wave 2: [Story 3] ← depends on Story 1
+            [Dev] Dependency analysis: 2 waves
+                  Wave 1: [Story 1, Story 2] <- parallel (no shared files)
+                  Wave 2: [Story 3] <- depends on Story 1
 
-        [Dev] Wave 1: creating worktrees, dispatching in parallel...
-        [Peer] Story 1: Wire /api/upload through rate limiter... done
-        [Peer] Story 2: Add per-user upload quota... done
-        [Review] Story 1: PASS
-        [Review] Story 2: FAIL — Redis key uses IP instead of user ID
-        [Dev] Story 2: targeted fix round 1...
-        [Review] Story 2: PASS
-        [Dev] Wave 1: merging branches... clean.
+            [Dev] Wave 1: creating worktrees, dispatching in parallel...
+            [Peer] Story 1: Wire /api/upload through rate limiter... done
+            [Peer] Story 2: Add per-user upload quota... done
+            [Review] Story 1: PASS
+            [Review] Story 2: FAIL — Redis key uses IP instead of user ID
+            [Dev] Story 2: targeted fix round 1...
+            [Review] Story 2: PASS
+            [Dev] Wave 1: merging branches... clean.
 
-        [Dev] Wave 2: Story 3 (sequential)
-        [Peer] Return 429 with Retry-After header... done
-        [Review] PASS
+            [Dev] Wave 2: Story 3 (sequential)
+            [Peer] Return 429 with Retry-After header... done
+            [Review] PASS
 
-        [Dev] Cross-story regression: all tests green.
-        [Dev] 3/3 stories, 2 waves complete.
-```
+            [Dev] Cross-story regression: all tests green.
+            [Dev] 3/3 stories, 2 waves complete.
 
 ---
 
-## `review`
+## review
 
 This is the **staff engineer who finds the disease, not just the symptoms**.
 
@@ -227,11 +209,55 @@ Code review has one job: **find every bug** in the diff. N+1 queries, race condi
 
 When multiple findings share one structural root cause, the review adds a short **diagnosis** — but only when it genuinely explains the pattern. Diagnosis is optional and always secondary to concrete findings.
 
-This is the principal contradiction applied to code review: bugs are the many contradictions, and the structural deficiency is the principal contradiction whose existence determines the others.
+### How it works
+
+1. **Scope the change** — read the diff, identify what files changed, trace the blast radius through imports and call sites
+2. **Hunt for bugs** — walk every changed function looking for correctness issues, not style preferences
+3. **Rank findings** — each finding gets a priority:
+   - **P1** — will break in production (data loss, crash, security hole)
+   - **P2** — will break under specific conditions (race condition, edge case, error path)
+   - **P3** — latent risk (missing validation that hasn't been exploited yet)
+4. **Diagnose root cause** — when multiple findings share one structural deficiency, add a short diagnosis explaining the pattern
+
+### What it won't do
+
+- No style or formatting nits
+- No suggestions for "better" patterns that aren't bugs
+- No rewriting code — findings only, with enough context to fix
+
+### Example
+
+    You:   /ship:review
+
+    Assistant: [Review] Reading diff: 4 files changed, 127 insertions
+            [Review] Tracing blast radius...
+            src/api/rate-limit.ts -> src/middleware/index.ts -> 12 route handlers
+
+            Findings:
+
+            P1 — Redis counter never expires (src/api/rate-limit.ts:34)
+              The INCR key has no TTL. After the first rate limit window,
+              the counter grows forever. Users get permanently rate-limited.
+              Trigger: any user who hits the limit once can never upload again.
+
+            P2 — Race condition in quota check (src/api/rate-limit.ts:41-43)
+              GET then INCR is not atomic. Two concurrent requests can both
+              read count=99, both increment, both succeed. The 100th and
+              101st requests both pass.
+              Trigger: concurrent uploads from the same user.
+
+            P3 — Missing error handling on Redis connection (src/api/rate-limit.ts:28)
+              If Redis is down, getAsync throws unhandled. The upload endpoint
+              returns 500 instead of falling back to permissive mode.
+              Trigger: Redis restart during deployment.
+
+            Diagnosis: all three findings trace to treating Redis as a simple
+            key-value store instead of using atomic operations with built-in
+            expiry (INCR + EXPIRE or SET with EX and NX).
 
 ---
 
-## `qa`
+## qa
 
 This is **independent QA**.
 
@@ -245,40 +271,38 @@ Every verdict must be backed by direct evidence — screenshots, curl responses,
 
 QA reads the spec and the git diff, then matches testing to what changed:
 
-- **Frontend changes** → browser testing (via agent-browser)
-- **API changes** → endpoint testing (via curl)
-- **CLI changes** → terminal testing
+- **Frontend changes** — browser testing (via agent-browser)
+- **API changes** — endpoint testing (via curl)
+- **CLI changes** — terminal testing
 
 Most projects have a frontend. When you test through the browser, you implicitly test the API, auth, database, and most of the stack.
 
 ### Example
 
-```
-You:   /ship:qa
+    You:   /ship:qa
 
-Assistant: [QA] Reading spec and diff...
-        [QA] Diff touches: src/api/rate-limit.ts, src/components/UploadForm.tsx
-        [QA] Starting application... server ready on :3000
+    Assistant: [QA] Reading spec and diff...
+            [QA] Diff touches: src/api/rate-limit.ts, src/components/UploadForm.tsx
+            [QA] Starting application... server ready on :3000
 
-        [QA] Testing spec criteria:
-        Rate limit at 100 uploads/hour — PASS
-          curl: POST /api/upload x101, 101st returns 429 {"error":"rate limited"}
-        Retry-After header present — PASS
-          curl: Retry-After: 3600 in 429 response
-        Non-upload endpoints unaffected — PASS
-          curl: GET /api/status returns 200 during rate limit
+            [QA] Testing spec criteria:
+            Rate limit at 100 uploads/hour — PASS
+              curl: POST /api/upload x101, 101st returns 429 {"error":"rate limited"}
+            Retry-After header present — PASS
+              curl: Retry-After: 3600 in 429 response
+            Non-upload endpoints unaffected — PASS
+              curl: GET /api/status returns 200 during rate limit
 
-        [QA] Beyond spec:
-        - Concurrent uploads from same user: rate limit triggers correctly
-        - Unauthenticated requests: returns 401 before rate limit check
-        - Edge: 100th request returns 200, 101st returns 429
+            [QA] Beyond spec:
+            - Concurrent uploads from same user: rate limit triggers correctly
+            - Unauthenticated requests: returns 401 before rate limit check
+            - Edge: 100th request returns 200, 101st returns 429
 
-        Verdict: PASS — all spec criteria met, no issues found
-```
+            Verdict: PASS — all spec criteria met, no issues found
 
 ---
 
-## `handoff`
+## handoff
 
 This is the **last mile**.
 
@@ -299,9 +323,9 @@ Every PR body should say:
 After creating the PR, handoff enters a loop:
 
 1. Wait for CI
-2. If CI fails → read logs, dispatch fix, re-push
-3. If review comments → mechanical fixes auto-addressed, judgment calls escalated
-4. If merge conflicts → auto-resolve, re-verify
+2. If CI fails — read logs, dispatch fix, re-push
+3. If review comments — mechanical fixes auto-addressed, judgment calls escalated
+4. If merge conflicts — auto-resolve, re-verify
 
 Max 3 rounds. If it can't get the PR checks green in 3 rounds, it escalates to you with a clear explanation of what's blocking.
 
@@ -318,27 +342,25 @@ Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, .l
 
 ### Example
 
-```
-You:   /ship:handoff
+    You:   /ship:handoff
 
-Assistant: [Handoff] Checking proof freshness...
-        Tests: PASS at a1b2c3d (current HEAD) ✓
-        Lint: PASS at a1b2c3d ✓
-        QA: PASS at a1b2c3d ✓
+    Assistant: [Handoff] Checking proof freshness...
+            Tests: PASS at a1b2c3d (current HEAD)
+            Lint: PASS at a1b2c3d
+            QA: PASS at a1b2c3d
 
-        [Handoff] Merging main into feature branch... clean.
-        [Handoff] Creating PR #48...
+            [Handoff] Merging main into feature branch... clean.
+            [Handoff] Creating PR #48...
 
-        [Handoff] Waiting for CI...
-        CI: 3/3 checks passed ✓
+            [Handoff] Waiting for CI...
+            CI: 3/3 checks passed
 
-        [Handoff] PR #48 checks are green.
-        https://github.com/yourorg/yourrepo/pull/48
-```
+            [Handoff] PR #48 checks are green.
+            https://github.com/yourorg/yourrepo/pull/48
 
 ---
 
-## `refactor`
+## refactor
 
 This is the **structural diagnostician**.
 
@@ -348,20 +370,20 @@ Refactoring is not "clean up the code." It's answering: **why does adding a feat
 
 Bad refactoring starts with "this module is too big" or "we should use the repository pattern." Good refactoring starts with a specific pain: "every time we add a new notification type, we have to change 4 files." That pain traces to a structural crack — a boundary that doesn't match how the code is actually used.
 
-`refactor` traces from the concrete pain to the crack:
+refactor traces from the concrete pain to the crack:
 
 1. **Start with the painful change** — what specific thing is hard to do?
 2. **Trace the dependency chain** — why does this change touch so many files?
 3. **Find the crack** — which boundary is misaligned with usage?
 4. **Validate with counterfactual** — if we fixed this crack, would the painful change become simple?
-5. **Check git history** — is this a one-off or a pattern? (`git log --all --oneline -- <file>`)
+5. **Check git history** — is this a one-off or a pattern?
 
 ### Diagnosis depth matches input
 
-- **Directive** ("extract this into a module") → light validation, then execute
-- **Area** ("refactor the auth system") → medium diagnosis, then spec
-- **Pain** ("adding notifications is painful") → full diagnosis from pain to crack
-- **Vague** ("something feels wrong in this codebase") → full diagnosis, widest search
+- **Directive** ("extract this into a module") — light validation, then execute
+- **Area** ("refactor the auth system") — medium diagnosis, then spec
+- **Pain** ("adding notifications is painful") — full diagnosis from pain to crack
+- **Vague** ("something feels wrong in this codebase") — full diagnosis, widest search
 
 ### What it produces
 
@@ -369,47 +391,45 @@ Code changes, not documents. Diagnoses the pain, traces to the structural crack,
 
 ### Example
 
-```
-You:   Every time I add a new payment provider, I have to change 6 files.
+    You:   Every time I add a new payment provider, I have to change 6 files.
 
-Assistant: [Refactor] Tracing from pain...
-        Read src/payments/stripe.ts, src/payments/paypal.ts
-        Read src/routes/checkout.ts — switch statement on provider type (line 84)
-        Read src/services/billing.ts — another switch (line 112)
-        Read src/types/payment.ts — union type (line 23)
-        Read tests/payments.test.ts — duplicated test setup per provider
+    Assistant: [Refactor] Tracing from pain...
+            Read src/payments/stripe.ts, src/payments/paypal.ts
+            Read src/routes/checkout.ts — switch statement on provider type (line 84)
+            Read src/services/billing.ts — another switch (line 112)
+            Read src/types/payment.ts — union type (line 23)
+            Read tests/payments.test.ts — duplicated test setup per provider
 
-        [Refactor] Found the crack:
-        Payment providers are scattered across a type union, two switch
-        statements, and duplicated test setup. Adding a provider means
-        updating all four locations plus the route handler.
+            [Refactor] Found the crack:
+            Payment providers are scattered across a type union, two switch
+            statements, and duplicated test setup. Adding a provider means
+            updating all four locations plus the route handler.
 
-        The boundary should be: one file per provider that implements
-        a common interface. The switch statements become a registry lookup.
+            The boundary should be: one file per provider that implements
+            a common interface. The switch statements become a registry lookup.
 
-        [Refactor] Git history confirms pattern:
-        - 4 PRs in last 3 months each touched all 6 files
-        - Average PR size for "add provider": 340 lines (should be ~80)
+            [Refactor] Git history confirms pattern:
+            - 4 PRs in last 3 months each touched all 6 files
+            - Average PR size for "add provider": 340 lines (should be ~80)
 
-        [Refactor] Counterfactual:
-        With a provider interface + registry, adding a provider is:
-        1 new file implementing the interface, 1 line registering it.
+            [Refactor] Counterfactual:
+            With a provider interface + registry, adding a provider is:
+            1 new file implementing the interface, 1 line registering it.
 
-        Spec written to .ship/tasks/refactor-payments/plan/spec.md
-        Handing off to auto...
-```
+            Spec written to .ship/tasks/refactor-payments/plan/spec.md
+            Handing off to auto...
 
 ---
 
-## `setup`
+## setup
 
 This is the **repo bootstrapper**.
 
-New repo? Inherited codebase? Missing linter? No CI? `setup` handles all of it — and then discovers semantic constraints that AI agents would violate without project context.
+New repo? Inherited codebase? Missing linter? No CI? setup handles all of it — and then discovers semantic constraints that AI agents would violate without project context.
 
 ### Infrastructure
 
-Detects languages (15 supported including Shell), package managers, linters, formatters, type checkers, test runners, CI/CD, and pre-commit hooks. You pick which modules to configure. It respects existing config — if you already have husky or `.pre-commit-config.yaml` working, it won't migrate.
+Detects languages (15 supported including Shell), package managers, linters, formatters, type checkers, test runners, CI/CD, and pre-commit hooks. You pick which modules to configure. It respects existing config — if you already have husky or .pre-commit-config.yaml working, it won't migrate.
 
 ### Harness
 
@@ -430,44 +450,42 @@ If harness files already exist (AGENTS.md, CLAUDE.md, .learnings/LEARNINGS.md), 
 
 ### Example
 
-```
-You:   /ship:setup
+    You:   /ship:setup
 
-Assistant: [Setup] Detecting stack...
-        TypeScript (pnpm)
-        Linter: oxlint (ready)
-        Formatter: prettier (ready)
-        Test runner: vitest (ready)
-        Pre-commit: lint-staged configured, no hook runner ⚠
+    Assistant: [Setup] Detecting stack...
+            TypeScript (pnpm)
+            Linter: oxlint (ready)
+            Formatter: prettier (ready)
+            Test runner: vitest (ready)
+            Pre-commit: lint-staged configured, no hook runner
 
-        [Setup] Wiring lint-staged via core.hooksPath...
+            [Setup] Wiring lint-staged via core.hooksPath...
 
-        [Setup] Investigating constraints...
-        Git history: 1 revert (notebook metadata), 12 bug fixes
-        Code: auth flow in src/auth/, no obvious semantic traps
+            [Setup] Investigating constraints...
+            Git history: 1 revert (notebook metadata), 12 bug fixes
+            Code: auth flow in src/auth/, no obvious semantic traps
 
-        SAFETY RULES (hookify):
-          ✓ [D1] Block .env file edits
+            SAFETY RULES (hookify):
+              [D1] Block .env file edits
 
-        SEMANTIC RULES (.learnings/LEARNINGS.md):
-          ✓ [S1] Don't remove auth checks to fix errors
-              Why: AI agents delete validation to make errors go away
+            SEMANTIC RULES (.learnings/LEARNINGS.md):
+              [S1] Don't remove auth checks to fix errors
+                  Why: AI agents delete validation to make errors go away
 
-        [Setup] Complete.
+            [Setup] Complete.
 
-        AGENTS.md: generated
-        .learnings/LEARNINGS.md: 1 semantic rule
-        Hookify: 1 safety rule
-        Pre-commit: wired via core.hooksPath
-```
+            AGENTS.md: generated
+            .learnings/LEARNINGS.md: 1 semantic rule
+            Hookify: 1 safety rule
+            Pre-commit: wired via core.hooksPath
 
 ---
 
-## `learn`
+## learn
 
 This is the **self-improving harness**.
 
-Every session produces knowledge — mistakes made, surprises discovered, project quirks found. Without capture, the next session starts from scratch. `/ship:learn` captures that knowledge and routes it to the right persistent store.
+Every session produces knowledge — mistakes made, surprises discovered, project quirks found. Without capture, the next session starts from scratch. /ship:learn captures that knowledge and routes it to the right persistent store.
 
 ### Fully autonomous
 
@@ -478,27 +496,59 @@ No user interaction. The skill reflects on the session, classifies each learning
 | Code constraint requiring AI judgment | .learnings/LEARNINGS.md |
 | Deterministic check (grep/regex can catch) | Hookify rule |
 | Architectural decision or boundary | Design doc |
-| Operational knowledge | `.learnings/LEARNINGS.md` (staging) |
+| Operational knowledge | .learnings/LEARNINGS.md (staging) |
 
 ### Staging lifecycle
 
-`.learnings/LEARNINGS.md` is a staging area, not a permanent store. Learnings that prove durable (repeated, aged + still valid) get auto-promoted to permanent stores. Learnings that go stale (scope deleted, already covered, contradicted) get auto-pruned. The staging file stays lean.
+.learnings/LEARNINGS.md is a staging area, not a permanent store. Learnings that prove durable (repeated, aged + still valid) get auto-promoted to permanent stores. Learnings that go stale (scope deleted, already covered, contradicted) get auto-pruned. The staging file stays lean.
 
 ### Harness memory layers
 
-All injected at session start via `session-start.sh`:
+All injected at session start via session-start.sh:
 
 1. **.learnings/LEARNINGS.md** — code-level guardrails (semantic rules + operational knowledge)
 2. **docs/DOCS_INDEX.md** — architecture-level guardrails (auto-generated from design doc frontmatter)
 3. **DESIGN.md** — visual design system pointer (title + section list; full content read on demand when writing frontend code)
 
+### Example
+
+    You:   /ship:learn
+
+    Assistant: [Learn] Reflecting on session...
+
+            Found 3 learnings:
+
+            1. SEMANTIC — Price fields in src/models/order.ts are stored in
+               cents, not dollars. AI agents kept generating dollar amounts
+               in test fixtures, causing off-by-100x assertion failures.
+               -> Written to .learnings/LEARNINGS.md
+
+            2. SAFETY — AI agent edited .env.production directly to "fix"
+               a missing DATABASE_URL. Should never touch .env files.
+               -> Created hookify rule: block .env file edits
+
+            3. ARCHITECTURAL — The notification service (src/services/notify.ts)
+               must stay decoupled from the order service. Previous attempt
+               to merge them broke the event replay system.
+               -> Flagged for arch-design doc (no existing doc covers this boundary)
+
+            Session learnings captured. 1 semantic rule, 1 hookify rule,
+            1 arch-design candidate.
+
 ---
 
-## `arch-design`
+## arch-design
 
 This is **architectural guardrails for AI and humans**.
 
 Design docs prevent the most dangerous form of AI drift: locally-correct decisions that violate the overall architecture. Without design docs, an AI might merge services that must stay separate or simplify flows with hidden constraints.
+
+### How it works
+
+1. **Identify the decision** — what architectural boundary, pattern, or constraint needs documenting?
+2. **Write the doc** — structured markdown with YAML frontmatter under docs/design/, following the numbered naming convention (e.g., 003-service-boundaries.md)
+3. **Define boundaries** — the Boundaries section is the core anti-drift mechanism. It states what must stay separate, what must not be simplified, and why.
+4. **Index automatically** — generate-docs-index.sh builds a compact table from all design doc frontmatter, injected at session start so AI agents know what docs exist
 
 ### Structured for AI indexing
 
@@ -509,13 +559,54 @@ Every design doc has YAML frontmatter with fields designed for machine consumpti
 - **services** — which directories this design covers
 - **last_modified** — when the doc was last updated
 
-### Index injection
+### Status lifecycle
 
-`generate-docs-index.sh` builds a compact table from all design doc frontmatter. `session-start.sh` injects this table at session start, so AI agents know what design docs exist without reading each one.
+    draft -> current -> partially-outdated -> superseded
+
+- **draft** — proposed, not yet validated. AI should read but not treat as authoritative.
+- **current** — validated and enforced. AI must follow boundaries defined here.
+- **partially-outdated** — some sections no longer reflect code. AI should verify specific claims before acting on them.
+- **superseded** — replaced by a newer doc. AI should follow the replacement.
+
+### Example
+
+    You:   Document the decision to keep notifications decoupled from orders
+
+    Assistant: [Arch Design] Investigating boundaries...
+            Read src/services/notify.ts — event-driven, subscribes to order events
+            Read src/services/order.ts — publishes events, no direct notify imports
+            Read git log — PR #31 attempted merge, reverted in PR #33 (broke replay)
+
+            [Arch Design] Writing docs/design/003-notification-decoupling.md...
+
+            ---
+            title: Notification Service Decoupling
+            description: Notifications must remain event-driven and decoupled
+              from the order service to preserve event replay capability.
+            status: current
+            services: [src/services/notify.ts, src/services/order.ts]
+            last_modified: 2026-04-10
+            ---
+
+            ## Context
+            The notification service consumes order events via Redis pub/sub.
+            PR #31 attempted to merge notify into the order service for
+            "simplicity." PR #33 reverted it after event replay broke.
+
+            ## Decision
+            Notifications stay in a separate service, consuming order events.
+
+            ## Boundaries
+            - notify.ts MUST NOT import from order.ts (event contract only)
+            - order.ts MUST NOT call notify functions directly
+            - New notification types are added by subscribing to existing events
+
+            [Arch Design] Updating docs index...
+            Design doc 003 indexed and injected at session start.
 
 ---
 
-## `visual-design`
+## visual-design
 
 This is **visual consistency for AI-generated UI**.
 
@@ -529,7 +620,7 @@ A DESIGN.md is like AGENTS.md for visual identity: drop it in your project root 
 | **From URL** | User provides a website | DOM inspection: clarify scope and intent, extract exact values from computed styles, validate extracted foundation with user |
 | **From Codebase** | Existing project needs a DESIGN.md | Reverse-engineering: detect tech stack, extract tokens from config/CSS/theme, validate with user, fill gaps from framework defaults |
 
-All three modes share the same output: a 9-section DESIGN.md + a self-contained `preview.html`.
+All three modes share the same output: a 9-section DESIGN.md + a self-contained preview.html.
 
 ### The 9-section format
 
@@ -537,30 +628,28 @@ Every DESIGN.md follows the same structure: Visual Theme, Color Palette, Typogra
 
 ### Session-start injection
 
-When DESIGN.md exists at project root, `session-start.sh` injects a lightweight pointer (title + section list) into every agent session — not the full file. When writing frontend code, agents read DESIGN.md on demand for the actual design tokens and values.
+When DESIGN.md exists at project root, session-start.sh injects a lightweight pointer (title + section list) into every agent session — not the full file. When writing frontend code, agents read DESIGN.md on demand for the actual design tokens and values.
 
 ### Example
 
-```
-You:   /ship:visual-design — capture the design of linear.app
+    You:   /ship:visual-design — capture the design of linear.app
 
-Assistant: [Visual Design] Scope: linear.app homepage + features page
-        Intent: inspiration (not exact recreation)
+    Assistant: [Visual Design] Scope: linear.app homepage + features page
+            Intent: inspiration (not exact recreation)
 
-        [Visual Design] Inspecting site...
-        Extracted 18 colors, 2 font families, 6 shadow levels
+            [Visual Design] Inspecting site...
+            Extracted 18 colors, 2 font families, 6 shadow levels
 
-        [Visual Design] Extracted palette:
-        - **Void Black** (#0A0A0B): Primary background
-        - **Linear Blue** (#5E6AD2): Brand primary, CTAs
-        - **Soft Gray** (#8A8F98): Body text
-        ... (15 more)
+            [Visual Design] Extracted palette:
+            - Void Black (#0A0A0B): Primary background
+            - Linear Blue (#5E6AD2): Brand primary, CTAs
+            - Soft Gray (#8A8F98): Body text
+            ... (15 more)
 
-        Does this capture the palette? [user confirms]
+            Does this capture the palette? [user confirms]
 
-        [Visual Design] Writing DESIGN.md (9 sections)...
-        [Visual Design] Generating preview.html...
-        [Visual Design] Complete.
+            [Visual Design] Writing DESIGN.md (9 sections)...
+            [Visual Design] Generating preview.html...
+            [Visual Design] Complete.
 
-        DESIGN.md + preview.html written to project root.
-```
+            DESIGN.md + preview.html written to project root.
