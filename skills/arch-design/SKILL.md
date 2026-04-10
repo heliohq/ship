@@ -46,15 +46,15 @@ last_modified: "2026-04-02"
 
 - **title**: Match the `# heading` below the frontmatter. Use quotes if it contains special chars.
 - **description**: One concise sentence. This gets injected into session context as an index — write it for an AI that needs to decide "should I read this doc?" without opening it. Max 120 chars.
-- **number**: Unique across `docs/design/`. Used for file naming (`029-topic.md`) and cross-referencing.
+- **number**: Unique across `docs/design/`. Zero-padded 3 digits (e.g., `"002"`, `"029"`). Used for file naming (`029-topic.md`) and cross-referencing.
 - **status**: One of the 5 allowed values. See Status Lifecycle below.
+- **last_modified**: ISO date (`YYYY-MM-DD`) when the doc was last updated. Must be updated on every edit.
 
 ### Conditional Fields
 
 - **services**: Array of affected directories or components. Helps agents match "I'm editing X, does a design doc cover this?"
 - **superseded_by**: Required when status is `superseded`. Points to the replacement doc number.
 - **related**: Include when related docs exist. Array of doc numbers for navigation.
-- **last_modified**: ISO date when the doc was last updated.
 
 ### Docs Index
 
@@ -64,7 +64,7 @@ After creating or updating a design doc, regenerate the index:
 bash scripts/generate-docs-index.sh
 ```
 
-This produces `docs/DOCS_INDEX.md` — a compact table (Name, Description, Status, Path) injected at session start so agents know what design docs exist without reading each one. Superseded docs are excluded from the index.
+This produces `docs/DOCS_INDEX.md` — a compact table (#, Status, Name, Description, Last Modified, Path) injected at session start so agents know what design docs exist without reading each one. The `#` column is extracted from the `number` frontmatter field (falling back to the filename prefix). Superseded docs are excluded from the index.
 
 ## Status Lifecycle
 
@@ -85,7 +85,7 @@ When changing status, also update `last_modified` to today's date.
 
 ## Numbering
 
-- Next available number: check `ls docs/design/ | sort` and pick the next integer.
+- Next available number: check `ls docs/design/ | sort` and pick the next zero-padded 3-digit number (e.g., `003`, `010`).
 - No duplicate numbers. Each top-level doc or directory gets a unique number.
 - Sub-documents inside a directory (e.g., `014-credentials-vault/plan-1-vault-service.md`) share the parent number.
 - Agent-specific docs go under `docs/design/agents/` with their own numbering sequence.
@@ -126,6 +126,10 @@ Directories for multi-doc topics:
 {2-3 sentences: what problem this solves and the key design decision}
 
 ## (Body sections — flexible per topic)
+
+## Boundaries
+
+{What this design does NOT cover. What must not change without updating this doc. This is the core anti-drift mechanism.}
 
 ## References
 

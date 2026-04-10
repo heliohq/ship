@@ -352,9 +352,9 @@ cmd_init() {
     fi
     branch="ship/$task_id"
   else
-    # On a feature branch — stay on it, work here
+    # On a feature branch — stay on it, use detected base for diffing
     branch="$cur_branch"
-    base_branch="$cur_branch"
+    # base_branch keeps the detect_base_branch() value (main/master)
   fi
 
   local session_id
