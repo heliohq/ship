@@ -54,7 +54,7 @@ Review and QA have fix loops: if bugs/issues are found, auto dispatches dev to f
 
 ### State lives on disk
 
-The current phase is tracked in .ship/ship-auto.local.md — a YAML frontmatter file with task_id, branch, base_branch, and phase. The stop-gate hook reads this file and blocks session exit while the pipeline is active. On resume, auto reads the phase field and jumps directly to that phase.
+The current phase is tracked in .ship/ship-auto.local.md — a YAML frontmatter file with task_id, branch, and phase. The stop-gate hook reads this file and blocks session exit while the pipeline is active. On resume, auto reads the phase field and jumps directly to that phase.
 
 ### Example
 

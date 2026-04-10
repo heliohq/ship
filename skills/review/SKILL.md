@@ -86,10 +86,9 @@ and `P2`.
 
 Use the smallest possible setup contract:
 
-- `base_branch`: caller-provided, else detect the repo default branch
 - `spec`: caller-provided, else `<task_dir>/plan/spec.md` if it exists
 - `task_dir`: caller-provided, else `.ship/tasks/ad-hoc-review-<branch>`
-- `scope`: the active change scope = `base_branch...HEAD` plus any staged or unstaged worktree changes
+- `scope`: the active change scope = `origin/HEAD...HEAD` plus any staged or unstaged worktree changes
 
 If there is no spec, do a diff-only review and say so explicitly.
 If there are no changes, write a short clean report and stop.

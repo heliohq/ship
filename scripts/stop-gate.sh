@@ -74,9 +74,14 @@ build_verifier_prompt() {
   local git_status diff_stat changed_files diff_content artifact_tree text_artifacts
 
   git_status=$(git -C "$CWD" status --short 2>&1 || true)
-  diff_stat=$(git -C "$CWD" diff --stat "$BASE_BRANCH"...HEAD 2>&1 || true)
-  changed_files=$(git -C "$CWD" diff --name-only "$BASE_BRANCH"...HEAD 2>&1 || true)
-  diff_content=$(git -C "$CWD" diff --no-ext-diff --unified=1 "$BASE_BRANCH"...HEAD 2>&1 | head -c 120000)
+  # Resolve diff base: origin/HEAD if available, else fall back to empty tree
+  local diff_base="origin/HEAD"
+  if ! git -C "$CWD" rev-parse origin/HEAD >/dev/null 2>&1; then
+    diff_base=$(git -C "$CWD" hash-object -t tree /dev/null 2>/dev/null || echo "4b825dc642cb6eb9a060e54bf899d15006")
+  fi
+  diff_stat=$(git -C "$CWD" diff --stat "$diff_base"...HEAD 2>&1 || git -C "$CWD" diff --stat "$diff_base" HEAD 2>&1 || true)
+  changed_files=$(git -C "$CWD" diff --name-only "$diff_base"...HEAD 2>&1 || git -C "$CWD" diff --name-only "$diff_base" HEAD 2>&1 || true)
+  diff_content=$(git -C "$CWD" diff --no-ext-diff --unified=1 "$diff_base"...HEAD 2>&1 || git -C "$CWD" diff --no-ext-diff --unified=1 "$diff_base" HEAD 2>&1 | head -c 120000)
   artifact_tree=$(find "$task_dir" -maxdepth 3 -type f 2>/dev/null | sort || true)
   text_artifacts=$(collect_text_artifacts "$task_dir")
 
@@ -111,7 +116,6 @@ Rules:
 Task ID: $TASK_ID
 Current phase: $PHASE
 Branch: $BRANCH
-Base branch: $BASE_BRANCH
 Task dir: $task_dir
 
 ## Original User Request
@@ -220,7 +224,6 @@ FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
 PHASE=$(frontmatter_value "phase")
 TASK_ID=$(frontmatter_value "task_id")
 BRANCH=$(frontmatter_value "branch")
-BASE_BRANCH=$(frontmatter_value "base_branch")
 
 # ── SESSION ISOLATION ────────────────────────────────────────
 # Only gate the session that owns the active pipeline.
@@ -231,8 +234,8 @@ if [ -n "$STATE_SESSION" ] && [ -n "$SESSION_ID" ] && [ "$STATE_SESSION" != "$SE
 fi
 
 # ── VALIDATE STATE ───────────────────────────────────────────
-if [ -z "$PHASE" ] || [ -z "$TASK_ID" ] || [ -z "$BASE_BRANCH" ]; then
-  echo "⚠️  Ship auto: State file corrupted (missing phase, task_id, or base_branch). Removing." >&2
+if [ -z "$PHASE" ] || [ -z "$TASK_ID" ]; then
+  echo "⚠️  Ship auto: State file corrupted (missing phase or task_id). Removing." >&2
   rm -f "$STATE_FILE"
   exit 0
 fi
@@ -285,10 +288,9 @@ case "$PHASE" in
 Task: $TASK_ID
 Current phase: $PHASE
 Branch: $BRANCH
-Base branch: $BASE_BRANCH
 
 The PR needs to be updated before the pipeline can complete.
-If the branch is behind $BASE_BRANCH, rebase and push. Then resume /ship:auto."
+If the branch is behind the default branch, rebase and push. Then resume /ship:auto."
     block_with_reason "$REASON" "Ship: PR not merge-ready ($MERGE_STATE) — rebase and resume"
     exit 0
     ;;
@@ -303,7 +305,6 @@ if [ "$VERIFIER_RC" -ne 0 ]; then
 Task: $TASK_ID
 Current phase: $PHASE
 Branch: $BRANCH
-Base branch: $BASE_BRANCH
 
 Continue the active /ship:auto run from the current repo state and try again.
 
@@ -332,7 +333,6 @@ case "$VERDICT" in
 Task: $TASK_ID
 Current phase: $PHASE
 Branch: $BRANCH
-Base branch: $BASE_BRANCH
 
 Continue the active /ship:auto run from the current state. Do not restart from scratch.
 
