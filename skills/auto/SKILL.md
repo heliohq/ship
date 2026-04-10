@@ -211,9 +211,71 @@ If `ACTION` is `dispatch` → go back to **2a**.
 
 ## Step 3: Terminal
 
-- `ACTION:done` → show MESSAGE to the user. Pipeline complete.
-- `ACTION:escalate` → show REASON to the user. Pipeline blocked — user intervention needed.
-- `ACTION:error` → show MESSAGE. Something went wrong.
+When the pipeline ends, output the report card (read `skills/shared/report-card.md`
+for the standard format). Gather the data from your todo list, the state file, and
+the task artifacts.
+
+### `ACTION:done` — Pipeline complete
+
+```
+## [Auto] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | DONE |
+| Summary | <task title> — shipped via <N> phases |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Phases completed | <list: design, dev, review, qa, simplify, handoff, learn> |
+| Review fix rounds | <N> |
+| QA fix rounds | <N> |
+| Total agents dispatched | <N> |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| <task_dir>/plan/spec.md | Spec |
+| <task_dir>/plan/plan.md | Plan |
+| <task_dir>/review.md | Review |
+| <task_dir>/simplify.md | Simplify |
+| PR URL | <url if available> |
+
+### Next Steps
+1. **Merge** — review the PR and merge
+2. **Re-run QA** — /ship:qa if you want additional testing
+3. **Iterate** — open a new /ship:auto for follow-up work
+```
+
+### `ACTION:escalate` — Pipeline blocked
+
+```
+## [Auto] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | BLOCKED |
+| Summary | <reason> — escalated at <phase> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Phases completed | <list of phases that passed> |
+| Blocked at | <phase name> |
+| Review fix rounds | <N> |
+| QA fix rounds | <N> |
+
+### Next Steps
+1. **Fix manually** — address the blocker, then /ship:auto to resume
+2. **Re-run phase** — /ship:<blocked-phase> to retry
+3. **Abort** — delete .ship/ship-auto.local.md to start fresh
+```
+
+### `ACTION:error` — Script error
+
+Show MESSAGE to the user. No report card needed — errors are infrastructure failures,
+not pipeline outcomes.
 
 ---
 

@@ -38,6 +38,7 @@ way a human does. No separate auto/standalone output formats.
 
 | Phase | Metrics |
 |-------|---------|
+| Auto | Phases completed, Review fix rounds, QA fix rounds, Total agents dispatched |
 | Design | Stories count, Files traced, Divergences resolved, Drill steps CLEAR |
 | Dev | Stories completed, Waves, Concerns, Test result |
 | Review | P1/P2/P3 counts (or "Clean") |

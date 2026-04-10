@@ -83,18 +83,9 @@ read_description() {
 
 # ── Git Helpers ─────────────────────────────────────────────
 
-detect_base_branch() {
-  local ref
-  ref=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)
-  if [ -n "$ref" ]; then
-    echo "$ref" | sed 's|refs/remotes/origin/||'
-  elif git rev-parse --verify origin/main >/dev/null 2>&1; then
-    echo main
-  elif git rev-parse --verify origin/master >/dev/null 2>&1; then
-    echo master
-  else
-    git branch --show-current 2>/dev/null || echo main
-  fi
+has_branch_changes() {
+  # Check if the current branch has commits diverging from origin's default.
+  [ "$(git log --oneline origin/HEAD..HEAD 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
 }
 
 current_head() {
@@ -117,10 +108,9 @@ resolve_session_id() {
 
 generate_prompt() {
   local template_name="$1"
-  local task_id branch base_branch head_sha description task_dir
+  local task_id branch head_sha description task_dir
   task_id=$(state_get "task_id")
   branch=$(state_get "branch")
-  base_branch=$(state_get "base_branch")
   head_sha=$(current_head)
   description=$(read_description)
   task_dir=".ship/tasks/$task_id"
@@ -151,7 +141,6 @@ generate_prompt() {
 
   SHIP_T_TASK_ID="$task_id" \
   SHIP_T_BRANCH="$branch" \
-  SHIP_T_BASE_BRANCH="$base_branch" \
   SHIP_T_HEAD_SHA="$head_sha" \
   SHIP_T_TASK_DIR="$task_dir" \
   SHIP_T_DESCRIPTION="$description" \
@@ -162,7 +151,6 @@ generate_prompt() {
   BEGIN {
     task_id      = ENVIRON["SHIP_T_TASK_ID"]
     branch       = ENVIRON["SHIP_T_BRANCH"]
-    base_branch  = ENVIRON["SHIP_T_BASE_BRANCH"]
     head_sha     = ENVIRON["SHIP_T_HEAD_SHA"]
     task_dir     = ENVIRON["SHIP_T_TASK_DIR"]
     description  = ENVIRON["SHIP_T_DESCRIPTION"]
@@ -173,7 +161,6 @@ generate_prompt() {
   {
     gsub(/\{\{TASK_ID\}\}/, task_id)
     gsub(/\{\{BRANCH\}\}/, branch)
-    gsub(/\{\{BASE_BRANCH\}\}/, base_branch)
     gsub(/\{\{HEAD_SHA\}\}/, head_sha)
     gsub(/\{\{TASK_DIR\}\}/, task_dir)
     gsub(/\{\{DESCRIPTION\}\}/, description)
@@ -197,9 +184,8 @@ dir_has_files() {
 
 validate_artifacts() {
   local phase="$1"
-  local task_id base_branch task_dir
+  local task_id task_dir
   task_id=$(state_get "task_id")
-  base_branch=$(state_get "base_branch")
   task_dir=".ship/tasks/$task_id"
 
   case "$phase" in
@@ -219,9 +205,7 @@ validate_artifacts() {
         || { echo "diff-report.md missing — spec divergence resolution did not run"; return 1; }
       ;;
     dev|dev_fix)
-      local diff_count
-      diff_count=$(git diff --name-only "$base_branch"...HEAD 2>/dev/null | wc -l | tr -d ' ')
-      [ "$diff_count" -gt 0 ] || { echo "no code changes on branch"; return 1; }
+      has_branch_changes || { echo "no code changes on branch"; return 1; }
       ;;
     review)
       file_exists_nonempty "$task_dir/review.md" || { echo "review.md missing or empty"; return 1; }
@@ -340,21 +324,26 @@ cmd_init() {
 
   mkdir -p ".ship/tasks/$task_id"
 
-  local base_branch
-  base_branch=$(detect_base_branch)
-
   local cur_branch branch
   cur_branch=$(current_branch)
-  if [ -z "$cur_branch" ] || [ "$cur_branch" = "$base_branch" ]; then
-    # On base branch (main/master) — create a new task branch
-    if ! git checkout -b "ship/$task_id" "$base_branch" >/dev/null 2>&1; then
-      git checkout -b "ship/$task_id" >/dev/null 2>&1
-    fi
+  # Check if we're on the remote's default branch (by name, not commits —
+  # a fresh feature branch with no commits should still be kept).
+  local is_default=false
+  if [ -z "$cur_branch" ]; then
+    is_default=true
+  else
+    local default_ref
+    default_ref=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+    [ "$cur_branch" = "${default_ref:-main}" ] && is_default=true
+  fi
+
+  if $is_default; then
+    git checkout -b "ship/$task_id" origin/HEAD >/dev/null 2>&1 \
+      || git checkout -b "ship/$task_id" >/dev/null 2>&1
     branch="ship/$task_id"
   else
-    # On a feature branch — stay on it, use detected base for diffing
+    # On a feature branch — stay on it
     branch="$cur_branch"
-    # base_branch keeps the detect_base_branch() value (main/master)
   fi
 
   local session_id
@@ -369,7 +358,6 @@ active: true
 task_id: $task_id
 session_id: $session_id
 branch: $branch
-base_branch: $base_branch
 phase: design
 review_fix_round: 0
 qa_fix_round: 0
@@ -392,14 +380,13 @@ EOF
 cmd_resume() {
   require_state_file
 
-  local task_id phase branch base_branch
+  local task_id phase branch
   task_id=$(state_get "task_id")
   phase=$(state_get "phase")
   branch=$(state_get "branch")
-  base_branch=$(state_get "base_branch")
 
-  if [ -z "$task_id" ] || [ -z "$phase" ] || [ -z "$base_branch" ]; then
-    emit_error "State file corrupted: missing task_id, phase, or base_branch"
+  if [ -z "$task_id" ] || [ -z "$phase" ]; then
+    emit_error "State file corrupted: missing task_id or phase"
     exit 1
   fi
 
@@ -465,9 +452,8 @@ cmd_complete() {
 
   [ -z "$phase" ] || [ -z "$verdict" ] && { emit_error "Usage: complete <phase> --verdict=<V>"; exit 1; }
 
-  local task_id base_branch task_dir
+  local task_id task_dir
   task_id=$(state_get "task_id")
-  base_branch=$(state_get "base_branch")
   task_dir=".ship/tasks/$task_id"
 
   if [ "$verdict" = "success" ] || [ "$verdict" = "findings" ]; then
@@ -665,23 +651,21 @@ cmd_status() {
     exit 0
   fi
 
-  local task_id phase branch base_branch rfr qfr head_sha
+  local task_id phase branch rfr qfr head_sha
   task_id=$(state_get "task_id")
   phase=$(state_get "phase")
   branch=$(state_get "branch")
-  base_branch=$(state_get "base_branch")
   rfr=$(state_get "review_fix_round")
   qfr=$(state_get "qa_fix_round")
   head_sha=$(current_head)
 
   if [ "$json_mode" -eq 1 ]; then
-    printf '{"active":true,"task_id":"%s","phase":"%s","branch":"%s","base_branch":"%s","review_fix_round":%s,"qa_fix_round":%s,"head":"%s"}\n' \
-      "$task_id" "$phase" "$branch" "$base_branch" "${rfr:-0}" "${qfr:-0}" "$head_sha"
+    printf '{"active":true,"task_id":"%s","phase":"%s","branch":"%s","review_fix_round":%s,"qa_fix_round":%s,"head":"%s"}\n' \
+      "$task_id" "$phase" "$branch" "${rfr:-0}" "${qfr:-0}" "$head_sha"
   else
     emit "TASK_ID" "$task_id"
     emit "PHASE" "$phase"
     emit "BRANCH" "$branch"
-    emit "BASE_BRANCH" "$base_branch"
     emit "REVIEW_FIX_ROUND" "${rfr:-0}"
     emit "QA_FIX_ROUND" "${qfr:-0}"
     emit "HEAD" "$head_sha"
