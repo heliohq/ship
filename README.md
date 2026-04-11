@@ -25,7 +25,7 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 
 ```
 /plugin marketplace add heliohq/ship
-/plugin install heliohq@ship
+/plugin install ship@heliohq
 ```
 
 ### Codex
