@@ -14,6 +14,14 @@ description: >
 
 Think through system design decisions rigorously before writing them down. This skill is about the **thinking** — requirements, components, trade-offs, boundaries. When the design is ready, hand off to `/ship:write-docs` to write the actual design document.
 
+## Scale to Complexity
+
+Not every decision needs all 5 phases. Match the depth to the decision:
+
+- **Small** (single component, clear constraints) — Phase 1 briefly, Phase 2, Phase 5. Skip deep dive and scaling.
+- **Medium** (multi-component, some unknowns) — All 5 phases, but keep each concise.
+- **Large** (new system, significant unknowns, cross-team) — All 5 phases in full depth, with diagrams and explicit load estimates.
+
 ## Red Flag
 
 **Never:**
@@ -51,8 +59,8 @@ Before designing anything, understand what you're solving.
 
 Map out the major components and how they interact.
 
-- **Component diagram**: Major services/modules and their responsibilities. Each component should have a single clear purpose.
-- **Data flow**: How data moves through the system — request paths, event flows, data pipelines.
+- **Component diagram**: Major services/modules and their responsibilities. Each component should have a single clear purpose. Use ASCII art, mermaid, or a described diagram — the format matters less than clarity.
+- **Data flow**: How data moves through the system — request paths, event flows, data pipelines. A sequence diagram helps for complex flows.
 - **API contracts**: Key interfaces between components. Define input/output shapes, not implementation.
 - **Storage choices**: Which database(s), why. Access patterns determine storage choice, not the other way around.
 
@@ -92,6 +100,16 @@ Common trade-off dimensions:
 - Latency vs throughput
 - Cost vs performance
 - Team familiarity vs best tool for the job
+
+## What to Revisit
+
+Before wrapping up, flag decisions that won't age well:
+
+- **Load-dependent**: "This works at 1k rps but needs rethinking at 10k" — name the threshold.
+- **Time-bound**: "We chose X because Y isn't ready yet" — note when to re-evaluate.
+- **Assumption-sensitive**: "If we go multi-region, the consistency model breaks" — link to the assumption.
+
+These aren't weaknesses — they're honest engineering. A design that claims to handle everything forever is hiding its assumptions.
 
 ## Design Document Output
 
