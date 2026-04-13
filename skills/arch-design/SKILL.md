@@ -12,7 +12,7 @@ description: >
 
 # Architectural Design
 
-Think through system design decisions rigorously before writing them down. This skill is about the **thinking** — requirements, components, trade-offs, boundaries. When the design is ready, you MUST use `/ship:write-docs` to write the design document — do not write the doc inline.
+Think through system design decisions rigorously before writing them down. This skill is about the **thinking** — requirements, components, trade-offs, boundaries. When the design is ready, you MUST invoke `Skill("write-docs")` to write the design document — do not write the doc inline.
 
 ## Scale to Complexity
 
@@ -119,11 +119,11 @@ When the design thinking is complete, the result should be written as a design d
 - **Trade-offs section** (recommended) — the alternatives considered and why this choice won.
 - **Assumptions section** (recommended) — what must be true for this design to hold (e.g., "assumes < 10k concurrent users", "assumes single-region deployment"). When assumptions change, the design is stale.
 
-To write the design document, use `/ship:write-docs` with category `design`.
+When the design thinking is complete, invoke `Skill("write-docs")` to write the design document with category `design`. Do not write the doc inline — the write-docs skill enforces frontmatter, numbering, and index generation.
 
 ## Execution Handoff
 
-Output the report card:
+After writing the doc via write-docs, output the report card:
 
 ```
 ## [Arch Design] Report Card
