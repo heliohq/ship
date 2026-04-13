@@ -11,13 +11,6 @@ description: >
   to write it up. For visual design (DESIGN.md), use /ship:visual-design.
 ---
 
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=write-docs source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
 # Documentation Standard
 
 All structured docs live under `docs/`. Each subdirectory is a category (e.g., `docs/design/`, `docs/guides/`, `docs/troubleshooting/`). Follow this standard when creating new docs or modifying existing ones.
@@ -72,7 +65,7 @@ last_modified: "2026-04-13"
 After creating or updating a doc, regenerate the index:
 
 ```bash
-bash "${SHIP_PLUGIN_ROOT}/scripts/generate-docs-index.sh"
+bash "${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null)}/scripts/generate-docs-index.sh"
 ```
 
 This produces `docs/DOCS_INDEX.md` — a compact table (Category, #, Status, Name, Description, Last Modified, Path) injected at session start so agents know what docs exist without reading each one. Superseded docs are excluded from the index.
@@ -189,3 +182,34 @@ Before marking a doc as `current`, verify key claims against code:
 - Does the described architecture match the actual service boundaries?
 
 Update `last_modified` when you complete verification.
+
+## Execution Handoff
+
+After writing or updating a doc, regenerate the index and output the report card:
+
+```
+## [Write Docs] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | <category/number: doc title — created / updated / superseded> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Docs created | <N> |
+| Docs updated | <N> |
+| Index regenerated | yes / no |
+
+### Artifacts
+| File | Purpose |
+|------|---------|
+| docs/<category>/<number>-<topic>.md | The doc |
+| docs/DOCS_INDEX.md | Regenerated index |
+
+### Next Steps
+1. **Review the doc** — read it and verify claims against code
+2. **Design thinking** — /ship:arch-design if the architectural analysis needs more depth
+3. **Ship it** — /ship:handoff to create a PR with the doc changes
+```

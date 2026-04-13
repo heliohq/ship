@@ -120,3 +120,28 @@ When the design thinking is complete, the result should be written as a design d
 - **Assumptions section** (recommended) — what must be true for this design to hold (e.g., "assumes < 10k concurrent users", "assumes single-region deployment"). When assumptions change, the design is stale.
 
 To write the design document, use `/ship:write-docs` with category `design`.
+
+## Execution Handoff
+
+Output the report card:
+
+```
+## [Arch Design] Report Card
+
+| Field | Value |
+|-------|-------|
+| Status | <DONE / BLOCKED> |
+| Summary | <one-line: what was designed and the key decision> |
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Phases completed | <N>/5 |
+| Trade-offs analyzed | <N> |
+| Revisit items | <N> |
+
+### Next Steps
+1. **Write the doc (required)** — /ship:write-docs with category design
+2. **Full pipeline** — /ship:auto to implement the design
+3. **Plan implementation** — /ship:design to create executable stories
+```
