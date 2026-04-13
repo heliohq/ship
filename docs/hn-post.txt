@@ -1,0 +1,34 @@
+Title: Show HN: Ship – Open-source harness for hours-long, end-to-end software delivery
+
+---
+
+Hi HN,
+
+We hit a pain point: AI coding agents don't stop when they're done — they stop when they lose focus, run out of context, or decide the job is done when it isn't. Orchestrating a multi-hour, end-to-end feature with them requires a lot of scaffolding: prompts, checks, state files, retry logic, and stop-gates.
+
+Existing work solves pieces of this:
+
+- Geoffrey Huntley's Ralph loop showed that progress should live in files and git, not in the LLM context window.
+- Jesse Vincent's Superpowers showed that disciplined prompting + composable skills can turn an agent from an autocompleter into something closer to an engineer.
+
+Ship builds on both and extends them into a full end-to-end pipeline. Hand /ship:auto a spec, walk away, and come back to either a merged PR or a clear escalation — it runs spec → plan → code → review → QA → PR → green CI, with gates between each step. Works on Claude Code, Codex, and Cursor.
+
+The design is deliberately boring:
+
+- A ~700-line Bash state machine handles all phase transitions, retries, and escalations. The LLM just relays; the script decides what happens next.
+- Persistent state on disk (.ship/) means you can kill a session and resume tomorrow exactly where you left off.
+- Adversarial planning: before any code runs, a peer agent (Codex if the host is Claude, vice versa) writes its own spec, debates divergences with file:line citations, max 2 rounds.
+- Fresh subagents for each phase: reviewers never see the implementer's reasoning.
+- Hard caps: 3 review-fix, 3 QA-fix, 3 CI-fix rounds. Then a learn phase captures mistakes before escalation.
+- PR handoff isn't the end: failing CI logs are read via gh run view --log-failed, fixes are pushed automatically, and the loop continues until green.
+
+Install on Claude Code:
+
+  /plugin marketplace add heliohq/ship
+  /plugin install ship@heliohq
+
+Then kick off the whole pipeline with /ship:auto <your spec>. Individual phases (/ship:design, /ship:dev, /ship:review, /ship:qa, /ship:handoff) are available if you only want one stage.
+
+Codex and Cursor setup in the README. MIT licensed.
+
+Repo: https://github.com/heliohq/ship
