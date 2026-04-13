@@ -19,6 +19,8 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 - **The finish line is checks green, not PR created.** After opening the PR, Ship enters a fix loop — read CI failures, dispatch fixes, address review comments, resolve merge conflicts — up to 3 rounds before escalating.
 - **Test-driven implementation.** Stories follow a RED-GREEN-REFACTOR cycle with per-story code review before merge.
 
+<img width="2028" height="1834" alt="image" src="https://github.com/user-attachments/assets/916258fb-f2ed-4716-b1b5-fd4c5763fcbc" />
+
 ## Installation
 
 ### Claude Code
