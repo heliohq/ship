@@ -17,6 +17,7 @@ The design is deliberately boring:
 
 - A ~700-line Bash state machine handles all phase transitions, retries, and escalations. The LLM just relays; the script decides what happens next.
 - Persistent state on disk (.ship/) means you can kill a session and resume tomorrow exactly where you left off.
+- Design docs carry structured frontmatter (ID, status, supersedes). A script generates an index; a session-start hook injects it so the agent knows what's current before writing anything. Reversed specs stop silently guiding the next session.
 - Adversarial planning: before any code runs, a peer agent (Codex if the host is Claude, vice versa) writes its own spec, debates divergences with file:line citations, max 2 rounds.
 - Fresh subagents for each phase: reviewers never see the implementer's reasoning.
 - Hard caps: 3 review-fix, 3 QA-fix, 3 CI-fix rounds. Then a learn phase captures mistakes before escalation.
