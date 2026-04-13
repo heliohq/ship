@@ -69,7 +69,8 @@ Run `/ship:auto` and Ship handles the full pipeline. Or run individual phases wh
 | `/ship:handoff` | PR creation + CI fix loop until checks green |
 | `/ship:refactor` | Four-lens scan, classify by risk, apply with verification |
 | `/ship:learn` | Capture session mistakes into persistent learnings |
-| `/ship:arch-design` | Architectural decision docs with AI-indexed frontmatter |
+| `/ship:arch-design` | System design thinking — requirements, components, trade-offs, scaling |
+| `/ship:write-docs` | Project documentation with frontmatter, lifecycle, and indexing |
 | `/ship:visual-design` | DESIGN.md visual system for consistent UI generation |
 
 Skills trigger automatically based on what you're doing. See [docs/skills.md](docs/skills.md) for detailed guides.
