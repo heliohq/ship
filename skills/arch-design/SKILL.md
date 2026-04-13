@@ -123,7 +123,7 @@ When the design thinking is complete, invoke `Skill("write-docs")` to write the 
 
 ## Execution Handoff
 
-After writing the doc via write-docs, output the report card:
+After writing the doc via write-docs, output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [Arch Design] Report Card

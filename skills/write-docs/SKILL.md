@@ -185,7 +185,7 @@ Update `last_modified` when you complete verification.
 
 ## Execution Handoff
 
-After writing or updating a doc, regenerate the index and output the report card:
+After writing or updating a doc, regenerate the index and output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [Write Docs] Report Card
