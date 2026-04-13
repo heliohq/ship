@@ -12,7 +12,7 @@ description: >
 
 # Architectural Design
 
-Think through system design decisions rigorously before writing them down. This skill is about the **thinking** — requirements, components, trade-offs, boundaries. When the design is ready, hand off to `/ship:write-docs` to write the actual design document.
+Think through system design decisions rigorously before writing them down. This skill is about the **thinking** — requirements, components, trade-offs, boundaries. When the design is ready, you MUST use `/ship:write-docs` to write the design document — do not write the doc inline.
 
 ## Scale to Complexity
 
