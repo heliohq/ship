@@ -356,12 +356,6 @@ best available independent review. Add a warning:
     diff-report.md   — host spec vs peer spec divergences and resolutions
 ```
 
-## Timeouts
-
-- Maximum 10 minutes for investigation
-- Maximum 20 minutes total
-- On timeout: preserve artifacts, summarize honestly, mark as blocked
-
 ## Error Handling
 
 | Error | Action |
