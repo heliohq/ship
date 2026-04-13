@@ -86,7 +86,7 @@ For each learning, classify its type and priority, then write to
   AND hookify is installed, also generate a hookify rule via
   `Skill("hookify:writing-rules")`.
 - If it's substantial enough for a design doc, also invoke
-  `Skill("arch-design")`.
+  `Skill("write-docs")`.
 
 ### Step 3: Write
 

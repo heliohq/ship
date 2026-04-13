@@ -3,7 +3,7 @@
 # Injects project context into conversation (4 layers, cleanly separated):
 #   1. Skill routing — when to use each /ship:* skill (always injected)
 #   2. .learnings/LEARNINGS.md — project learnings (verified rules + pending observations)
-#   3. docs/DOCS_INDEX.md — design doc index for architectural guardrails
+#   3. docs/DOCS_INDEX.md — docs index for project documentation
 #   4. DESIGN.md — pointer only (title + section list); full content read on demand
 # If no context files exist, only the skill routing layer is injected.
 
@@ -52,7 +52,8 @@ PARTS="Ship skill routing — use the Skill tool to invoke these when the trigge
 | Code needs runtime testing — start the app and verify behavior (\"test this\", \"QA the changes\", \"does it actually work\", \"run QA\") | /ship:qa |
 | Code is done, needs PR creation and CI (\"ship it\", \"create a PR\", \"open a pull request\", \"push and merge\") | /ship:handoff |
 | Refactoring or cleanup — no new features (\"refactor\", \"clean up\", \"simplify\", \"reduce duplication\", \"dead code\") | /ship:refactor |
-| Creating/editing architecture decision docs under docs/design/ (\"write a design doc\", \"create an ADR\", \"document this decision\") | /ship:arch-design |
+| System architecture design thinking (\"design this system\", \"what's the architecture\", \"trade-offs for X\", \"how should we architect\", \"system design for\") | /ship:arch-design |
+| Creating/editing documentation under docs/ (\"write a doc\", \"document this\", \"create a guide\", \"write a design doc\", \"create an ADR\", \"update the docs\") | /ship:write-docs |
 | Creating/editing DESIGN.md visual design systems (\"design tokens\", \"color palette\", \"typography\", \"visual design system\") | /ship:visual-design |
 | Bootstrapping repo infrastructure (\"setup\", \"init\", \"bootstrap\", \"configure CI\") | /ship:setup |
 | Capturing session learnings (\"what did we learn\", \"capture learning\", \"avoid this mistake\") | /ship:learn |
@@ -70,13 +71,13 @@ Project learnings loaded. Verified entries are rules that MUST be followed — v
 $(cat "$LEARNINGS_FILE")"
 fi
 
-# ── Layer 3: Design doc index ─────────────────────────────────────────
+# ── Layer 3: Documentation index ──────────────────────────────────────
 if [[ -f "$DOCS_INDEX_FILE" ]]; then
   PARTS="${PARTS}
 
 ---
 
-Design doc index loaded. Before making architectural changes, check if a design doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding. To create or edit design docs, use /ship:arch-design and run bash scripts/generate-docs-index.sh after.
+Documentation index loaded. Before making changes to documented areas, check if a doc covers the affected area. Read the relevant doc to understand boundaries and trade-offs before proceeding. To create or edit docs, use /ship:write-docs.
 
 $(cat "$DOCS_INDEX_FILE")"
 fi

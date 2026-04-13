@@ -15,7 +15,8 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 | [`/ship:refactor`](#refactor) | **Code Improver** | Four-lens parallel scan (structure, reuse, quality, efficiency), classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
 | [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into .learnings/LEARNINGS.md. Auto-verifies durable entries and prunes stale ones. |
-| [`/ship:arch-design`](#arch-design) | **Arch Design Doc Author** | Creates and maintains architectural design documents with structured frontmatter for AI indexing, status lifecycle, and verification against code. |
+| [`/ship:arch-design`](#arch-design) | **System Architect** | System design thinking — requirements gathering, component design, data modeling, scaling strategy, and trade-off analysis. Hands off to /ship:write-docs for the document. |
+| [`/ship:write-docs`](#write-docs) | **Doc Author** | Creates and maintains structured project documentation under docs/ with frontmatter, status lifecycle, category conventions, and AI-indexed docs index. |
 | [`/ship:visual-design`](#visual-design) | **Visual Design Author** | Creates DESIGN.md files — structured visual design systems (colors, typography, spacing, components) that AI agents read to generate consistent UI. |
 
 ---
@@ -530,33 +531,88 @@ All injected at session start via session-start.sh:
             3. ARCHITECTURAL — The notification service (src/services/notify.ts)
                must stay decoupled from the order service. Previous attempt
                to merge them broke the event replay system.
-               -> Flagged for arch-design doc (no existing doc covers this boundary)
+               -> Flagged for write-docs (no existing doc covers this boundary)
 
             Session learnings captured. 1 semantic rule, 1 hookify rule,
-            1 arch-design candidate.
+            1 write-docs candidate.
 
 ---
 
 ## arch-design
 
-This is **architectural guardrails for AI and humans**.
+This is **system design thinking**.
 
-Design docs prevent the most dangerous form of AI drift: locally-correct decisions that violate the overall architecture. Without design docs, an AI might merge services that must stay separate or simplify flows with hidden constraints.
+Before writing a design document, you need to actually think through the design — requirements, components, trade-offs, scaling strategy. arch-design provides a structured methodology for that thinking, then hands off to `/ship:write-docs` for the actual document.
+
+### Five phases
+
+1. **Requirements Gathering** — functional requirements, non-functional requirements (latency, throughput, availability), constraints (tech stack, team, timeline)
+2. **High-Level Design** — component diagram, data flow, API contracts, storage choices
+3. **Deep Dive** — data model, API design, caching strategy, async/queues, error handling
+4. **Scale and Reliability** — load estimation, scaling strategy, failover, monitoring
+5. **Trade-off Analysis** — explicit trade-offs per major decision, alternatives considered, why this choice won
+
+### Design doc output
+
+When the design thinking is complete, the result is written as a design document via `/ship:write-docs`. Every design doc needs:
+
+- **Boundaries section** (required) — the core anti-drift mechanism
+- **Trade-offs section** (recommended) — alternatives and why this choice won
+- **Assumptions section** (recommended) — what must be true for this design to hold
+
+### Example
+
+    You:   Design the notification system architecture
+
+    Assistant: [Arch Design] Phase 1: Requirements...
+            - Must handle 10k events/sec at peak
+            - Delivery latency < 500ms p99
+            - At-least-once delivery guarantee
+            - Existing stack: Node.js, Redis, PostgreSQL
+
+            [Arch Design] Phase 2: High-Level Design...
+            Order Service -> Redis Pub/Sub -> Notification Service -> Delivery
+            Storage: PostgreSQL for delivery log, Redis for dedup
+
+            [Arch Design] Phase 3: Deep Dive...
+            Data model: notifications table (id, type, payload, status, created_at)
+            Retry: exponential backoff, 3 attempts, DLQ after exhaustion
+            Idempotency: Redis SET NX with event ID
+
+            [Arch Design] Phase 4: Scale...
+            10k events/sec -> 2 consumer instances with horizontal scaling
+            Redis cluster for pub/sub throughput
+            PostgreSQL partitioned by month
+
+            [Arch Design] Phase 5: Trade-offs...
+            Redis pub/sub vs Kafka: chose Redis (simpler, team knows it,
+            sufficient at current scale). Revisit at 100k events/sec.
+
+            [Arch Design] Handing off to /ship:write-docs...
+
+---
+
+## write-docs
+
+This is **structured documentation for AI and humans**.
+
+Docs prevent knowledge rot — the slow death of useful information when it lacks structure, status tracking, or discoverability. Without managed docs, guides go stale, troubleshooting playbooks drift from reality, and design decisions are lost.
 
 ### How it works
 
-1. **Identify the decision** — what architectural boundary, pattern, or constraint needs documenting?
-2. **Write the doc** — structured markdown with YAML frontmatter under docs/design/, following the numbered naming convention (e.g., 003-service-boundaries.md)
-3. **Define boundaries** — the Boundaries section is the core anti-drift mechanism. It states what must stay separate, what must not be simplified, and why.
-4. **Index automatically** — generate-docs-index.sh builds a compact table from all design doc frontmatter, injected at session start so AI agents know what docs exist
+1. **Pick a category** — which subdirectory under `docs/` does this belong in? (design, guides, troubleshooting, reference, or create a new one)
+2. **Write the doc** — structured markdown with YAML frontmatter under `docs/<category>/`, following the numbered naming convention (e.g., `guides/003-getting-started.md`)
+3. **Add frontmatter** — title, description, category, number, status, last_modified. The `category` field matches the subdirectory name.
+4. **Index automatically** — `generate-docs-index.sh` builds a compact table from all doc frontmatter across categories, injected at session start so AI agents know what docs exist
 
 ### Structured for AI indexing
 
-Every design doc has YAML frontmatter with fields designed for machine consumption:
+Every managed doc has YAML frontmatter with fields designed for machine consumption:
 
 - **description** — one sentence for AI relevance filtering
+- **category** — which category this doc belongs to (design, guides, troubleshooting, etc.)
 - **status** — trust signal (current, draft, partially-outdated, superseded, not-implemented)
-- **services** — which directories this design covers
+- **services** — which directories this doc covers
 - **last_modified** — when the doc was last updated
 
 ### Status lifecycle
@@ -570,39 +626,36 @@ Every design doc has YAML frontmatter with fields designed for machine consumpti
 
 ### Example
 
-    You:   Document the decision to keep notifications decoupled from orders
+    You:   Document the auth failure troubleshooting steps
 
-    Assistant: [Arch Design] Investigating boundaries...
-            Read src/services/notify.ts — event-driven, subscribes to order events
-            Read src/services/order.ts — publishes events, no direct notify imports
-            Read git log — PR #31 attempted merge, reverted in PR #33 (broke replay)
+    Assistant: [Write Docs] Investigating...
+            Read src/auth/middleware.ts — JWT validation, token refresh flow
+            Read support tickets — common failure patterns: expired tokens, clock skew
 
-            [Arch Design] Writing docs/design/003-notification-decoupling.md...
+            [Write Docs] Writing docs/troubleshooting/001-auth-failures.md...
 
             ---
-            title: Notification Service Decoupling
-            description: Notifications must remain event-driven and decoupled
-              from the order service to preserve event replay capability.
+            title: Authentication Failures
+            description: Diagnosis and fix steps for common auth failures including
+              expired tokens, clock skew, and missing refresh tokens.
+            category: troubleshooting
+            number: "001"
             status: current
-            services: [src/services/notify.ts, src/services/order.ts]
-            last_modified: 2026-04-10
+            services: [src/auth]
+            last_modified: 2026-04-13
             ---
 
-            ## Context
-            The notification service consumes order events via Redis pub/sub.
-            PR #31 attempted to merge notify into the order service for
-            "simplicity." PR #33 reverted it after event replay broke.
+            ## Symptom
+            Users get 401 responses after token expiry...
 
-            ## Decision
-            Notifications stay in a separate service, consuming order events.
+            ## Diagnosis
+            Check the JWT expiry timestamp vs server clock...
 
-            ## Boundaries
-            - notify.ts MUST NOT import from order.ts (event contract only)
-            - order.ts MUST NOT call notify functions directly
-            - New notification types are added by subscribing to existing events
+            ## Fix
+            1. Verify NTP sync on the server...
 
-            [Arch Design] Updating docs index...
-            Design doc 003 indexed and injected at session start.
+            [Write Docs] Updating docs index...
+            Doc troubleshooting/001 indexed and injected at session start.
 
 ---
 
