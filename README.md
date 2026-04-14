@@ -75,7 +75,7 @@ Run `/ship:auto` and Ship handles the full pipeline. Or run individual phases wh
 | `/ship:write-docs` | Project documentation with frontmatter, lifecycle, and indexing |
 | `/ship:visual-design` | DESIGN.md visual system for consistent UI generation |
 
-Skills trigger automatically based on what you're doing. Ship ships a `using-ship` meta-skill ([`skills/using-ship/SKILL.md`](skills/using-ship/SKILL.md)) that is injected into every session at start — it carries the trigger table mapping phrases like "ship it" or "plan this" to the matching `/ship:*` skill. Contributors adding a new skill update that one file; no session-start hook edit needed.
+Skills trigger automatically based on what you're doing. Session start injects a short Ship routing policy that reminds the agent to invoke the matching `/ship:*` skill before proceeding and to default to `/ship:auto` for end-to-end feature work.
 
 See [docs/skills.md](docs/skills.md) for detailed guides.
 

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Ship plugin — SessionStart hook
 # Injects project context into conversation (4 layers, cleanly separated):
-#   1. using-ship meta-skill — establishes how to route work through /ship:* skills
-#      (always injected, content read from skills/using-ship/SKILL.md)
-#   2. .learnings/LEARNINGS.md — project learnings (verified rules + pending observations)
+#   1. Ship routing policy — concise hard-coded guidance for /ship:* usage
+#   2. .learnings/LEARNINGS.md — verified project learnings only
 #   3. docs/DOCS_INDEX.md — docs index for project documentation
 #   4. DESIGN.md — pointer only (title + section list); full content read on demand
-# If no optional context files exist, only the using-ship layer is injected.
+# If no optional context files exist, only the Ship routing policy is injected.
 
 set -u
 
@@ -34,41 +33,48 @@ if [[ -n "$SESSION_ID" ]]; then
   printf '%s\n' "$SESSION_ID" > "$REPO_ROOT/.ship/session-id.local"
 fi
 
-# Resolve plugin root so we can find the using-ship skill regardless of cwd.
-# In Claude Code / Cursor plugin installs, this script lives at <plugin>/scripts/session-start.sh.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
 LEARNINGS_FILE="$REPO_ROOT/.learnings/LEARNINGS.md"
 DOCS_INDEX_FILE="$REPO_ROOT/docs/DOCS_INDEX.md"
-USING_SHIP_SKILL="$PLUGIN_ROOT/skills/using-ship/SKILL.md"
 
-# ── Layer 1: using-ship meta-skill (always injected) ──────────────────
-# Full contents of skills/using-ship/SKILL.md, wrapped in a forcing function.
-# This is the agent's guide to when each /ship:* skill applies.
-if [[ -f "$USING_SHIP_SKILL" ]]; then
-  USING_SHIP_CONTENT=$(cat "$USING_SHIP_SKILL")
-else
-  USING_SHIP_CONTENT="Error: using-ship skill not found at $USING_SHIP_SKILL"
-fi
-
+# ── Layer 1: Ship routing policy (always injected) ────────────────────
+# Keep session-start routing guidance short. The host already exposes the
+# skill catalog; this policy only reinforces precedence and default routing.
 PARTS="<EXTREMELY_IMPORTANT>
-You have the Ship pipeline available.
-
-**Below is the full content of the 'ship:using-ship' skill — your introduction to routing work through /ship:* skills. For all other skills, use the 'Skill' tool:**
-
-${USING_SHIP_CONTENT}
+Ship skills are available in this repo.
+For code-change, planning, review, QA, refactor, or handoff requests, invoke the matching \`/ship:*\` skill before proceeding.
+Use \`/ship:auto\` for end-to-end feature work.
+Follow phase order: design -> dev -> review -> qa -> refactor -> handoff unless the user explicitly asks for a single phase.
 </EXTREMELY_IMPORTANT>"
 
-# ── Layer 2: Learnings (verified rules + pending observations) ────────
+# ── Layer 2: Learnings (verified rules only) ───────────────────────────
 if [[ -f "$LEARNINGS_FILE" ]]; then
-  PARTS="${PARTS}
+  VERIFIED_LEARNINGS=$(
+    awk '
+      BEGIN { RS="---[[:space:]]*\n"; ORS="" }
+      {
+        block = $0
+        gsub(/^[[:space:]]+/, "", block)
+        gsub(/[[:space:]]+$/, "", block)
+        if (block != "" && block ~ /\*\*Status\*\*:[[:space:]]*verified/) {
+          if (printed) {
+            printf "\n\n---\n\n"
+          }
+          printf "%s", block
+          printed = 1
+        }
+      }
+    ' "$LEARNINGS_FILE"
+  )
+
+  if [[ -n "$VERIFIED_LEARNINGS" ]]; then
+    PARTS="${PARTS}
 
 ---
 
-Project learnings loaded. Verified entries are rules that MUST be followed — violations cause bugs, security issues, or architectural breakage. Pending entries are recent observations — check them before making decisions in the affected areas.
+Verified project learnings loaded. These entries are rules that MUST be followed — violations cause bugs, security issues, or architectural breakage.
 
-$(cat "$LEARNINGS_FILE")"
+${VERIFIED_LEARNINGS}"
+  fi
 fi
 
 # ── Layer 3: Documentation index ──────────────────────────────────────

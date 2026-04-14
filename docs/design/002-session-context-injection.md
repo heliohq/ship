@@ -1,11 +1,11 @@
 ---
 title: "Session Context Injection"
-description: "Lightweight session-start injection of the using-ship meta-skill, learnings, docs index, and design system pointer for AI agent context."
+description: "Lightweight session-start injection of a Ship routing policy, learnings, docs index, and design pointer."
 category: "design"
 number: "002"
 status: current
-services: [scripts, docs, skills]
-last_modified: "2026-04-14"
+services: [scripts, docs]
+last_modified: "2026-04-15"
 ---
 
 # 002 — Session Context Injection
@@ -20,7 +20,7 @@ The session-start hook injects a minimal context payload into every agent sessio
 
 ## Decision
 
-Inject four lightweight layers at session start. The `using-ship` meta-skill is always injected (it's the agent's guide to when each `/ship:*` skill applies). Learnings are injected in full. All other documents use pointers or compact indexes.
+Inject four lightweight layers at session start. A concise Ship routing policy is always injected to reinforce `/ship:*` usage. Only verified learnings are injected. All other documents use pointers or compact indexes.
 
 ## Design
 
@@ -28,29 +28,27 @@ Inject four lightweight layers at session start. The `using-ship` meta-skill is 
 
 | Layer | Source | What's Injected | Token Cost |
 |-------|--------|-----------------|------------|
-| 1. Ship routing | `skills/using-ship/SKILL.md` | Full meta-skill content wrapped in `<EXTREMELY_IMPORTANT>` forcing function | Low (~800 tokens, fixed) |
-| 2. Learnings | `.learnings/LEARNINGS.md` | Full content | Medium (grows with project) |
+| 1. Ship routing | `scripts/session-start.sh` | Short hard-coded routing policy wrapped in `<EXTREMELY_IMPORTANT>` | Minimal (~60 tokens, fixed) |
+| 2. Learnings | `.learnings/LEARNINGS.md` | Verified entries only | Low to medium (depends on verified rule count) |
 | 3. Docs index | `docs/DOCS_INDEX.md` | Compact table (Category, #, Status, Name, Description, Last Modified, Path) | Low (one row per doc) |
 | 4. Visual design | `DESIGN.md` | One-line pointer | Minimal |
 
-### Layer 1: using-ship meta-skill (always injected)
+### Layer 1: Ship routing policy (always injected)
 
-A dedicated skill at `skills/using-ship/SKILL.md` that teaches the agent how to route work through the `/ship:*` pipeline. The hook reads this file at every session start and injects its full content wrapped in `<EXTREMELY_IMPORTANT>` tags (mirroring the superpowers plugin's `using-superpowers` pattern).
+A short routing policy is embedded directly in `scripts/session-start.sh` and injected at every session start inside `<EXTREMELY_IMPORTANT>` tags. The host already provides skill names and descriptions; the injected policy only reinforces precedence and the default route through the Ship pipeline.
 
-This solves the under-triggering problem — individual skill descriptions in the `available_skills` list compete with 100+ other skills for attention. Injecting a meta-skill into the session context ensures the agent knows when to reach for each ship skill before it starts rationalizing its way out. The meta-skill contains:
+The policy is intentionally minimal. It exists to bias the agent's first move without competing with the user request. It contains:
 
-- A forcing function (`<EXTREMELY_IMPORTANT>` wrapper + "1% chance → use the skill" rule)
-- An instruction priority (user > ship skills > default)
-- A trigger-condition table for all `/ship:*` skills with quoted trigger phrases ("plan this", "ship it")
-- A "red flags" table of rationalization patterns to stop
-- Phase-ordering rules (design → dev → review → qa → refactor → handoff)
-- Disambiguation guidance for `/ship:auto` vs individual phases
+- A reminder that Ship skills are available in the repo
+- A directive to invoke a matching `/ship:*` skill for code-change, planning, review, QA, refactor, or handoff requests
+- A default to `/ship:auto` for end-to-end feature work
+- The canonical phase order (design → dev → review → qa → refactor → handoff), unless the user explicitly asks for one phase
 
-The source of truth is the skill file itself — adding a new `/ship:*` skill means adding a row to the table in `using-ship/SKILL.md` and no change to the hook script. The skill lives alongside other skills, so contributors discover it naturally when browsing `skills/`.
+This keeps startup context small and leaves detailed workflow guidance in the actual skill files, which agents read on demand.
 
-### Layer 2: Learnings (full injection)
+### Layer 2: Learnings (verified entries only)
 
-Learnings are injected in full because they contain rules that agents must follow on every action. Skipping a learning can cause bugs or architectural violations.
+Only `Status: verified` learnings are injected at session start. Verified entries behave like repo invariants: they are confirmed against code, high-confidence, and costly to miss. Pending learnings remain in `.learnings/LEARNINGS.md` for on-demand reads, but are not injected by default because they are still provisional.
 
 ### Layer 3: Docs Index (compact table)
 
@@ -88,10 +86,10 @@ The hook also captures the session ID to `.ship/session-id.local` for session-is
 
 ## Boundaries
 
-- The using-ship meta-skill and learnings are the only layers injected in full — all others use pointers or indexes.
-- Layer 1 is always injected, even if no other context files exist. If `skills/using-ship/SKILL.md` is missing, the hook injects an error message rather than silently dropping the layer.
-- The using-ship skill body should stay under ~1000 tokens — it competes for attention with every other skill listing.
-- Adding a new `/ship:*` skill requires exactly one edit: a new row in the trigger table inside `skills/using-ship/SKILL.md`. No hook-script change needed.
+- The routing policy is injected in full. The learnings layer injects only `Status: verified` entries; all other layers use pointers or indexes.
+- Layer 1 is always injected, even if no other context files exist.
+- The routing policy should stay compact enough that it does not compete with the user request for attention.
+- Adding a new `/ship:*` skill should not require a hook change unless the top-level routing policy itself needs to change.
 - The docs index covers all `docs/*/` subdirectories, not just `docs/design/`.
 - The docs index must never include superseded docs.
 - The visual design pointer must never include actual design tokens — agents read the file when needed.
@@ -100,7 +98,6 @@ The hook also captures the session ID to `.ship/session-id.local` for session-is
 ## References
 
 - `scripts/session-start.sh` — the hook implementation
-- `skills/using-ship/SKILL.md` — the meta-skill injected at session start
 - `scripts/generate-docs-index.sh` — docs index generator
 - `skills/arch-design/SKILL.md` — system design methodology
 - `skills/write-docs/SKILL.md` — documentation frontmatter standard

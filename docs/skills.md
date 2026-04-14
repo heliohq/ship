@@ -4,7 +4,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 
 **Start here:** Run `/ship:auto` to see the full pipeline end-to-end. Use individual skills (`/ship:design`, `/ship:review`, etc.) when you only need one phase. Skills also trigger automatically based on what you're doing — say "plan this" and design kicks in, say "ship it" and handoff takes over.
 
-**How auto-triggering works:** a `using-ship` meta-skill (at `skills/using-ship/SKILL.md`) is injected at every session start as part of the context layer. It carries the trigger table mapping user phrases to the matching `/ship:*` skill plus a forcing function that tells the agent to invoke a ship skill before any other action when one applies. Adding a new ship skill means adding one row to that file — no hook edit required. See `docs/design/002-session-context-injection.md` for the full design.
+**How auto-triggering works:** session start injects a short Ship routing policy that reinforces precedence and phase order. The host already provides the skill catalog; the injected policy just reminds the agent to invoke the matching `/ship:*` skill before acting and to default to `/ship:auto` for end-to-end feature work. See `docs/design/002-session-context-injection.md` for the full design.
 
 | Skill | Role | What it does |
 |-------|------|--------------|
@@ -509,8 +509,8 @@ No user interaction. The skill reflects on the session, classifies each learning
 
 All injected at session start via session-start.sh:
 
-1. **skills/using-ship/SKILL.md** — the using-ship meta-skill (trigger table + forcing function that routes work to the right `/ship:*` skill)
-2. **.learnings/LEARNINGS.md** — code-level guardrails (semantic rules + operational knowledge)
+1. **Embedded Ship routing policy** — concise session-start guidance that reinforces `/ship:*` precedence and default routing
+2. **Verified entries from `.learnings/LEARNINGS.md`** — code-level guardrails trusted at session start
 3. **docs/DOCS_INDEX.md** — architecture-level guardrails (auto-generated from design doc frontmatter)
 4. **DESIGN.md** — visual design system pointer (title + section list; full content read on demand when writing frontend code)
 
