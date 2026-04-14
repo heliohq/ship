@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Ship plugin — SessionStart hook
 # Injects project context into conversation (4 layers, cleanly separated):
-#   1. Skill routing — when to use each /ship:* skill (always injected)
+#   1. using-ship meta-skill — establishes how to route work through /ship:* skills
+#      (always injected, content read from skills/using-ship/SKILL.md)
 #   2. .learnings/LEARNINGS.md — project learnings (verified rules + pending observations)
 #   3. docs/DOCS_INDEX.md — docs index for project documentation
 #   4. DESIGN.md — pointer only (title + section list); full content read on demand
-# If no context files exist, only the skill routing layer is injected.
+# If no optional context files exist, only the using-ship layer is injected.
 
 set -u
 
@@ -33,32 +34,31 @@ if [[ -n "$SESSION_ID" ]]; then
   printf '%s\n' "$SESSION_ID" > "$REPO_ROOT/.ship/session-id.local"
 fi
 
+# Resolve plugin root so we can find the using-ship skill regardless of cwd.
+# In Claude Code / Cursor plugin installs, this script lives at <plugin>/scripts/session-start.sh.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 LEARNINGS_FILE="$REPO_ROOT/.learnings/LEARNINGS.md"
 DOCS_INDEX_FILE="$REPO_ROOT/docs/DOCS_INDEX.md"
+USING_SHIP_SKILL="$PLUGIN_ROOT/skills/using-ship/SKILL.md"
 
-PARTS=""
+# ── Layer 1: using-ship meta-skill (always injected) ──────────────────
+# Full contents of skills/using-ship/SKILL.md, wrapped in a forcing function.
+# This is the agent's guide to when each /ship:* skill applies.
+if [[ -f "$USING_SHIP_SKILL" ]]; then
+  USING_SHIP_CONTENT=$(cat "$USING_SHIP_SKILL")
+else
+  USING_SHIP_CONTENT="Error: using-ship skill not found at $USING_SHIP_SKILL"
+fi
 
-# ── Layer 1: Skill routing (always injected) ──────────────────────────
-# Tells the agent WHEN to invoke each /ship:* skill.
-# Descriptions focus on trigger conditions, not workflow internals.
-PARTS="Ship skill routing — use the Skill tool to invoke these when the trigger condition matches:
+PARTS="<EXTREMELY_IMPORTANT>
+You have the Ship pipeline available.
 
-| Trigger condition | Invoke |
-|---|---|
-| User wants to plan/scope/investigate before coding (\"plan this\", \"how should we implement\", \"what's the best approach\", \"scope the work\") | /ship:design |
-| User wants the full pipeline end-to-end — plan, code, review, test, ship (\"ship this\", \"build end to end\", \"implement and ship\", \"full pipeline\") | /ship:auto |
-| A plan/stories already exist and need implementation (\"implement this plan\", \"execute the stories\", \"code this up from the plan\") | /ship:dev |
-| Code changes need correctness review — static analysis, not runtime (\"review the code\", \"check for bugs\", \"is this correct\", \"code review\") | /ship:review |
-| Code needs runtime testing — start the app and verify behavior (\"test this\", \"QA the changes\", \"does it actually work\", \"run QA\") | /ship:qa |
-| Code is done, needs PR creation and CI (\"ship it\", \"create a PR\", \"open a pull request\", \"push and merge\") | /ship:handoff |
-| Refactoring or cleanup — no new features (\"refactor\", \"clean up\", \"simplify\", \"reduce duplication\", \"dead code\") | /ship:refactor |
-| System architecture design thinking (\"design this system\", \"what's the architecture\", \"trade-offs for X\", \"how should we architect\", \"system design for\") | /ship:arch-design |
-| Creating/editing documentation under docs/ (\"write a doc\", \"document this\", \"create a guide\", \"write a design doc\", \"create an ADR\", \"update the docs\") | /ship:write-docs |
-| Creating/editing DESIGN.md visual design systems (\"design tokens\", \"color palette\", \"typography\", \"visual design system\") | /ship:visual-design |
-| Bootstrapping repo infrastructure (\"setup\", \"init\", \"bootstrap\", \"configure CI\") | /ship:setup |
-| Capturing session learnings (\"what did we learn\", \"capture learning\", \"avoid this mistake\") | /ship:learn |
+**Below is the full content of the 'ship:using-ship' skill — your introduction to routing work through /ship:* skills. For all other skills, use the 'Skill' tool:**
 
-If you think a /ship:* skill applies, invoke it. When unsure between /ship:auto and individual skills: use /ship:auto for end-to-end feature work, use individual skills when the user asks for a specific phase only."
+${USING_SHIP_CONTENT}
+</EXTREMELY_IMPORTANT>"
 
 # ── Layer 2: Learnings (verified rules + pending observations) ────────
 if [[ -f "$LEARNINGS_FILE" ]]; then
