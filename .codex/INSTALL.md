@@ -49,8 +49,19 @@ codex_hooks = true
    If `~/.codex/hooks.json` already exists, do not replace it. Instead, open both files and copy the Ship hook entries from `~/.codex/ship/.codex/hooks.json` into the matching arrays in `~/.codex/hooks.json`:
 
    - append the entries under `hooks.SessionStart` to your existing `hooks.SessionStart`
+   - append the entries under `hooks.PreToolUse` to your existing `hooks.PreToolUse`
    - append the entries under `hooks.Stop` to your existing `hooks.Stop`
    - if either array does not exist yet, create it first
+
+   For Codex, the Ship hook commands should point back to the Codex install path:
+
+   ```json
+   {
+     "SessionStart": "bash \"$HOME/.codex/ship/scripts/session-start.sh\"",
+     "PreToolUse": "bash \"$HOME/.codex/ship/scripts/phase-guardrail.sh\"",
+     "Stop": "bash \"$HOME/.codex/ship/scripts/stop-gate.sh\""
+   }
+   ```
 
    This step is what installs Codex hooks globally. Without it, Ship skills will be available, but hooks will only run in repos that already contain their own `.codex/hooks.json`.
 
