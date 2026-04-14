@@ -1,11 +1,11 @@
 ---
 title: "Session Context Injection"
-description: "Lightweight session-start injection of skill routing, learnings, docs index, and design system pointer for AI agent context."
+description: "Lightweight session-start injection of the using-ship meta-skill, learnings, docs index, and design system pointer for AI agent context."
 category: "design"
 number: "002"
 status: current
-services: [scripts, docs]
-last_modified: "2026-04-13"
+services: [scripts, docs, skills]
+last_modified: "2026-04-14"
 ---
 
 # 002 — Session Context Injection
@@ -20,7 +20,7 @@ The session-start hook injects a minimal context payload into every agent sessio
 
 ## Decision
 
-Inject four lightweight layers at session start. Skill routing is always injected (it's the agent's guide to when each `/ship:*` skill applies). Learnings are injected in full. All other documents use pointers or compact indexes.
+Inject four lightweight layers at session start. The `using-ship` meta-skill is always injected (it's the agent's guide to when each `/ship:*` skill applies). Learnings are injected in full. All other documents use pointers or compact indexes.
 
 ## Design
 
@@ -28,14 +28,25 @@ Inject four lightweight layers at session start. Skill routing is always injecte
 
 | Layer | Source | What's Injected | Token Cost |
 |-------|--------|-----------------|------------|
-| 1. Skill routing | Inline in script | Trigger-condition table for all `/ship:*` skills | Low (~300 tokens, fixed) |
+| 1. Ship routing | `skills/using-ship/SKILL.md` | Full meta-skill content wrapped in `<EXTREMELY_IMPORTANT>` forcing function | Low (~800 tokens, fixed) |
 | 2. Learnings | `.learnings/LEARNINGS.md` | Full content | Medium (grows with project) |
 | 3. Docs index | `docs/DOCS_INDEX.md` | Compact table (Category, #, Status, Name, Description, Last Modified, Path) | Low (one row per doc) |
 | 4. Visual design | `DESIGN.md` | One-line pointer | Minimal |
 
-### Layer 1: Skill routing (always injected)
+### Layer 1: using-ship meta-skill (always injected)
 
-A compact table mapping trigger conditions to `/ship:*` skills. This solves the under-triggering problem — skill descriptions in the `available_skills` list compete with 100+ other skills for attention. Injecting a routing table into the session context ensures the agent knows when to reach for each skill. The table uses quoted trigger phrases ("plan this", "ship it") so the agent can match user intent to the right skill. A disambiguation rule at the bottom handles the `/ship:auto` vs individual-skill ambiguity.
+A dedicated skill at `skills/using-ship/SKILL.md` that teaches the agent how to route work through the `/ship:*` pipeline. The hook reads this file at every session start and injects its full content wrapped in `<EXTREMELY_IMPORTANT>` tags (mirroring the superpowers plugin's `using-superpowers` pattern).
+
+This solves the under-triggering problem — individual skill descriptions in the `available_skills` list compete with 100+ other skills for attention. Injecting a meta-skill into the session context ensures the agent knows when to reach for each ship skill before it starts rationalizing its way out. The meta-skill contains:
+
+- A forcing function (`<EXTREMELY_IMPORTANT>` wrapper + "1% chance → use the skill" rule)
+- An instruction priority (user > ship skills > default)
+- A trigger-condition table for all `/ship:*` skills with quoted trigger phrases ("plan this", "ship it")
+- A "red flags" table of rationalization patterns to stop
+- Phase-ordering rules (design → dev → review → qa → refactor → handoff)
+- Disambiguation guidance for `/ship:auto` vs individual phases
+
+The source of truth is the skill file itself — adding a new `/ship:*` skill means adding a row to the table in `using-ship/SKILL.md` and no change to the hook script. The skill lives alongside other skills, so contributors discover it naturally when browsing `skills/`.
 
 ### Layer 2: Learnings (full injection)
 
@@ -77,9 +88,10 @@ The hook also captures the session ID to `.ship/session-id.local` for session-is
 
 ## Boundaries
 
-- Skill routing and learnings are the only layers injected in full — all others use pointers or indexes.
-- Skill routing is always injected, even if no context files exist.
-- The skill routing table must stay under ~300 tokens — one row per skill, trigger phrases only.
+- The using-ship meta-skill and learnings are the only layers injected in full — all others use pointers or indexes.
+- Layer 1 is always injected, even if no other context files exist. If `skills/using-ship/SKILL.md` is missing, the hook injects an error message rather than silently dropping the layer.
+- The using-ship skill body should stay under ~1000 tokens — it competes for attention with every other skill listing.
+- Adding a new `/ship:*` skill requires exactly one edit: a new row in the trigger table inside `skills/using-ship/SKILL.md`. No hook-script change needed.
 - The docs index covers all `docs/*/` subdirectories, not just `docs/design/`.
 - The docs index must never include superseded docs.
 - The visual design pointer must never include actual design tokens — agents read the file when needed.
@@ -88,6 +100,7 @@ The hook also captures the session ID to `.ship/session-id.local` for session-is
 ## References
 
 - `scripts/session-start.sh` — the hook implementation
+- `skills/using-ship/SKILL.md` — the meta-skill injected at session start
 - `scripts/generate-docs-index.sh` — docs index generator
 - `skills/arch-design/SKILL.md` — system design methodology
 - `skills/write-docs/SKILL.md` — documentation frontmatter standard

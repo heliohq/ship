@@ -4,5 +4,5 @@
 
 | Category | # | Status | Name | Description | Last Modified | Path |
 |----------|---|--------|------|-------------|---------------|------|
-| design | 002 | current | Session Context Injection | Lightweight session-start injection of skill routing, learnings, docs index, and design system pointer for AI agent context. | 2026-04-13 | [002](docs/design/002-session-context-injection.md) |
+| design | 002 | current | Session Context Injection | Lightweight session-start injection of the using-ship meta-skill, learnings, docs index, and design system pointer for AI agent context. | 2026-04-14 | [002](docs/design/002-session-context-injection.md) |
 
