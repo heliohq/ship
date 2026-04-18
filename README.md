@@ -2,7 +2,7 @@
 
 > An agentic development harness for Claude Code, Codex & Cursor: gated pipeline from spec to green checks.
 
-Ship orchestrates end-to-end software development — planning, implementation, review, QA, and PR creation — with quality gates at every transition.
+Ship orchestrates end-to-end software development — planning, implementation, E2E tests, review, QA, simplify, and PR creation — with quality gates at every transition.
 
 ![Ship pipeline: gated phases, disk artifacts, fresh subagents](docs/assets/pipeline.png)
 
@@ -62,12 +62,13 @@ Run `/ship:auto` and Ship handles the full pipeline. Or run individual phases wh
 
 | Skill | Description |
 |-------|-------------|
-| `/ship:auto` | Full pipeline: design → dev → review → QA → refactor → handoff |
+| `/ship:auto` | Full pipeline: design → dev → E2E → review → QA → simplify → handoff |
 | `/ship:setup` | Bootstrap repo infrastructure, generate AGENTS.md and safety rules |
 | `/ship:design` | Adversarial spec + plan with peer challenge rounds |
-| `/ship:dev` | Parallel story implementation via worktrees with per-story review |
+| `/ship:dev` | Host implements, peer (Codex) cross-validates; parallel waves for file-independent stories |
+| `/ship:e2e` | Codify the change's acceptance criteria as persistent E2E tests, detect or scaffold the framework, run them against the real app |
 | `/ship:review` | Bug-focused diff review — no style nits |
-| `/ship:qa` | Test against the running application with L1 evidence |
+| `/ship:qa` | Exploratory sweep against the running app, finds what codified tests missed |
 | `/ship:handoff` | PR creation + CI fix loop until checks green |
 | `/ship:refactor` | Four-lens scan, classify by risk, apply with verification |
 | `/ship:learn` | Capture session mistakes into persistent learnings |
