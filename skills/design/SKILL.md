@@ -40,72 +40,33 @@ independently and produces its own spec for adversarial comparison.
 
 ## Runtime Resolution
 
-- **Host agent**: the provider currently running this skill
-- **Peer agent**: the non-host provider when available; otherwise a
-  fresh same-provider session
-
-Resolve once at the start:
-- Claude host → Codex is the peer investigator and drill agent
-- Codex host → Claude is the peer investigator and drill agent
-- If Claude is the peer, dispatch with `claude -p --permission-mode bypassPermissions`.
-- If Codex is the peer, dispatch with `mcp__codex__codex`.
-- If only one provider is available, use a fresh same-provider session
-  and note that independence is weaker.
+See `../shared/runtime-resolution.md` for the host/peer concept and
+dispatch commands. In /ship:design, the peer plays two roles:
+**investigator** (Phase 2) and **drill agent** (Phase 6). Both use the
+same dispatch pattern from the shared reference.
 
 ## Process Flow
 
-```dot
-digraph plan {
-    rankdir=TB;
-
-    "Start" [shape=doublecircle];
-    "Resolve task_id, create dir" [shape=box];
-    "Dispatch peer investigation" [shape=box];
-    "Host investigates + writes spec" [shape=box];
-    "Read peer spec" [shape=box];
-    "Task too vague?" [shape=diamond];
-    "Ask user for clarification" [shape=box];
-    "Diff host spec vs peer spec" [shape=box];
-    "Critical gap found?" [shape=diamond];
-    "Resolve divergences by code evidence" [shape=box];
-    "Debate with peer agent (max 2 rounds)" [shape=box];
-    "Escalated items?" [shape=diamond];
-    "Ask user to resolve" [shape=box];
-    "Write spec.md (merged)" [shape=box];
-    "Write plan.md (executable tasks)" [shape=box];
-    "Self-review plan against spec" [shape=box];
-    "Peer execution drill" [shape=box];
-    "All steps CLEAR?" [shape=diamond];
-    "Revise plan for unclear steps" [shape=box];
-    "STOP: BLOCKED — unresolvable without user" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
-    "Ready for execution" [shape=doublecircle];
-
-    "Start" -> "Resolve task_id, create dir";
-    "Resolve task_id, create dir" -> "Dispatch peer investigation";
-    "Dispatch peer investigation" -> "Host investigates + writes spec";
-    "Host investigates + writes spec" -> "Task too vague?";
-    "Task too vague?" -> "Ask user for clarification" [label="yes"];
-    "Ask user for clarification" -> "Host investigates + writes spec";
-    "Task too vague?" -> "Read peer spec" [label="no"];
-    "Read peer spec" -> "Diff host spec vs peer spec";
-    "Diff host spec vs peer spec" -> "Critical gap found?";
-    "Critical gap found?" -> "Host investigates + writes spec" [label="yes, re-investigate"];
-    "Critical gap found?" -> "Resolve divergences by code evidence" [label="no"];
-    "Resolve divergences by code evidence" -> "Debate with peer agent (max 2 rounds)" [label="disagree"];
-    "Resolve divergences by code evidence" -> "Escalated items?" [label="resolved"];
-    "Debate with peer agent (max 2 rounds)" -> "Escalated items?";
-    "Escalated items?" -> "Ask user to resolve" [label="yes"];
-    "Ask user to resolve" -> "Write spec.md (merged)";
-    "Escalated items?" -> "Write spec.md (merged)" [label="no"];
-    "Write spec.md (merged)" -> "Write plan.md (executable tasks)";
-    "Write plan.md (executable tasks)" -> "Self-review plan against spec";
-    "Self-review plan against spec" -> "Peer execution drill";
-    "Peer execution drill" -> "All steps CLEAR?";
-    "All steps CLEAR?" -> "Ready for execution" [label="yes"];
-    "All steps CLEAR?" -> "Revise plan for unclear steps" [label="unclear, max 1 loop"];
-    "Revise plan for unclear steps" -> "Peer execution drill";
-    "All steps CLEAR?" -> "STOP: BLOCKED — unresolvable without user" [label="blocked"];
-}
+```
+Phase 1  Init            resolve task_id, create .ship/tasks/<id>/plan/
+Phase 2  Investigate     dispatch peer (parallel) ─┐
+                         you read the code         │
+                         ↓                         │
+Phase 3  Write spec      write host spec.md  ←─── peer writes peer-spec.md
+                         vague? ask user → re-investigate
+                         ↓
+Phase 4  Diff & verify   compare specs → resolve each divergence
+                         disagree? → debate peer (max 2 rounds)
+                         still open? → escalate to user
+                         critical gap? → re-investigate (max 1 loop)
+                         ↓
+Phase 5  Write plan      write plan.md with executable tasks
+                         self-review against spec
+                         ↓
+Phase 6  Execution drill dispatch peer (fresh session) to validate plan
+                         BLOCKED step?  → escalate
+                         UNCLEAR step?  → revise plan (max 1 loop)
+                         all CLEAR      → ready for execution
 ```
 
 ## Roles

@@ -40,17 +40,12 @@ EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
 
 ## Runtime Resolution
 
-- **Host agent**: the provider currently running this skill
-- **Peer agent**: the non-host provider when available; otherwise a
-  fresh same-provider session
-
-Resolve once at the start:
-- Claude host → Codex is the peer implementer; Claude runs the fresh reviewer
-- Codex host → Claude is the peer implementer; Codex runs the fresh reviewer
-- If Claude is the peer, dispatch with `claude -p --permission-mode bypassPermissions`.
-- If Codex is the peer, dispatch with `mcp__codex__codex`.
-- If only one provider is available, use a fresh same-provider peer
-  session and note that independence is weaker.
+See `../shared/runtime-resolution.md` for the host/peer concept and
+dispatch commands. In /ship:dev, the peer plays the **implementer**
+role (one session per story; `codex-reply` for targeted fixes). The
+**reviewer** always runs as a fresh Agent from the host, not as the
+peer — reviewer independence is from the implementer, not from the
+host provider.
 
 ## Roles
 

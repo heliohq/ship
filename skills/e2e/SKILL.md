@@ -123,36 +123,25 @@ frameworks or touch the test dir.
 
 ## Phase 2: Detect the framework
 
-Read `references/frameworks.md` for the full detection + selection matrix.
-Short version:
+Two-step: **use what exists, or scaffold the default for this stack.**
 
-1. **Look for what's already there.** Search for Playwright, Cypress,
-   pytest-playwright, Capybara, Testcafe, Nightwatch, rod, chromedp,
-   `*.spec.ts`, `*.cy.js`, `tests/e2e/`, `e2e/`. If you find a framework
-   in use, you are done — use it.
-2. **If nothing exists**, pick one for the repo's primary language/stack and
-   scaffold it. Read `references/scaffolding.md` for the install recipe.
-   You do not need to ask the user — we pick a sensible default, and the
-   choice can be swapped out later if they disagree. Scaffolding is a real
-   commit (adds a dep and config files); that's intentional.
+1. **Look for what's already there.** Search for common framework
+   config files, test directories, and dependency manifest entries.
+   If you find a framework in use, you are done — use it.
+2. **If nothing exists**, pick the default for the repo's primary
+   language/stack and scaffold it. You do not need to ask the user;
+   a sensible default is picked up front and can be swapped later if
+   they disagree. Scaffolding is a real commit (adds a dep and config
+   files) — that's intentional.
 
-Default choices when scaffolding is needed:
+Read `references/frameworks.md` for:
+- The full detection check list (config files, manifests, test dirs)
+- The per-stack default framework matrix (JS/TS, Python, Ruby, Go,
+  Rails, Electron, CLI-only)
+- Why Playwright is the cross-language default and when to override
 
-| Stack | Default framework |
-|---|---|
-| JS/TS with a UI (Next, Vite, Remix, Nuxt, Astro, SvelteKit) | Playwright |
-| JS/TS backend-only (Express, Fastify, Hono, Koa) | Playwright API testing (`request` fixture) or `supertest` + the repo's existing test runner |
-| Python with a UI (Django templates, Flask+Jinja, FastAPI+frontend) | `pytest-playwright` |
-| Python backend-only (FastAPI, Flask, Django REST) | `pytest` + `httpx` |
-| Go | `net/http/httptest` + `go test` for API; `chromedp` only if browser flow required |
-| Ruby on Rails | Capybara + Selenium (Rails convention) |
-| CLI-only project | The repo's native test runner with subprocess-based integration tests |
-| Electron | Playwright's Electron support |
-
-The Playwright default exists because it's multi-language (TS, Python, .NET,
-Java), ships its own browsers, and gives us screenshots/videos/traces for
-debugging CI failures. If the agent sees a reason to pick otherwise — the
-repo is Ruby, the team clearly favors RSpec, etc. — override the default.
+Read `references/scaffolding.md` only when step 2 applies — it has the
+install recipes per framework.
 
 ## Phase 3: Author tests
 

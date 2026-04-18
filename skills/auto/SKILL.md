@@ -150,9 +150,23 @@ report card with a `Status` field. Map it to a verdict:
 
 **2d. Verify (independent check).**
 
-If the initial verdict is `success` or `skip`, run a lightweight verification
-before advancing. This catches cases where the phase agent claims success but
-missed explicit requirements from the prompt.
+**Gate:** this step is **skipped entirely** when the environment variable
+`SHIP_VERIFY` is set to `0`, `false`, or `off`. The orchestrator script
+already does deterministic artifact validation (files exist, non-empty) —
+the verifier Agent only adds content-level checks (does the artifact's
+*content* match the prompt's *specific asks*). Skipping it saves one
+Agent dispatch per phase, which halves the per-phase cost. Default is ON
+for safety. Check the env var once at the start of the loop and cache
+the decision.
+
+```bash
+SHIP_VERIFY="${SHIP_VERIFY:-on}"
+case "$SHIP_VERIFY" in 0|false|off|no) VERIFY_ENABLED=0 ;; *) VERIFY_ENABLED=1 ;; esac
+```
+
+If the initial verdict is `success` or `skip` AND `VERIFY_ENABLED=1`, run
+a lightweight verification before advancing. This catches cases where the
+phase agent claims success but missed explicit requirements from the prompt.
 
 Read `references/phase-verifier.md` for the full verifier prompt. Dispatch a
 verification Agent with:
@@ -197,7 +211,7 @@ Agent(prompt="""
 
 **Skip verification for:** `review_fix`, `qa_fix`, `e2e_fix`, `learn` phases
 (these are retry/terminal phases where verification adds overhead but little
-value).
+value) — regardless of the `SHIP_VERIFY` setting.
 
 **2e.** If the verdict is `findings` or `fail` and the agent listed specific issues,
 save them to a temp file:
