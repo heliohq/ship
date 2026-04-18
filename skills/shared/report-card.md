@@ -38,11 +38,12 @@ way a human does. No separate auto/standalone output formats.
 
 | Phase | Metrics |
 |-------|---------|
-| Auto | Phases completed, Review fix rounds, QA fix rounds, Total agents dispatched |
+| Auto | Phases completed, Review fix rounds, QA fix rounds, E2E fix rounds, Total agents dispatched |
 | Design | Stories count, Files traced, Divergences resolved, Drill steps CLEAR |
 | Dev | Stories completed, Waves, Concerns, Test result |
 | Review | P1/P2/P3 counts (or "Clean") |
 | QA | Criteria passed/total, Issues beyond spec |
+| E2E | Framework (pre-existing/scaffolded), Tests added, Suite pass rate, Regressions |
 | Refactor | Smells fixed, Lines before/after, Functions extracted, Dead code deleted |
 | Handoff | PR URL, Check status, Fix rounds |
 | Learn | Entries captured, Verified, Pruned |

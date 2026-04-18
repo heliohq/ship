@@ -17,6 +17,15 @@ cd "$TEST_DIR"
 git init -q
 git commit --allow-empty -m "init" -q
 
+# has_branch_changes() in the orchestrator compares HEAD to origin/HEAD.
+# The scratch repo has no origin — fake one by pointing origin/HEAD at the
+# initial commit so any later commit registers as a branch change. Without
+# this, the dev-phase artifact validator permanently reports "no code
+# changes" and every dev:success verdict gets flipped to fail.
+ROOT_SHA=$(git rev-parse HEAD)
+git update-ref refs/remotes/origin/HEAD "$ROOT_SHA"
+git update-ref refs/remotes/origin/main "$ROOT_SHA"
+
 cleanup() {
   rm -rf "$TEST_DIR"
 }
@@ -160,10 +169,28 @@ assert_file_exists "dev prompt created" "$PROMPT_FILE"
 
 echo ""
 
-# ── Test 3: Complete dev:success → review ────────────────────
-echo "▸ Test 3: Dev success → Review dispatch"
+# ── Test 3: Complete dev:success → e2e ──────────────────────
+# Pipeline order is design → dev → e2e → review → qa → simplify → handoff.
+# E2E runs before review so reviewers see green tests alongside the code.
+echo "▸ Test 3: Dev success → E2E dispatch"
 
 OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete dev --verdict=success --summary="3/3 stories done" 2>/dev/null)
+parse_output "$OUT"
+
+assert_eq "action is dispatch" "dispatch" "$ACTION"
+assert_eq "phase is e2e" "e2e" "$PHASE"
+assert_eq "state advanced to e2e" "e2e" "$(get_state phase)"
+
+echo ""
+
+# ── Test 3b: E2E success → review ───────────────────────────
+# Fresh e2e (no post_qa_fix flag) flows forward to review.
+echo "▸ Test 3b: E2E success → Review dispatch"
+
+mkdir -p "$TASK_DIR/e2e"
+echo "# E2E Report" > "$TASK_DIR/e2e/report.md"
+
+OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="5 tests green" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -330,27 +357,38 @@ assert_eq "qa_fix_round stays 0 (bumps on fix fail)" "0" "$(get_state qa_fix_rou
 
 echo ""
 
-# ── Test 13: QA fix success → qa recheck ────────────────────
-echo "▸ Test 13: QA fix success → QA recheck"
+# ── Test 13: QA fix success → e2e regression gate ──────────
+# A qa_fix is a code change. Before the manual qa-recheck, we run the
+# committed e2e suite as a regression gate to catch the case where the
+# fix accidentally broke a previously-passing test. The post_qa_fix
+# flag tells the e2e:success handler to route to qa-recheck (not
+# review, which already passed earlier in the pipeline).
+echo "▸ Test 13: QA fix success → E2E regression gate"
 
 OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa_fix --verdict=success --summary="fixed localStorage" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
-assert_eq "phase is qa" "qa" "$PHASE"
-assert_eq "state back to qa" "qa" "$(get_state phase)"
+assert_eq "phase is e2e (regression gate)" "e2e" "$PHASE"
+assert_eq "state is e2e" "e2e" "$(get_state phase)"
+assert_eq "post_qa_fix flag set" "true" "$(get_state post_qa_fix)"
 
-# Check it uses the recheck template
+# Regression gate uses the e2e-recheck template (not a fresh e2e)
 if [ -f "$PROMPT_FILE" ]; then
-  assert_contains "uses recheck prompt" "recheck" "$(cat "$PROMPT_FILE")"
+  assert_contains "uses e2e-recheck prompt" "recheck" "$(cat "$PROMPT_FILE")"
 fi
 
 echo ""
 
 # ── Test 14: Resume from mid-pipeline ────────────────────────
+# Test 13 left state at e2e (regression gate). Reset to qa so we
+# specifically cover the "resume from qa" code path, since the
+# e2e-resume path is covered in test-e2e-phase.sh.
 echo "▸ Test 14: Resume from qa phase"
 
-# State is already at qa from test 13
+bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
+bash "${SCRIPT_DIR}/scripts/auto-state.sh" set post_qa_fix false > /dev/null
+
 OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" resume 2>/dev/null)
 parse_output "$OUT"
 
