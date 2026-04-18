@@ -53,7 +53,8 @@ regressions, perf smells, odd edge cases, unexpected interactions,
 ## Red Flag
 
 **Never:**
-- Read review.md or plan.md — breaks independence
+- Read `review.md` or `plan.md` — breaks independence. (`spec.md` IS
+  allowed — it defines the acceptance criteria you must verify.)
 - Fix problems instead of reporting them
 - Accept HTTP 200, "E2E suite green", or "tests passed" as proof a feature
   works for the user. Those are baselines, not evidence — you must still
@@ -228,8 +229,8 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 
 ### Next Steps
 1. **Fix failures** — /ship:dev to fix the reported issues
-2. **Ship (if passing)** — /ship:handoff to create the PR
-3. **Full pipeline** — /ship:auto to handle fixes and shipping
+2. **Simplify next (if passing)** — /ship:refactor to clean up before shipping
+3. **Ship** — /ship:handoff to create the PR (after simplify)
+4. **Full pipeline** — /ship:auto to handle fixes, simplify, and shipping
 ```
 
-Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.

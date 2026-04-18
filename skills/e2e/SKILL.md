@@ -330,9 +330,7 @@ format):
 
 ### Next Steps
 1. **Fix failures** — /ship:dev to address real bugs found by new tests
-2. **Continue pipeline** — /ship:refactor then /ship:handoff
+2. **Review next (if green)** — /ship:review to check correctness of the code
 3. **Iterate tests** — /ship:e2e --recheck after fixes
 ```
 
-Always output the full report card including Next Steps — the orchestrator
-reads it the same way a human does.

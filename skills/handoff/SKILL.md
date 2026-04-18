@@ -42,9 +42,11 @@ Escalate to the user only for judgment decisions or after retry limits
 are exhausted.
 
 Done means:
-- PR exists
-- all GitHub checks are green
-- no GitHub checks are pending
+- the PR exists
+- relevant GitHub checks are green
+- no relevant GitHub checks are pending
+
+(Full termination + escalation criteria in "Completion" at the bottom.)
 
 ## Process Flow
 
@@ -63,11 +65,6 @@ Run this loop:
 11. If the branch must be updated from base to clear drift, conflicts, or repo policy, sync with base inside the fix loop, then verify, commit, push, and wait again.
 12. Ignore `cancelled` checks unless they block the repo's normal CI/CD path.
 13. Stop after 3 fix rounds and escalate to the user.
-
-Done means:
-- the PR exists
-- relevant GitHub checks are green
-- no relevant GitHub checks are pending
 
 ## Red Flag
 
@@ -316,7 +313,6 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 | CHANGELOG.md | Updated changelog (if repo has one) |
 ```
 
-Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
 
 ---
 

@@ -218,10 +218,9 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 | .ship/tasks/<task_id>/refactor/spec.md | Execution card (planned path only) |
 
 ### Next Steps
-1. **Review** — /ship:review to verify no behavior changed
-2. **Ship** — /ship:handoff to create the PR
+1. **Ship** — /ship:handoff to create the PR (pipeline continues here after simplify)
+2. **Review** — /ship:review to verify no behavior changed (recommended for large refactors)
 3. **Continue** — /ship:refactor on remaining deferred smells
 ```
 
-Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
 

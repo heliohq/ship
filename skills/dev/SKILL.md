@@ -241,17 +241,18 @@ Dispatch the peer implementer using the prompt template in
 `implementer-prompt.md`. Fill all placeholders (story text, acceptance
 criteria, prior stories, CODE_CONDUCT, TEST_CMD) before dispatch.
 Use the dispatch pattern in `implementer-prompt.md` for the resolved
-peer runtime. For multi-story waves, set `cwd` to the story's worktree.
+peer runtime. For multi-story waves, set `cwd` to the story's worktree
+and dispatch all stories in the wave **in parallel**.
 
-For multi-story waves, dispatch all stories in the wave **in parallel**.
+**After the peer implementer returns:**
 
-After the peer implementer returns, save the session id for targeted
-fixes. For Codex peers, the `mcp__codex__codex` response includes a
-`session_id` — store it as `PEER_SESSION_ID`.
-1. Record `STORY_HEAD_SHA=$(git rev-parse HEAD)`
-2. If `STORY_HEAD_SHA == STORY_START_SHA` and status is DONE → BLOCKED.
-3. If BLOCKED or NEEDS_CONTEXT → escalate to caller.
-4. If DONE_WITH_CONCERNS → log concerns.
+1. Save the session id for targeted fixes. For Codex peers, the
+   `mcp__codex__codex` response includes a `session_id` — store it as
+   `PEER_SESSION_ID`. (Claude peers cannot resume a session; skip.)
+2. Record `STORY_HEAD_SHA=$(git rev-parse HEAD)`.
+3. If `STORY_HEAD_SHA == STORY_START_SHA` and status is DONE → BLOCKED.
+4. If BLOCKED or NEEDS_CONTEXT → escalate to caller.
+5. If DONE_WITH_CONCERNS → log concerns.
 
 Proceed to **Step B**. A story is only complete when review returns PASS.
 
@@ -475,4 +476,3 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 3. **Full pipeline** — /ship:auto to review, QA, and ship
 ```
 
-Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.

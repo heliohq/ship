@@ -259,8 +259,7 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 
 ### Next Steps
 1. **Fix findings** — /ship:dev to fix the reported bugs
-2. **QA (if clean)** — /ship:qa to test the running application
-3. **Ship (if clean)** — /ship:handoff to create the PR
+2. **QA next (if clean)** — /ship:qa to test the running application
+3. **Full pipeline** — /ship:auto to handle fixes, QA, simplify, and shipping
 ```
 
-Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
