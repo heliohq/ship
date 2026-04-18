@@ -150,23 +150,23 @@ report card with a `Status` field. Map it to a verdict:
 
 **2d. Verify (independent check).**
 
-**Gate:** this step is **skipped entirely** when the environment variable
-`SHIP_VERIFY` is set to `0`, `false`, or `off`. The orchestrator script
-already does deterministic artifact validation (files exist, non-empty) —
-the verifier Agent only adds content-level checks (does the artifact's
-*content* match the prompt's *specific asks*). Skipping it saves one
-Agent dispatch per phase, which halves the per-phase cost. Default is ON
-for safety. Check the env var once at the start of the loop and cache
-the decision.
+**This step is mandatory, not optional.** The orchestrator script does
+deterministic artifact validation (files exist, non-empty) but cannot
+reason about content. The verifier Agent closes that gap — it checks
+that the artifact's *content* matches what the prompt *specifically
+asked for*.
 
-```bash
-SHIP_VERIFY="${SHIP_VERIFY:-on}"
-case "$SHIP_VERIFY" in 0|false|off|no) VERIFY_ENABLED=0 ;; *) VERIFY_ENABLED=1 ;; esac
-```
+**Why this is non-negotiable:** phase agents have a documented failure
+mode of completing a task incorrectly — missing an explicit requirement,
+skipping a listed artifact field, producing a report that doesn't
+address the stated acceptance criteria — and still marking their
+response as DONE. The script can't detect that; the verifier can.
+Without this step, bad work would advance through the pipeline and
+surface later at review, QA, or (worst case) handoff, where the blast
+radius is larger.
 
-If the initial verdict is `success` or `skip` AND `VERIFY_ENABLED=1`, run
-a lightweight verification before advancing. This catches cases where the
-phase agent claims success but missed explicit requirements from the prompt.
+If the initial verdict is `success` or `skip`, run a lightweight
+verification before advancing.
 
 Read `references/phase-verifier.md` for the full verifier prompt. Dispatch a
 verification Agent with:
@@ -209,9 +209,11 @@ Agent(prompt="""
 | `pass_with_concerns` | Keep the original verdict, log concerns in summary |
 | `fail` | **Downgrade** verdict to `fail` — include the verifier's gap list as findings |
 
-**Skip verification for:** `review_fix`, `qa_fix`, `e2e_fix`, `learn` phases
-(these are retry/terminal phases where verification adds overhead but little
-value) — regardless of the `SHIP_VERIFY` setting.
+**Skip verification for:** `review_fix`, `qa_fix`, `e2e_fix`, `learn` phases.
+These are retry/terminal phases: a fix dispatch inherits the same findings
+file it was given, and its output is a code change that the NEXT phase
+(re-review, re-qa, e2e regression gate) verifies on its own. Verifying
+the fix dispatch itself would duplicate that work.
 
 **2e.** If the verdict is `findings` or `fail` and the agent listed specific issues,
 save them to a temp file:
