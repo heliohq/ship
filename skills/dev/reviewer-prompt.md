@@ -1,17 +1,32 @@
-# Reviewer — Fresh Independent Reviewer Prompt
+# Reviewer — Peer Cross-Validation Prompt
 
-Used in Phase 2 Step B of `/ship:dev`. A fresh reviewer session reviews
-each story independently. Prefer a reviewer runtime that did not
-perform implementation; when possible, use the host runtime.
+Used in Phase 2 Step B of `/ship:dev`. The peer (Codex when host is
+Claude, vice versa) reviews each story independently — different
+provider, different session from whoever implemented the code.
 
-## Dispatch
+## Dispatch (preferred: peer for cross-provider independence)
+
+```
+mcp__codex__codex({
+  prompt: <prompt below, with all placeholders filled>
+})
+```
+
+If the peer runtime is unavailable (e.g., Codex MCP not configured),
+fall back to a fresh Claude Agent subagent — same-provider review is
+weaker than cross-provider, so note this in the dev report:
 
 ```
 Agent({
   prompt: <prompt below, with all placeholders filled>,
-  subagent_type: "general-purpose"
+  subagent_type: "general-purpose",
+  description: "Review story <i>/<N>"
 })
 ```
+
+The reviewer's job is to **validate**, not to write code. If you
+(reviewer) identify a fix, describe it in the FAIL findings — the host
+will apply the fix themselves and re-dispatch you for a fresh review.
 
 ## Philosophy: Verification Principle
 

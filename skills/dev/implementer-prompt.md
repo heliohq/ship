@@ -1,29 +1,33 @@
-# Implementer — Peer Agent Prompt
+# Implementer Prompt
 
-Used in Phase 2 Step A of `/ship:dev`. The peer agent implements one story.
+Two audiences use this prompt:
 
-## Dispatch
+1. **The host (you)** — read it as your own implementation checklist when
+   you implement single-story waves and fix loops directly. No dispatch;
+   just follow the instructions below on the current branch.
 
-Resolve the peer runtime before dispatching:
+2. **Dispatched Claude Agent subagents** — used ONLY for multi-story
+   parallel waves, where the host cannot fork itself. One dispatch per
+   story, each in its own worktree.
 
-- Preferred: use the non-host provider.
-- Fallback: use a fresh same-provider session and note weaker independence.
-
-If the peer runtime is Codex, use:
+## Dispatch (multi-story parallel waves only)
 
 ```
-mcp__codex__codex({
-  prompt: <prompt below, with all placeholders filled>,
-  approval-policy: "never",
-  cwd: <repo root>
+Agent({
+  subagent_type: "general-purpose",
+  description: "Implement story <i>/<N>",
+  prompt: <prompt below, with all placeholders filled>
 })
 ```
 
-If the peer runtime is Claude, use:
+Set the prompt's implicit working directory to the story's worktree by
+including `cwd: .ship/worktrees/story-<i>` in the prompt instructions
+(general-purpose Agents work from the repo root by default — tell them
+which worktree to operate in).
 
-```bash
-claude -p --permission-mode bypassPermissions "<prompt below, with all placeholders filled>"
-```
+For single-story waves and fix loops, the host implements directly;
+no Agent dispatch is needed. The peer reviewer (Codex) will validate
+the host's diff in Phase 2 Step B.
 
 ## Prompt
 

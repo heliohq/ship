@@ -34,27 +34,36 @@ SHIP_SKILL_NAME=dev source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 # Ship: Implement
 
 ```
-PEER IMPLEMENTS. FRESH REVIEWER DISCRIMINATES.
+HOST IMPLEMENTS. PEER CROSS-VALIDATES.
 EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
 ```
 
 ## Runtime Resolution
 
 See `../shared/runtime-resolution.md` for the host/peer concept and
-dispatch commands. In /ship:dev, the peer plays the **implementer**
-role (one session per story; `codex-reply` for targeted fixes). The
-**reviewer** always runs as a fresh Agent from the host, not as the
-peer — reviewer independence is from the implementer, not from the
-host provider.
+dispatch commands. In /ship:dev, the **host is the primary implementer**
+and the **peer (Codex when host is Claude, vice versa) is the independent
+reviewer** — cross-validation across providers.
+
+Two wave shapes, different dispatch patterns:
+
+| Wave shape | Implementer | Reviewer |
+|---|---|---|
+| **Single-story** (most common) | Host (you), directly in current branch | Peer via `mcp__codex__codex` |
+| **Multi-story parallel** | Fresh Claude Agent subagents per story, each in its own worktree (you cannot fork yourself) | Peer for each story diff |
+| **Fix loop** | Host (you) — you already have the context, no dispatch needed | Peer re-reviews |
+
+The independence contract — reviewer MUST differ from implementer —
+is met two ways: different provider (Codex ≠ Claude) AND different
+session. Both hold across all wave shapes.
 
 ## Roles
 
 | Role | Who |
 |------|-----|
-| Orchestrator | **You (host agent)** — coordinate stories, never write code |
-| Implementor | **Peer agent** — fresh session per story |
-| Reviewer | **Fresh Agent** — independent session per review |
-| Targeted fixer | **Peer agent** — surgical fixes via same session |
+| Orchestrator + primary implementer | **You (host agent)** — implement directly in single-story waves and fix loops |
+| Parallel implementer | **Fresh Claude Agent subagent** — only in multi-story parallel waves, each in a git worktree |
+| Reviewer | **Peer agent (Codex)** — fresh dispatch per story |
 
 ## Quality Gates
 
@@ -68,14 +77,18 @@ host provider.
 ## Red Flag
 
 **Never:**
-- Write code, read diffs for review, or run tests yourself — only coordination metadata allowed
-- Skip review for any story
+- Skip the peer review — every story goes through Codex (or fallback)
+  before the wave merges. This is the only cross-validation in the
+  pipeline until /ship:review runs.
 - Parallelize stories that share files without dependency analysis
-- Re-implement a full story on FAIL — use targeted fix instead
-- Advance to next story without dispatching a reviewer Agent
-- Let the peer modify tests to make them pass instead of fixing code
-- Omit prior stories context from the implementer prompt
-- Reuse a reviewer across stories — fresh Agent each time
+- Re-implement a full story on FAIL — make targeted surgical fixes
+- Advance to next story without getting a reviewer verdict
+- Soften a test assertion to make it pass instead of fixing the code
+- In multi-story waves: omit prior stories' context from each dispatched
+  implementer prompt
+- Reuse a reviewer dispatch across stories — fresh peer call each time
+- Let the peer reviewer become your coder — if the reviewer suggests a
+  fix, YOU apply it; don't ask the reviewer to write patches
 
 ---
 
@@ -172,14 +185,17 @@ operate in fix mode instead of the full wave loop:
 
 1. Read the findings/issues provided by the caller.
 2. For each finding, identify the affected file(s) and the fix needed.
-3. Dispatch the peer implementer with a targeted fix prompt — not the
-   full story prompt. The fix scope is limited to the listed findings.
+3. **You apply the fixes directly.** No dispatch. Fix mode exists
+   precisely because the caller has already done the analysis — your
+   job is surgical application, not re-analysis, so a dispatch
+   round-trip adds nothing.
 4. Run `TEST_CMD` after fixes to verify no regressions.
-5. Commit the fixes.
+5. Commit the fixes with Conventional Commit messages.
 
 Fix mode skips: wave construction, dependency analysis, story-based
-review. The fixes are reviewed by Auto's re-dispatch of `/ship:review`
-or `/ship:qa`, not by dev's internal reviewer.
+peer review. The fixes are re-validated by Auto's next-phase dispatch
+(`/ship:review`, `/ship:qa`, or the `post_qa_fix → e2e-recheck` gate),
+not by dev's internal reviewer.
 
 Return: which findings were fixed, what verification ran, any remaining
 concerns.
@@ -199,8 +215,8 @@ WAVE_BASE_SHA=$(git rev-parse HEAD)
 git worktree add .ship/worktrees/story-<i> -b story-<i>
 ```
 
-Each peer implementer receives `cwd: .ship/worktrees/story-<i>` (or the
-absolute path) so it works in its own isolated copy.
+Each dispatched implementer receives `cwd: .ship/worktrees/story-<i>`
+(or the absolute path) so it works in its own isolated copy.
 
 ### Wave merge (multi-story waves only)
 
@@ -219,10 +235,11 @@ If `git merge` fails with conflicts:
 
 1. Read BOTH sides of the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
 2. Preserve the behavior this PR ships — both sides may have valid changes.
-3. Dispatch a targeted fix to the peer implementer: provide the conflicting
-   files, both branch HEAs, and the story context.
+3. **You resolve it yourself.** Conflict resolution needs the full context
+   of what the PR is shipping; no dispatch round-trip is faster and
+   cleaner. Read both sides, pick or merge, commit.
 4. After resolution, run `TEST_CMD` to verify the merged result.
-5. If the fix doesn't resolve cleanly, try once more (round 2/2).
+5. If tests fail after resolution, try once more (round 2/2).
 6. If 2 rounds fail → BLOCKED. Do NOT use `--ours` or `--theirs` blindly.
 
 ### Step A: Implement
@@ -232,42 +249,73 @@ Record `STORY_START_SHA`:
 git rev-parse HEAD   # in the story's worktree for multi-story waves
 ```
 
-Dispatch the peer implementer using the prompt template in
-`implementer-prompt.md`. Fill all placeholders (story text, acceptance
-criteria, prior stories, CODE_CONDUCT, TEST_CMD) before dispatch.
-Use the dispatch pattern in `implementer-prompt.md` for the resolved
-peer runtime. For multi-story waves, set `cwd` to the story's worktree
-and dispatch all stories in the wave **in parallel**.
+**Single-story wave (and all fix rounds) — you implement directly.**
 
-**After the peer implementer returns:**
+Use `implementer-prompt.md` as your own checklist: read the story text,
+acceptance criteria, prior stories, CODE_CONDUCT, TEST_CMD, then write
+the code in the current branch. Commit using Conventional Commits as you
+go. Run `TEST_CMD` before declaring the story complete. You already have
+all the context the skill has gathered — no dispatch round-trip is
+needed.
 
-1. Save the session id for targeted fixes. For Codex peers, the
-   `mcp__codex__codex` response includes a `session_id` — store it as
-   `PEER_SESSION_ID`. (Claude peers cannot resume a session; skip.)
-2. Record `STORY_HEAD_SHA=$(git rev-parse HEAD)`.
-3. If `STORY_HEAD_SHA == STORY_START_SHA` and status is DONE → BLOCKED.
-4. If BLOCKED or NEEDS_CONTEXT → escalate to caller.
-5. If DONE_WITH_CONCERNS → log concerns.
+**Multi-story parallel wave — dispatch fresh Claude Agent subagents.**
 
-Proceed to **Step B**. A story is only complete when review returns PASS.
+You cannot fork yourself, so multi-story parallelism needs sub-agents.
+Dispatch one Agent per story, all in a single message so they run in
+parallel. Use `subagent_type: "general-purpose"` and fill the prompt
+template in `implementer-prompt.md` with that story's specifics. Set
+`cwd` to the story's worktree.
 
-### Step B: Review
+```
+Agent({
+  subagent_type: "general-purpose",
+  description: "Implement story <i>/<N>",
+  prompt: <implementer-prompt.md with placeholders filled for this story>
+})
+```
 
-Dispatch a fresh reviewer using the prompt template in
+**After implementation completes (either path):**
+
+1. Record `STORY_HEAD_SHA=$(git rev-parse HEAD)`.
+2. If `STORY_HEAD_SHA == STORY_START_SHA` → BLOCKED (no commits were made).
+3. If a dispatched sub-agent reported BLOCKED or NEEDS_CONTEXT → escalate.
+4. If implementation-self-reported DONE_WITH_CONCERNS → log concerns.
+
+Proceed to **Step B**. A story is only complete when peer review returns PASS.
+
+### Step B: Review (peer cross-validation)
+
+Dispatch the peer (Codex) using the prompt template in
 `reviewer-prompt.md`. Fill all placeholders (story number, SHAs,
 TEST_CMD, spec requirements, story text) before dispatch.
 
-After Reviewer returns, read the verdict:
+```
+mcp__codex__codex({
+  prompt: <reviewer-prompt.md with placeholders filled>,
+  ...
+})
+```
+
+Save the returned `session_id` as `REVIEWER_SESSION_ID` — useful if you
+need to ask the reviewer a clarifying question (not to issue fixes; fixes
+are yours to write).
+
+**Fallback if Codex is unavailable**: dispatch a fresh Claude Agent
+(`subagent_type: "general-purpose"`) with the same prompt. Independence
+is weaker (same provider) but better than no review — note this in the
+report.
+
+After the reviewer returns, read the verdict:
 - **PASS** → proceed to Step D.
 - **PASS_WITH_CONCERNS** → append concerns to `concerns.md`. Proceed to Step D.
 - **FAIL** → proceed to Step C. Max 2 rounds.
   If 2 rounds exhausted and still FAIL → escalate as BLOCKED.
-- **No recognized verdict** → re-dispatch a fresh Reviewer once.
-  If still unparseable → treat as FAIL.
+- **No recognized verdict** → re-dispatch the reviewer once with an
+  explicit format reminder. If still unparseable → treat as FAIL.
 
 ### Step C: Targeted Fix
 
-On FAIL, first verify repo state:
+On FAIL, verify repo state:
 
 ```bash
 git rev-parse HEAD
@@ -276,45 +324,24 @@ git status --short
 
 If uncommitted partial changes exist, stash or discard (warn the user).
 
-Continue on the **same peer session** from Step A. The implementer
-already has full context of what it built.
+**You apply the fix directly.** No dispatch. You have the full context of
+what you implemented (or what the sub-agent implemented — the diff is
+right there in the worktree). Read the reviewer's FAIL findings
+verbatim, apply surgical fixes, commit.
 
-Build the targeted-fix prompt:
-
-```
-A code reviewer found these issues. Fix them.
-
-## Issues to Fix
-<Reviewer's FAIL findings, verbatim>
-
-## Rules
-- Fix ONLY the issues listed above. Do not refactor or improve other code.
-- Run the full test suite after fixes: <TEST_CMD>
-- If a fix requires a new test, add it.
-- Commit using Conventional Commits.
+Fix rules (apply to yourself):
+- Fix ONLY the issues the reviewer listed. Do not refactor or improve
+  other code.
+- Run `TEST_CMD` after fixes. If a fix requires a new test, add it.
+- Do NOT soften test assertions to make them pass. Fix the code.
 - Do NOT re-implement the story. Make surgical fixes.
-```
-
-**Dispatch by peer runtime:**
-
-- **Codex peer** — continue the session with `mcp__codex__codex-reply`:
-  ```
-  mcp__codex__codex-reply({
-    session_id: <PEER_SESSION_ID from Step A>,
-    reply: <targeted-fix prompt above>
-  })
-  ```
-- **Claude peer** — `claude -p` cannot continue a session; re-dispatch a
-  fresh session with the original story prompt **plus** the targeted-fix
-  prompt appended.
-
-If `mcp__codex__codex-reply` fails (e.g., session expired), fall back to
-a fresh `mcp__codex__codex` dispatch with the original story prompt plus
-the targeted-fix prompt.
+- Commit using Conventional Commits.
 
 After fix commits:
-1. Update `STORY_HEAD_SHA=$(git rev-parse HEAD)`
-2. Return to **Step B** with fresh Reviewer using updated commit range.
+1. Update `STORY_HEAD_SHA=$(git rev-parse HEAD)`.
+2. Return to **Step B** with a fresh reviewer dispatch using the
+   updated commit range. (Do NOT reuse the prior reviewer session —
+   fresh eyes each round.)
 
 ### Step D: Record Context
 
@@ -333,15 +360,16 @@ in the "Prior Stories Completed" section.
 
 ## Phase 3: Cross-Story Regression
 
-After all stories pass, dispatch the peer implementer to run the full
-test suite:
+After all stories pass, **you run** `TEST_CMD` yourself and report the
+result. No dispatch — it's a shell command, not a reasoning task.
 
-```
-Run the full test suite: <TEST_CMD>. Report PASS or FAIL with output.
+```bash
+<TEST_CMD>
 ```
 
-If tests fail, dispatch a targeted fix via the peer implementer and
-re-verify. Max 2 rounds; then BLOCKED.
+If tests fail, apply targeted fixes yourself (same rules as Step C —
+surgical, don't soften assertions) and re-run. Max 2 rounds; then
+BLOCKED.
 
 ---
 
@@ -367,63 +395,43 @@ Use `[Dev]` prefix:
 
 ## Example Workflow
 
+Condensed for readability. The full flow would include the same
+implement → review → (fix) → merge pattern for every story.
+
 ```
 [Dev] Starting — 5 stories, test cmd: npm test
 [Dev] Dependency analysis:
-  Wave 1: [Story 1 "Add User model", Story 2 "Add Product model"] ← parallel
-  Wave 2: [Story 3 "User API", Story 4 "Product API"] ← parallel
-  Wave 3: [Story 5 "Auth middleware"] ← sequential
+  Wave 1: [Story 1 "User model", Story 2 "Product model"] ← parallel
+  Wave 2: [Story 3 "User API", Story 4 "Product API"]     ← parallel
+  Wave 3: [Story 5 "Auth middleware"]                      ← single-story
 
-═══ Wave 1 (parallel): Stories 1, 2 ════════════════════
+═══ Wave 1 (parallel, 2 stories) ═══════════════════════
 
-[Dev] Wave 1: creating worktrees...
-  git worktree add .ship/worktrees/story-1 -b story-1
-  git worktree add .ship/worktrees/story-2 -b story-2
-  WAVE_BASE_SHA = abc1234
+[Dev] Created worktrees story-1, story-2. Dispatching 2 Claude Agent
+      subagents in parallel (I can't fork myself)...
+      Story 1 subagent: DONE (3 commits, cwd story-1)
+      Story 2 subagent: DONE (2 commits, cwd story-2)
+[Dev] Peer (Codex) reviews each diff — both PASS.
+[Dev] Merging story-1, story-2 → main. Tests green.
 
-[Dev] Story 1/5 + Story 2/5: dispatching peer implementers in parallel...
-  Story 1 peer (cwd: .ship/worktrees/story-1) returns: DONE (PEER_SESSION_ID: session_s1)
-  Story 2 peer (cwd: .ship/worktrees/story-2) returns: DONE (PEER_SESSION_ID: session_s2)
+═══ Wave 2 (parallel, 2 stories) ═══════════════════════
 
-[Dev] Story 1/5: commits exist ✓ → dispatching fresh reviewer...
-  Reviewer returns: PASS
-[Dev] Story 2/5: commits exist ✓ → dispatching fresh reviewer...
-  Reviewer returns: PASS
+[Dev] Subagents implement stories 3, 4 in parallel.
+[Dev] Peer reviewer → Story 3 FAIL: missing input validation.
+[Dev] I apply the fix directly in the story-3 worktree.
+      Run TEST_CMD → PASS. Re-dispatch peer reviewer → PASS (round 2/2).
+[Dev] Story 4 → PASS. Merge both.
 
-[Dev] Wave 1: all stories PASS. Merging branches...
-  git merge story-1 --no-edit ✓
-  git merge story-2 --no-edit ✓
-  Cleaning up worktrees.
+═══ Wave 3 (single story) ══════════════════════════════
 
-═══ Wave 2 (parallel): Stories 3, 4 ════════════════════
-
-[Dev] Wave 2: creating worktrees...
-
-[Dev] Story 3/5: dispatching peer implementer...
-  Peer returns: DONE (PEER_SESSION_ID: session_s3)
-[Dev] Story 4/5: dispatching peer implementer...
-  Peer returns: DONE (PEER_SESSION_ID: session_s4)
-
-[Dev] Story 3/5: reviewer returns FAIL
-  - Missing input validation on POST /users
-[Dev] Story 3/5: targeted fix (round 1/2)...
-  mcp__codex__codex-reply({ session_id: session_s3, reply: <fix prompt> })
-[Dev] Story 3/5: re-review → PASS (2 rounds).
-
-[Dev] Story 4/5: reviewer returns PASS.
-
-[Dev] Wave 2: merging branches... ✓
-
-═══ Wave 3 (sequential): Story 5 ═══════════════════════
-
-[Dev] Story 5/5: dispatching peer implementer...
-  Peer returns: DONE_WITH_CONCERNS ("jwt secret hardcoded in test fixtures")
-[Dev] Story 5/5: reviewer returns PASS_WITH_CONCERNS. Appending to concerns.md.
+[Dev] I implement Story 5 directly in current branch (no worktree needed).
+      Commit, run TEST_CMD → PASS.
+[Dev] Peer reviewer → PASS_WITH_CONCERNS ("jwt secret hardcoded in test
+      fixtures"). Appending to concerns.md.
 
 ── Phase 3: Cross-Story Regression ──────────────────────
 
-[Dev] Running full test suite...
-  Peer returns: PASS (47 tests, 0 failures)
+[Dev] I run the full test suite: npm test → PASS (47 tests).
 
 [Dev] DONE_WITH_CONCERNS — 5/5 stories, 3 waves, 1 concern recorded.
 ```
@@ -432,12 +440,13 @@ Use `[Dev]` prefix:
 
 | Condition | Action |
 |-----------|--------|
-| Reviewer FAIL, rounds < 2 | Targeted fix → fresh re-review |
+| Reviewer FAIL, rounds < 2 | You apply the targeted fix → fresh peer re-review |
 | Reviewer FAIL, rounds exhausted | Escalate BLOCKED with findings |
-| Reviewer malformed output | Re-dispatch fresh Reviewer once, then FAIL |
-| Peer implementer BLOCKED or NEEDS_CONTEXT | Escalate to caller |
-| Peer implementer DONE_WITH_CONCERNS | Log concerns, proceed to review |
-| Peer implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
+| Reviewer malformed output | Re-dispatch peer reviewer once with format reminder; treat second failure as FAIL |
+| Reviewer unavailable (Codex down) | Fall back to fresh Claude Agent reviewer; note weaker independence in report |
+| Sub-agent implementer (multi-story wave) reports BLOCKED or NEEDS_CONTEXT | Escalate to caller |
+| Sub-agent implementer reports DONE_WITH_CONCERNS | Log concerns, proceed to review |
+| Sub-agent implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
 | Agent dispatch failure | Retry once, then BLOCKED |
 
 ## Execution Handoff
