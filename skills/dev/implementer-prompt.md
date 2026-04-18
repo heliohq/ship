@@ -3,14 +3,18 @@
 Two audiences use this prompt:
 
 1. **The host (you)** — read it as your own implementation checklist when
-   you implement single-story waves and fix loops directly. No dispatch;
-   just follow the instructions below on the current branch.
+   you implement single-story waves and fix-mode dispatches directly.
+   No Agent dispatch; just follow the instructions below on the current
+   branch.
 
 2. **Dispatched Claude Agent subagents** — used ONLY for multi-story
-   parallel waves, where the host cannot fork itself. One dispatch per
-   story, each in its own worktree.
+   parallel waves (where the host cannot fork itself) and for multi-story
+   fix rounds (where the original implementer was a sub-agent). All
+   dispatches work on the current branch — no worktrees. The wave's
+   dependency analysis guarantees the subagent's file scope does not
+   overlap other parallel subagents' scopes.
 
-## Dispatch (multi-story parallel waves only)
+## Dispatch (multi-story waves and their fix rounds)
 
 ```
 Agent({
@@ -20,14 +24,17 @@ Agent({
 })
 ```
 
-Set the prompt's implicit working directory to the story's worktree by
-including `cwd: .ship/worktrees/story-<i>` in the prompt instructions
-(general-purpose Agents work from the repo root by default — tell them
-which worktree to operate in).
+The subagent runs in the current repo directory (whatever cwd the host
+is running in). The prompt MUST state:
+- Which files/modules the subagent is allowed to modify (from dependency
+  analysis). The subagent must not touch files outside that scope.
+- That the subagent commits its own changes using Conventional Commits.
+- That the subagent reports back with the list of files changed and
+  commit SHAs it produced.
 
-For single-story waves and fix loops, the host implements directly;
-no Agent dispatch is needed. The peer reviewer (Codex) will validate
-the host's diff in Phase 2 Step B.
+For single-story waves and fix mode, the host implements directly — no
+Agent dispatch is needed. The peer reviewer (Codex) validates the host's
+diff in Phase 2 Step B.
 
 ## Prompt
 

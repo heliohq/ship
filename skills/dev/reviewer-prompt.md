@@ -54,7 +54,16 @@ future concerns, or suggestions that lack a concrete failure scenario.
 
 ## Changes
 
-Run `git diff <STORY_START_SHA>..<STORY_HEAD_SHA>` to see the diff.
+Inspect this story's changes. The host will tell you how:
+
+- **Single-story waves**: `git diff <WAVE_BASE_SHA>..HEAD` covers this story.
+- **Multi-story waves**: the host passes a list of commit SHAs
+  produced by this story (other stories in the wave may be interleaved
+  on the branch — do NOT assume a contiguous range). Inspect each with
+  `git show <sha>` or `git diff <sha>^..<sha>`.
+
+Review only this story's scope. Changes from other stories in the same
+wave are out of scope for this review.
 
 ## Tests
 

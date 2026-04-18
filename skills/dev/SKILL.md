@@ -2,13 +2,15 @@
 name: dev
 version: 0.6.0
 description: >
-  Execute implementation stories from a plan via parallel waves. Dependency analysis
-  groups independent stories into waves that run in parallel via git worktrees; each
-  story is reviewed independently, and waves merge before proceeding. Use when:
-  "implement this plan", "execute the stories", "code this up", "build from the plan",
-  or when a plan/stories already exist and need implementation. Note: if no plan exists
-  yet, use /ship:design first. For the full pipeline (plan → code → review → QA → ship),
-  use /ship:auto.
+  Execute implementation stories from a plan via parallel waves. Host (Claude) is the
+  primary implementer; peer (Codex) is the independent reviewer. Dependency analysis
+  groups file-independent stories into waves that can run in parallel on the current
+  branch — single-story waves are implemented by the host; multi-story waves dispatch
+  Claude Agent subagents in parallel. Each story is reviewed by the peer before the
+  wave advances. Use when: "implement this plan", "execute the stories", "code this up",
+  "build from the plan", or when a plan/stories already exist and need implementation.
+  Note: if no plan exists yet, use /ship:design first. For the full pipeline
+  (plan → code → e2e → review → QA → ship), use /ship:auto.
 allowed-tools:
   - Bash
   - Read
@@ -47,30 +49,35 @@ reviewer** — cross-validation across providers.
 
 Two wave shapes, different dispatch patterns:
 
-| Wave shape | Implementer | Reviewer |
-|---|---|---|
-| **Single-story** (most common) | Host (you), directly in current branch | Peer via `mcp__codex__codex` |
-| **Multi-story parallel** | Fresh Claude Agent subagents per story, each in its own worktree (you cannot fork yourself) | Peer for each story diff |
-| **Fix loop** | Host (you) — you already have the context, no dispatch needed | Peer re-reviews |
+| Wave shape | Implementer | Reviewer | Fix-round owner |
+|---|---|---|---|
+| **Single-story** (most common) | Host (you), on current branch | Peer via `mcp__codex__codex` | Host — you apply fixes directly |
+| **Multi-story parallel** | Fresh Claude Agent subagents per story, all on the current branch (dependency analysis guarantees their file scopes don't overlap — no worktrees needed) | Peer per story | Fresh Claude Agent subagent dispatch — whoever implemented a story is who fixes it |
+| **Fix mode** (/ship:auto review_fix/qa_fix/e2e_fix dispatch) | Host — you | (next phase re-runs its own verification) | Host — you apply fixes directly |
 
 The independence contract — reviewer MUST differ from implementer —
 is met two ways: different provider (Codex ≠ Claude) AND different
 session. Both hold across all wave shapes.
 
+The fix-routing rule — **whoever implemented, fixes** — keeps context
+tight. The implementer knows what they built and why; asking someone
+else to fix their code loses that context.
+
 ## Roles
 
 | Role | Who |
 |------|-----|
-| Orchestrator + primary implementer | **You (host agent)** — implement directly in single-story waves and fix loops |
-| Parallel implementer | **Fresh Claude Agent subagent** — only in multi-story parallel waves, each in a git worktree |
+| Orchestrator + primary implementer | **You (host agent)** — implement directly in single-story waves and fix mode |
+| Parallel implementer | **Fresh Claude Agent subagent** — only in multi-story parallel waves, all on current branch (dependency analysis prevents file overlap) |
 | Reviewer | **Peer agent (Codex)** — fresh dispatch per story |
+| Multi-story fixer | **Fresh Claude Agent subagent** — dispatched when a sub-agent-implemented story needs a fix; "whoever implemented, fixes" |
 
 ## Quality Gates
 
 | Gate | Condition | Fail action |
 |------|-----------|-------------|
 | Spec + plan read | Acceptance criteria extracted, TEST_CMD found | AskUserQuestion |
-| Implement → Review | STORY_HEAD_SHA != STORY_START_SHA (commits exist) | BLOCKED |
+| Implement → Review | Story produced at least one commit (from subagent report, or HEAD moved since WAVE_BASE_SHA for single-story waves) | BLOCKED |
 | Review → Next story | Verdict is PASS or PASS_WITH_CONCERNS | Targeted fix (max 2) |
 | All stories → Done | Full test suite passes | Targeted fix for regression |
 
@@ -203,68 +210,41 @@ concerns.
 ## Phase 2: Per-Wave Loop
 
 For each wave, run all stories in the wave through Steps A→B→(C)→D.
-- **Single-story wave**: run directly on the current branch.
-- **Multi-story wave**: each story gets its own branch via git worktree.
-  After all stories in the wave pass review, merge all branches back.
+All work happens on the **current branch** — no worktrees, no story-
+specific branches.
 
-### Wave setup (multi-story waves only)
+### Why no worktrees
+
+Waves are constructed specifically because the stories in them don't
+share files (that's the whole point of dependency analysis in Phase 1).
+If two stories in a wave would touch the same file, they belong in
+different waves — that's a wave-construction error, not a merge-conflict
+to solve. Git's own commit serialization via `.git/index.lock` is
+sufficient protection against races on simultaneous commits to the same
+branch.
+
+Record `WAVE_BASE_SHA` once at wave start so you can compute per-story
+file scope later:
 
 ```bash
 WAVE_BASE_SHA=$(git rev-parse HEAD)
-# For each story in the wave:
-git worktree add .ship/worktrees/story-<i> -b story-<i>
 ```
-
-Each dispatched implementer receives `cwd: .ship/worktrees/story-<i>`
-(or the absolute path) so it works in its own isolated copy.
-
-### Wave merge (multi-story waves only)
-
-After all stories in a wave pass review:
-
-```bash
-# For each story branch in the wave:
-git merge story-<i> --no-edit
-git worktree remove .ship/worktrees/story-<i>
-git branch -d story-<i>
-```
-
-### Merge conflict resolution
-
-If `git merge` fails with conflicts:
-
-1. Read BOTH sides of the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
-2. Preserve the behavior this PR ships — both sides may have valid changes.
-3. **You resolve it yourself.** Conflict resolution needs the full context
-   of what the PR is shipping; no dispatch round-trip is faster and
-   cleaner. Read both sides, pick or merge, commit.
-4. After resolution, run `TEST_CMD` to verify the merged result.
-5. If tests fail after resolution, try once more (round 2/2).
-6. If 2 rounds fail → BLOCKED. Do NOT use `--ours` or `--theirs` blindly.
 
 ### Step A: Implement
 
-Record `STORY_START_SHA`:
-```bash
-git rev-parse HEAD   # in the story's worktree for multi-story waves
-```
-
-**Single-story wave (and all fix rounds) — you implement directly.**
+**Single-story wave (and all fix rounds where host is the implementer) — you implement directly.**
 
 Use `implementer-prompt.md` as your own checklist: read the story text,
 acceptance criteria, prior stories, CODE_CONDUCT, TEST_CMD, then write
 the code in the current branch. Commit using Conventional Commits as you
-go. Run `TEST_CMD` before declaring the story complete. You already have
-all the context the skill has gathered — no dispatch round-trip is
-needed.
+go. Run `TEST_CMD` before declaring the story complete.
 
-**Multi-story parallel wave — dispatch fresh Claude Agent subagents.**
+**Multi-story parallel wave — dispatch Claude Agent subagents in parallel.**
 
 You cannot fork yourself, so multi-story parallelism needs sub-agents.
 Dispatch one Agent per story, all in a single message so they run in
-parallel. Use `subagent_type: "general-purpose"` and fill the prompt
-template in `implementer-prompt.md` with that story's specifics. Set
-`cwd` to the story's worktree.
+parallel. All subagents share the same cwd (the current branch); the
+wave's dependency analysis guarantees their file scopes don't overlap.
 
 ```
 Agent({
@@ -274,20 +254,27 @@ Agent({
 })
 ```
 
+Each subagent edits files, commits its own changes, and reports back
+with: the files it changed, the commit SHAs it produced, and its
+status. Git's index lock serializes concurrent commits automatically.
+
 **After implementation completes (either path):**
 
-1. Record `STORY_HEAD_SHA=$(git rev-parse HEAD)`.
-2. If `STORY_HEAD_SHA == STORY_START_SHA` → BLOCKED (no commits were made).
-3. If a dispatched sub-agent reported BLOCKED or NEEDS_CONTEXT → escalate.
-4. If implementation-self-reported DONE_WITH_CONCERNS → log concerns.
+1. Record each story's commit SHAs from the subagent reports (or, for
+   single-story waves, from your own commits).
+2. If the subagent's reported commits are empty and its status is DONE
+   → BLOCKED (no actual code change).
+3. If a subagent reported BLOCKED or NEEDS_CONTEXT → escalate.
+4. If a subagent reported DONE_WITH_CONCERNS → log concerns.
 
 Proceed to **Step B**. A story is only complete when peer review returns PASS.
 
 ### Step B: Review (peer cross-validation)
 
 Dispatch the peer (Codex) using the prompt template in
-`reviewer-prompt.md`. Fill all placeholders (story number, SHAs,
-TEST_CMD, spec requirements, story text) before dispatch.
+`reviewer-prompt.md`. Fill all placeholders (story number, commit SHAs
+or file list from Step A, TEST_CMD, spec requirements, story text)
+before dispatch.
 
 ```
 mcp__codex__codex({
@@ -295,10 +282,6 @@ mcp__codex__codex({
   ...
 })
 ```
-
-Save the returned `session_id` as `REVIEWER_SESSION_ID` — useful if you
-need to ask the reviewer a clarifying question (not to issue fixes; fixes
-are yours to write).
 
 **Fallback if Codex is unavailable**: dispatch a fresh Claude Agent
 (`subagent_type: "general-purpose"`) with the same prompt. Independence
@@ -315,7 +298,19 @@ After the reviewer returns, read the verdict:
 
 ### Step C: Targeted Fix
 
-On FAIL, verify repo state:
+**Whoever implemented the story, fixes the story.** This keeps the
+context tight — the fixer already knows what the code does, what
+trade-offs were made, and what the reviewer saw.
+
+Routing:
+
+| Who implemented | Who fixes |
+|---|---|
+| Host (single-story wave) | Host — you apply the fix directly |
+| Sub-agent (multi-story wave) | Fresh sub-agent dispatch with the original story + prior implementation summary + FAIL findings |
+| Host in fix mode (/ship:auto dispatch) | Host — you apply the fix directly |
+
+Before dispatching or editing, verify repo state:
 
 ```bash
 git rev-parse HEAD
@@ -324,12 +319,27 @@ git status --short
 
 If uncommitted partial changes exist, stash or discard (warn the user).
 
-**You apply the fix directly.** No dispatch. You have the full context of
-what you implemented (or what the sub-agent implemented — the diff is
-right there in the worktree). Read the reviewer's FAIL findings
-verbatim, apply surgical fixes, commit.
+**If you (host) are fixing:** read the reviewer's FAIL findings
+verbatim, apply surgical fixes on the current branch, run `TEST_CMD`,
+commit.
 
-Fix rules (apply to yourself):
+**If dispatching a sub-agent to fix** (multi-story wave): the sub-agent
+is new but plays the same role the original implementer did. Give it:
+
+- The original story text and acceptance criteria
+- A summary of what was implemented (files changed, key commits)
+- The reviewer's FAIL findings verbatim
+- The same Fix rules below
+
+```
+Agent({
+  subagent_type: "general-purpose",
+  description: "Fix story <i>/<N> — round <R>/2",
+  prompt: <fix prompt with findings + original story context>
+})
+```
+
+Fix rules (whoever is applying):
 - Fix ONLY the issues the reviewer listed. Do not refactor or improve
   other code.
 - Run `TEST_CMD` after fixes. If a fix requires a new test, add it.
@@ -338,10 +348,9 @@ Fix rules (apply to yourself):
 - Commit using Conventional Commits.
 
 After fix commits:
-1. Update `STORY_HEAD_SHA=$(git rev-parse HEAD)`.
-2. Return to **Step B** with a fresh reviewer dispatch using the
-   updated commit range. (Do NOT reuse the prior reviewer session —
-   fresh eyes each round.)
+1. Re-record the story's commit SHAs (original + fix commits).
+2. Return to **Step B** with a fresh reviewer dispatch. (Do NOT reuse
+   the prior reviewer session — fresh eyes each round.)
 
 ### Step D: Record Context
 
@@ -349,14 +358,19 @@ After each story completes (PASS or PASS_WITH_CONCERNS), record:
 
 ```
 Story <i>: "<title>"
-  Commits: <STORY_START_SHA>..<STORY_HEAD_SHA> (<N> commits)
-  Files: <list of ALL files changed across all commits in range>
+  Commits: <list of commit SHAs produced by this story>
+  Files: <list of files changed by this story's commits>
   Concerns: <any PASS_WITH_CONCERNS notes, or "none">
 ```
 
-Use `git diff --name-only <STORY_START_SHA>..<STORY_HEAD_SHA>` to get
-the complete file list. Pass this summary to the next story's prompt
-in the "Prior Stories Completed" section.
+Since all stories commit to the same branch, derive the file list from
+the subagent's report (multi-story waves) or from
+`git show --name-only <sha>` per commit (either path). Do NOT use
+`git diff WAVE_BASE..HEAD --name-only` — that aggregates all stories
+in the wave.
+
+Pass this summary to the next wave's prompts in the "Prior Stories
+Completed" section so each implementer sees what's already been built.
 
 ## Phase 3: Cross-Story Regression
 
@@ -395,8 +409,8 @@ Use `[Dev]` prefix:
 
 ## Example Workflow
 
-Condensed for readability. The full flow would include the same
-implement → review → (fix) → merge pattern for every story.
+Condensed. The full flow repeats implement → review → (fix) → next per
+story.
 
 ```
 [Dev] Starting — 5 stories, test cmd: npm test
@@ -405,27 +419,31 @@ implement → review → (fix) → merge pattern for every story.
   Wave 2: [Story 3 "User API", Story 4 "Product API"]     ← parallel
   Wave 3: [Story 5 "Auth middleware"]                      ← single-story
 
-═══ Wave 1 (parallel, 2 stories) ═══════════════════════
+═══ Wave 1 (parallel, 2 stories, same branch) ═══════════
 
-[Dev] Created worktrees story-1, story-2. Dispatching 2 Claude Agent
-      subagents in parallel (I can't fork myself)...
-      Story 1 subagent: DONE (3 commits, cwd story-1)
-      Story 2 subagent: DONE (2 commits, cwd story-2)
-[Dev] Peer (Codex) reviews each diff — both PASS.
-[Dev] Merging story-1, story-2 → main. Tests green.
+[Dev] WAVE_BASE_SHA = abc1234. Dispatching 2 Claude Agent subagents
+      in parallel (same cwd — dependency analysis says their files
+      don't overlap).
+      Story 1 subagent: DONE — edited models/user.ts, committed abc5
+      Story 2 subagent: DONE — edited models/product.ts, committed abc6
+[Dev] Peer (Codex) reviews each story's commits — both PASS.
 
 ═══ Wave 2 (parallel, 2 stories) ═══════════════════════
 
-[Dev] Subagents implement stories 3, 4 in parallel.
+[Dev] Subagents implement stories 3, 4 in parallel on same branch.
+      Story 3 subagent: DONE — routes/users.ts
+      Story 4 subagent: DONE — routes/products.ts
 [Dev] Peer reviewer → Story 3 FAIL: missing input validation.
-[Dev] I apply the fix directly in the story-3 worktree.
-      Run TEST_CMD → PASS. Re-dispatch peer reviewer → PASS (round 2/2).
-[Dev] Story 4 → PASS. Merge both.
+[Dev] Dispatching a fresh subagent to fix Story 3 (whoever implemented
+      it, fixes it — here that role is a new subagent with the original
+      story + the FAIL findings).
+      Fix subagent: DONE — commit abc9, TEST_CMD PASS.
+[Dev] Re-dispatch peer reviewer for Story 3 → PASS (round 2/2).
+[Dev] Story 4 → PASS (same review batch).
 
 ═══ Wave 3 (single story) ══════════════════════════════
 
-[Dev] I implement Story 5 directly in current branch (no worktree needed).
-      Commit, run TEST_CMD → PASS.
+[Dev] I implement Story 5 directly. Commit, TEST_CMD → PASS.
 [Dev] Peer reviewer → PASS_WITH_CONCERNS ("jwt secret hardcoded in test
       fixtures"). Appending to concerns.md.
 
@@ -440,7 +458,7 @@ implement → review → (fix) → merge pattern for every story.
 
 | Condition | Action |
 |-----------|--------|
-| Reviewer FAIL, rounds < 2 | You apply the targeted fix → fresh peer re-review |
+| Reviewer FAIL, rounds < 2 | Fix is applied by whoever implemented (host or fresh sub-agent) → fresh peer re-review |
 | Reviewer FAIL, rounds exhausted | Escalate BLOCKED with findings |
 | Reviewer malformed output | Re-dispatch peer reviewer once with format reminder; treat second failure as FAIL |
 | Reviewer unavailable (Codex down) | Fall back to fresh Claude Agent reviewer; note weaker independence in report |
@@ -448,6 +466,7 @@ implement → review → (fix) → merge pattern for every story.
 | Sub-agent implementer reports DONE_WITH_CONCERNS | Log concerns, proceed to review |
 | Sub-agent implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
 | Agent dispatch failure | Retry once, then BLOCKED |
+| Two sub-agents in a wave touched the same file (race on commit or unexpected diff) | Wave construction error — abort wave, revisit dependency analysis, rebuild waves, retry |
 
 ## Execution Handoff
 
