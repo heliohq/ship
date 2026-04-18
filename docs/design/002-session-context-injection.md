@@ -40,9 +40,9 @@ A short routing policy is embedded directly in `scripts/session-start.sh` and in
 The policy is intentionally minimal. It exists to bias the agent's first move without competing with the user request. It contains:
 
 - A reminder that Ship skills are available in the repo
-- A directive to invoke a matching `/ship:*` skill for code-change, planning, review, QA, refactor, or handoff requests
+- A directive to invoke a matching `/ship:*` skill for code-change, planning, review, QA, E2E, refactor, or handoff requests
 - A default to `/ship:auto` for end-to-end feature work
-- The canonical phase order (design → dev → review → qa → refactor → handoff), unless the user explicitly asks for one phase
+- The canonical phase order (design → dev → e2e → review → qa → refactor → handoff), unless the user explicitly asks for one phase
 
 This keeps startup context small and leaves detailed workflow guidance in the actual skill files, which agents read on demand.
 

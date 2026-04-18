@@ -1,94 +1,155 @@
-# Reviewer — Fresh Independent Reviewer Prompt
+# Reviewer — Peer Cross-Validation Prompt
 
-Used in Phase 2 Step B of `/ship:dev`. A fresh reviewer session reviews
-each story independently. Prefer a reviewer runtime that did not
-perform implementation; when possible, use the host runtime.
+Used in Phase 2 Step B of `/ship:dev`. The peer (Codex when host is
+Claude, vice versa) reviews each story independently — different
+provider, different session from whoever implemented the code.
 
-## Dispatch
+## Dispatch (preferred: peer for cross-provider independence)
+
+```
+mcp__codex__codex({
+  prompt: <prompt below, with all placeholders filled>
+})
+```
+
+If the peer runtime is unavailable (e.g., Codex MCP not configured),
+fall back to a fresh Claude Agent subagent — same-provider review is
+weaker than cross-provider, so note this in the dev report:
 
 ```
 Agent({
   prompt: <prompt below, with all placeholders filled>,
-  subagent_type: "general-purpose"
+  subagent_type: "general-purpose",
+  description: "Review story <i>/<N>"
 })
 ```
 
-## Philosophy: Verification Principle
+## Design notes (for the host reading this file)
 
-Every finding must include verifiable evidence (file:line + reproducible
-scenario), or it is not a valid finding. This prevents both sycophantic
-approval and adversarial nitpicking.
+The prompt is tuned for Codex ergonomics first, with fallback Claude
+compatibility:
+
+- **ASCII status tags** (`[OK]`, `[MISSING]`, `[DEVIATES]`, `[SCOPE_CREEP]`)
+  — more reliably emitted and parsed than emoji markers.
+- **Rule lists beat narrative prose** — Codex follows explicit
+  enumerated rules more tightly than paragraphs.
+- **Describe bugs, don't write patches** — under the flipped dev roles,
+  the host applies fixes. Patch text from the reviewer is noise.
+- **Enumerated bug categories** — Codex is pattern-matching by training;
+  giving it the categories explicitly produces better signal than
+  asking it to "look for bugs."
+- **Strict output template + "no preamble" directive** — Codex tends
+  to add framing commentary unless explicitly told not to; the host
+  parses the verdict literally.
 
 ## Prompt
 
 ```text
-You are reviewing the changes for story <i>/<N>.
+You are an independent code reviewer. Review the changes for story <i>/<N>
+and produce a structured verdict. You do NOT write code, suggest
+refactors, or praise. You find real bugs and report them with evidence.
 
-## Verification Principle
+## Scope
 
-Every finding you report MUST include verifiable evidence:
-- Specific file:line reference
-- Concrete, reproducible scenario or observation
+Your review covers ONLY this story's commits:
+<commits: either "git diff <WAVE_BASE_SHA>..HEAD" for single-story waves, or a numbered list of commit SHAs for multi-story waves>
 
-If you cannot provide both, do not report the finding. This applies
-equally to praise ("looks good") and criticism ("might be problematic").
-Neither is allowed without evidence.
+Inspect the changes with `git show <sha>` (or `git diff <sha>^..<sha>`)
+for each commit in scope. Read the full changed files — not just the
+diff hunks — before writing findings.
 
-Do NOT report: style preferences, "consider refactoring", hypothetical
-future concerns, or suggestions that lack a concrete failure scenario.
+Files changed by other stories in the same wave are out of scope even
+if they appear in `git log`. Do not review them.
 
-## Changes
+## Rules
 
-Run `git diff <STORY_START_SHA>..<STORY_HEAD_SHA>` to see the diff.
+- Every finding MUST include: `file:line`, what's wrong, a concrete input
+  or sequence that triggers it, and expected vs actual behavior.
+  Without all of these, the finding is noise — drop it.
+- Describe the bug. Do NOT write patches or suggest refactors. The host
+  applies fixes; your job is to find and describe.
+- Do NOT report: style, naming, "consider", "might", hypothetical future
+  issues, missing comments, or anything you cannot trigger with a
+  specific input.
+- Tests are evidence of behavior, not proof of correctness. A test that
+  asserts the wrong thing, a fixture hardcoding the current output, or
+  harness edits that narrow coverage are correctness failures.
 
-## Tests
+## Procedure
 
-Run `<TEST_CMD>`. If tests fail, verdict is FAIL — stop here, report
-which tests failed and why.
+### 1. Run tests
 
-## Part 1: Spec Checklist (do this first)
+Run `<TEST_CMD>`. If any test fails → verdict is FAIL. Report which
+tests, the failing assertions, expected vs actual. Stop here; skip
+steps 2 and 3.
 
-For each requirement below, mark exactly one:
-- ✅ Implemented (cite file:line where it's realized)
-- ❌ Not implemented
-- ⚠️ Implemented but deviates from spec (describe the concrete difference)
+### 2. Spec check
 
-Also check: did the implementor build anything NOT listed below?
-Unrequested features = ❌ scope creep.
+For each acceptance criterion below, write one line using these tags:
 
-Requirements:
-<list each acceptance criterion from spec.md as a numbered item>
+- `[OK] <criterion>` — implemented at `file:line`
+- `[MISSING] <criterion>` — not found in the diff
+- `[DEVIATES] <criterion>` — present at `file:line` but <concrete
+  difference from spec, e.g., "accepts empty string where spec requires
+  non-empty">
 
-Story:
-<full story text from plan.md>
+Also scan the diff for SCOPE CREEP: code the criteria did not ask for.
+Flag each instance as `[SCOPE_CREEP] <what was built> at file:line`.
 
-If ANY item is ❌ or ⚠️ → verdict is FAIL. Do not proceed to Part 2.
+Acceptance criteria:
+<numbered list from spec.md — or "None — diff-only review" if no spec>
 
-## Part 2: Code Correctness (only if Part 1 all ✅)
+Story text:
+<story text from plan.md — or "None — diff-only review" if no story>
 
-Report ONLY issues that meet at least one of:
-- Can cause a runtime error (with input/scenario that triggers it)
-- Can cause data loss or corruption (with sequence of events)
-- Is a security vulnerability (with attack vector)
-- Contradicts an established codebase pattern (cite existing file:line)
-- Lets tests pass while real behavior is still wrong, including fixture-coupled logic, hardcoded expected values, or harness manipulation
+Rule: any `[MISSING]`, `[DEVIATES]`, or `[SCOPE_CREEP]` → FAIL, UNLESS
+the deviation is equivalent behavior (e.g., renaming a helper, using a
+different-but-equivalent idiom). When in doubt → FAIL; the host can
+clarify.
 
-Treat reward-hacking-style shortcuts as correctness failures, not clever implementation.
+### 3. Correctness check (only if step 2 has no FAIL triggers)
 
-For each issue: what's wrong, where (file:line), how to trigger, how to fix.
+Look ONLY for bugs in these categories:
 
-## Verdict
+- **Runtime error** — null/undefined access, unchecked array bounds,
+  unhandled exception, wrong type, division by zero.
+- **Data integrity** — partial writes without rollback, race conditions
+  on shared mutable state, lost updates, constraint violations, stale
+  reads across a write.
+- **Security** — injection, missing auth check at a trust boundary,
+  leaked secrets in logs or responses, unsafe deserialization, path
+  traversal.
+- **Logic** — off-by-one, inverted condition, wrong operator, wrong
+  default, forgotten enum arm, dead branch, unreachable code after a
+  real bug.
+- **Test reward-hacking** — assertions that only pass for current
+  fixtures, hardcoded expected values that match the implementation
+  rather than the spec, harness edits that skip validation, `skip` or
+  `xfail` added to make the suite green.
 
-Reply with exactly one of:
+Ignore everything outside these categories (style, naming, organization,
+"could be cleaner", performance nits without measured impact).
 
-PASS — spec fully met, no correctness issues found.
+## Output format
 
-PASS_WITH_CONCERNS — spec met, code can proceed, but: <concerns,
-each with file:line and concrete scenario>
+Reply with EXACTLY this structure and nothing else. No preamble, no
+closing remarks. The host parses the verdict literally.
 
-FAIL — <issues, each with:>
-  - Which part failed (spec / correctness)
-  - file:line
-  - Evidence (missing requirement, or triggering scenario)
-  - How to fix it
+### Criteria
+<one line per acceptance criterion from step 2, using the tags above>
+<or "None — diff-only review" if no criteria were provided>
+
+### Findings
+<numbered bug list from step 3. For each:
+  1. file:line — <short title>
+     Trigger: <concrete input or sequence>
+     Impact: <what breaks>
+     Category: runtime | data | security | logic | test-reward-hacking>
+<or "None.">
+
+### Verdict
+One of:
+- PASS
+- PASS_WITH_CONCERNS — <one-line reason, with at least one file:line>
+- FAIL — <one-line reason>
 ```

@@ -42,9 +42,11 @@ Escalate to the user only for judgment decisions or after retry limits
 are exhausted.
 
 Done means:
-- PR exists
-- all GitHub checks are green
-- no GitHub checks are pending
+- the PR exists
+- relevant GitHub checks are green
+- no relevant GitHub checks are pending
+
+(Full termination + escalation criteria in "Completion" at the bottom.)
 
 ## Process Flow
 
@@ -63,11 +65,6 @@ Run this loop:
 11. If the branch must be updated from base to clear drift, conflicts, or repo policy, sync with base inside the fix loop, then verify, commit, push, and wait again.
 12. Ignore `cancelled` checks unless they block the repo's normal CI/CD path.
 13. Stop after 3 fix rounds and escalate to the user.
-
-Done means:
-- the PR exists
-- relevant GitHub checks are green
-- no relevant GitHub checks are pending
 
 ## Red Flag
 
@@ -316,92 +313,37 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 | CHANGELOG.md | Updated changelog (if repo has one) |
 ```
 
-Always output the full report card including Next Steps — the orchestrator reads it the same way a human does.
 
 ---
 
 ## Example Workflow
 
+Condensed to show the loop shape. The full log would include the same
+verify/commit/push pattern after every fix round.
+
 ```
-[Handoff] Starting — branch: feat/auth-hardening, base: main
-[Handoff] Scope: 4 committed files, 2 local doc edits
+[Handoff] Start — branch feat/auth, base main, 4 files + 2 doc edits
+[Handoff] Verify → npm test, npm run lint: PASS
+[Handoff] CHANGELOG entry added, README updated
+[Handoff] Push, PR created: https://github.com/org/repo/pull/123
 
-── Phase 2: Verify Before PR ─────────────────────────────
+[Handoff] Wait → ci/test FAILURE
+[Handoff] Fix round 1/3 — added nil guard, re-verify PASS, push
+[Handoff] Wait → AI review: requested error-path coverage
+[Handoff] Fix round 2/3 — added error-path test, re-verify PASS, push
+                 resolved review thread, minimized obsolete bot comment
 
-[Handoff] Running local verification...
-  - npm test
-  - npm run lint
-  Result: PASS
-
-── Phase 3: Update CHANGELOG and Docs ────────────────────
-
-[Handoff] CHANGELOG.md exists — adding entry
-[Handoff] Docs checked — README.md updated, AGENTS.md no change needed
-
-── Phase 4: Push and Create PR ───────────────────────────
-
-[Handoff] Reviewing final diff and staging shipped changes...
-[Handoff] Committing staged changes...
-[Handoff] Pushing branch...
-[Handoff] PR created: https://github.com/org/repo/pull/123
-
-── Phase 5: Wait for GitHub Checks ───────────────────────
-
-[Handoff] Inspecting workflows and current checks...
-[Handoff] Waiting for GitHub checks...
-  state: pending
-  pending: ci/test, ai-review
-
-[Handoff] Waiting for GitHub checks...
-  state: action required
-  failing check: ci/test
-
-── Phase 6: Fix Loop (round 1/3) ─────────────────────────
-
-[Handoff] Reading failed check logs...
-[Handoff] Fixing smallest real cause: missing nil guard in auth middleware
-[Handoff] Re-running local verification...
-  - npm test
-  Result: PASS
-[Handoff] Committing fix and pushing...
-
-── Phase 5: Wait for GitHub Checks ───────────────────────
-
-[Handoff] Waiting for GitHub checks...
-  state: action required
-  actionable review: AI review requested error-path coverage
-
-── Phase 6: Fix Loop (round 2/3) ─────────────────────────
-
-[Handoff] Adding missing error-path test and response handling
-[Handoff] Re-running local verification...
-  - npm test
-  - npm run lint
-  Result: PASS
-[Handoff] Committing fix and pushing...
-[Handoff] Resolving addressed review thread on GitHub...
-[Handoff] Hiding obsolete github-actions bot comment as RESOLVED...
-
-── Phase 5: Wait for GitHub Checks ───────────────────────
-
-[Handoff] Waiting for GitHub checks...
-  state: green
-
-[Handoff] PR checks green: https://github.com/org/repo/pull/123
+[Handoff] Wait → all checks green
+[Handoff] DONE — PR #123 green
 ```
 
-### What This Shows
-
-| Principle | How the example enforces it |
-|-----------|-----------------------------|
-| **PR creation is not the finish line** | The loop continues after PR creation until checks are green |
-| **Verify before first push** | Local verification runs before the first PR is opened |
-| **Docs belong before PR** | CHANGELOG/docs updates happen before the initial push |
-| **Fix the smallest real cause** | The CI failure is addressed from logs, not by broad refactoring |
-| **AI review is part of the loop** | Actionable AI review feedback triggers a second fix round |
-| **Resolved feedback is closed explicitly** | After a fix is pushed, addressed threads/comments are marked resolved on GitHub |
-| **Re-verify after every code change** | Each fix round reruns local verification before push |
-| **Retry limit is explicit** | The example shows numbered fix rounds tied to the max of 3 |
+Key invariants the example preserves:
+- PR creation is not the finish line — the loop continues until green.
+- Local verify runs before every push (first push AND each fix push).
+- Fix the smallest real cause from logs, not broad refactoring.
+- AI review feedback counts as "action required" — it triggers a fix round.
+- Resolve threads / minimize obsolete bot comments only after the fix is pushed.
+- Retry limit is 3 fix rounds, then escalate.
 
 ## Completion
 

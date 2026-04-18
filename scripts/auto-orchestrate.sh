@@ -214,6 +214,15 @@ validate_artifacts() {
       [ -d "$task_dir/qa" ] && [ -n "$(find "$task_dir/qa" -maxdepth 1 \( -name '*.md' -o -name '*.txt' -o -name '*.log' -o -name '*.png' \) -type f 2>/dev/null | head -1)" ] \
         || { echo "no QA reports in $task_dir/qa/"; return 1; }
       ;;
+    e2e)
+      # SKIP is allowed — validated only if there's an e2e/ directory.
+      # If the skill decided to skip (docs-only diff etc.), it writes a
+      # report.md with a justification and the verdict is 'skip'.
+      if [ -d "$task_dir/e2e" ]; then
+        file_exists_nonempty "$task_dir/e2e/report.md" \
+          || { echo "e2e/report.md missing or empty"; return 1; }
+      fi
+      ;;
     handoff)
       # Deep check: use gh CLI to verify PR status if available
       if command -v gh >/dev/null 2>&1; then
@@ -247,6 +256,7 @@ get_retry_count() {
   case "$phase" in
     review_fix) state_get "review_fix_round" ;;
     qa_fix)     state_get "qa_fix_round" ;;
+    e2e_fix)    state_get "e2e_fix_round" ;;
     *)
       if [ -n "$LOCAL_RETRY_FILE" ] && [ -f "$LOCAL_RETRY_FILE" ]; then
         grep "^${phase}:" "$LOCAL_RETRY_FILE" 2>/dev/null | cut -d: -f2 || echo 0
@@ -262,6 +272,7 @@ bump_retry_count() {
   case "$phase" in
     review_fix) state_bump "review_fix_round" ;;
     qa_fix)     state_bump "qa_fix_round" ;;
+    e2e_fix)    state_bump "e2e_fix_round" ;;
     *)
       if [ -n "$LOCAL_RETRY_FILE" ]; then
         local current next
@@ -281,9 +292,12 @@ phase_template() {
     dev)              echo "dev" ;;
     review_fix)       echo "dev-fix" ;;
     qa_fix)           echo "dev-fix" ;;
+    e2e_fix)          echo "dev-fix" ;;
     review)           echo "review" ;;
     qa)               echo "qa" ;;
     qa_recheck)       echo "qa-recheck" ;;
+    e2e)              echo "e2e" ;;
+    e2e_recheck)      echo "e2e-recheck" ;;
     simplify)         echo "simplify" ;;
     # simplify_verify removed — simplify handles its own verification
     handoff)          echo "handoff" ;;
@@ -361,6 +375,8 @@ branch: $branch
 phase: design
 review_fix_round: 0
 qa_fix_round: 0
+e2e_fix_round: 0
+post_qa_fix: false
 started_at: "$started_at"
 ---
 
@@ -417,6 +433,11 @@ cmd_resume() {
       local latest_qa
       latest_qa=$(find "$task_dir/qa/" -name "*.md" -type f 2>/dev/null | sort | tail -1)
       [ -n "$latest_qa" ] && extra_args="--findings-file=$latest_qa"
+      ;;
+    e2e_fix)
+      dispatch_phase="e2e_fix"
+      local task_dir=".ship/tasks/$task_id"
+      [ -f "$task_dir/e2e/report.md" ] && extra_args="--findings-file=$task_dir/e2e/report.md"
       ;;
   esac
 
@@ -488,9 +509,9 @@ cmd_complete() {
     design:fail|design:blocked) retry_or_escalate "design" "$summary" ;;
 
     dev:success)
-      state_set "phase" "review"
-      local pf; pf=$(generate_prompt "review")
-      emit_dispatch "review" "$pf" "[Auto] Dev complete. Starting review..."
+      state_set "phase" "e2e"
+      local pf; pf=$(generate_prompt "e2e")
+      emit_dispatch "e2e" "$pf" "[Auto] Dev complete. Writing E2E tests..."
       ;;
     dev:fail|dev:blocked) retry_or_escalate "dev" "$summary" ;;
 
@@ -559,9 +580,16 @@ cmd_complete() {
     qa:blocked) retry_or_escalate "qa" "$summary" ;;
 
     qa_fix:success)
-      state_set "phase" "qa"
-      local pf; pf=$(generate_prompt "qa-recheck")
-      emit_dispatch "qa" "$pf" "[Auto] QA fixes applied. Re-testing..."
+      # QA fix changed code — re-run the committed E2E suite as a regression
+      # gate before the manual QA recheck. This mirrors how real CI runs on
+      # every commit and catches cases where a fix for a QA-reported issue
+      # accidentally breaks a previously-passing E2E test. The `post_qa_fix`
+      # flag tells the e2e:success handler to route to qa-recheck rather than
+      # back to review (which already passed earlier in the pipeline).
+      state_set "phase" "e2e"
+      state_set "post_qa_fix" "true"
+      local pf; pf=$(generate_prompt "e2e-recheck")
+      emit_dispatch "e2e" "$pf" "[Auto] QA fixes applied. Running E2E regression gate..."
       ;;
     qa_fix:fail|qa_fix:blocked)
       state_bump "qa_fix_round"
@@ -573,6 +601,56 @@ cmd_complete() {
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
         emit_dispatch "qa_fix" "$pf" "[Auto] QA fix retry (round $round/$MAX_RETRIES)..."
+      fi
+      ;;
+
+    e2e:success|e2e:skip)
+      if [ "$(state_get "post_qa_fix")" = "true" ]; then
+        # Returning from the regression gate that was inserted after a qa_fix.
+        # Review already passed earlier — don't re-run it. Go straight to the
+        # QA recheck so the human-like exploratory sweep confirms the fix.
+        state_set "post_qa_fix" "false"
+        state_set "phase" "qa"
+        local pf; pf=$(generate_prompt "qa-recheck")
+        emit_dispatch "qa" "$pf" "[Auto] E2E regression gate passed. Re-running QA..."
+      else
+        # Normal forward flow: fresh e2e after dev → review.
+        state_set "phase" "review"
+        local pf; pf=$(generate_prompt "review")
+        emit_dispatch "review" "$pf" "[Auto] E2E tests green. Starting review..."
+      fi
+      ;;
+    e2e:fail)
+      local round; round=$(state_get "e2e_fix_round")
+      if [ "${round:-0}" -ge "$MAX_RETRIES" ]; then
+        dispatch_learn_then_escalate "E2E fix exhausted after $MAX_RETRIES rounds. $summary"
+      else
+        state_set "phase" "e2e_fix"
+        local ff_arg=""
+        [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
+        [ -z "$ff_arg" ] && [ -f "$task_dir/e2e/report.md" ] && ff_arg="--findings-file=$task_dir/e2e/report.md"
+        local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
+        emit_dispatch "e2e_fix" "$pf" "[Auto] E2E failed (round $((round + 1))/$MAX_RETRIES). Fixing..."
+      fi
+      ;;
+    e2e:blocked) retry_or_escalate "e2e" "$summary" ;;
+
+    e2e_fix:success)
+      state_set "phase" "e2e"
+      local pf; pf=$(generate_prompt "e2e-recheck")
+      emit_dispatch "e2e" "$pf" "[Auto] E2E fixes applied. Re-testing..."
+      ;;
+    e2e_fix:fail|e2e_fix:blocked)
+      state_bump "e2e_fix_round"
+      local round; round=$(state_get "e2e_fix_round")
+      if [ "$round" -ge "$MAX_RETRIES" ]; then
+        dispatch_learn_then_escalate "E2E fix failed after $MAX_RETRIES rounds. $summary"
+      else
+        local ff_arg=""
+        [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
+        [ -z "$findings_file" ] && [ -f "$task_dir/e2e/report.md" ] && ff_arg="--findings-file=$task_dir/e2e/report.md"
+        local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
+        emit_dispatch "e2e_fix" "$pf" "[Auto] E2E fix retry (round $round/$MAX_RETRIES)..."
       fi
       ;;
 
@@ -651,23 +729,25 @@ cmd_status() {
     exit 0
   fi
 
-  local task_id phase branch rfr qfr head_sha
+  local task_id phase branch rfr qfr efr head_sha
   task_id=$(state_get "task_id")
   phase=$(state_get "phase")
   branch=$(state_get "branch")
   rfr=$(state_get "review_fix_round")
   qfr=$(state_get "qa_fix_round")
+  efr=$(state_get "e2e_fix_round")
   head_sha=$(current_head)
 
   if [ "$json_mode" -eq 1 ]; then
-    printf '{"active":true,"task_id":"%s","phase":"%s","branch":"%s","review_fix_round":%s,"qa_fix_round":%s,"head":"%s"}\n' \
-      "$task_id" "$phase" "$branch" "${rfr:-0}" "${qfr:-0}" "$head_sha"
+    printf '{"active":true,"task_id":"%s","phase":"%s","branch":"%s","review_fix_round":%s,"qa_fix_round":%s,"e2e_fix_round":%s,"head":"%s"}\n' \
+      "$task_id" "$phase" "$branch" "${rfr:-0}" "${qfr:-0}" "${efr:-0}" "$head_sha"
   else
     emit "TASK_ID" "$task_id"
     emit "PHASE" "$phase"
     emit "BRANCH" "$branch"
     emit "REVIEW_FIX_ROUND" "${rfr:-0}"
     emit "QA_FIX_ROUND" "${qfr:-0}"
+    emit "E2E_FIX_ROUND" "${efr:-0}"
     emit "HEAD" "$head_sha"
   fi
 }

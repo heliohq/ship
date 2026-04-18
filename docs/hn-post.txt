@@ -28,7 +28,7 @@ Install on Claude Code:
   /plugin marketplace add heliohq/ship
   /plugin install ship@heliohq
 
-Then kick off the whole pipeline with /ship:auto <your spec>. Individual phases (/ship:design, /ship:dev, /ship:review, /ship:qa, /ship:handoff) are available if you only want one stage.
+Then kick off the whole pipeline with /ship:auto <your spec>. Individual phases (/ship:design, /ship:dev, /ship:e2e, /ship:review, /ship:qa, /ship:handoff) are available if you only want one stage.
 
 Codex and Cursor setup in the README. MIT licensed.
 

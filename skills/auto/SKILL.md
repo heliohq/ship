@@ -2,14 +2,14 @@
 name: auto
 version: 0.9.0
 description: >
-  Full pipeline orchestrator: design → dev → review → QA → simplify → handoff.
+  Full pipeline orchestrator: design → dev → E2E → review → QA → simplify → handoff.
   Code-driven coordinator — all state management, artifact validation, phase transitions,
   and retry logic live in scripts/auto-orchestrate.sh. You are a thin relay that
   dispatches Agent() calls and interprets sub-skill responses. Use when: "ship this",
   "build this feature end to end", "implement and ship", "full pipeline", or any scoped
   code change that should go through the complete design-to-handoff workflow. This is the
   default entry point for most feature work. For individual phases only, invoke
-  /ship:design, /ship:dev, /ship:review, /ship:qa, or /ship:handoff directly.
+  /ship:design, /ship:dev, /ship:review, /ship:qa, /ship:e2e, or /ship:handoff directly.
 allowed-tools:
   - Bash
   - Read
@@ -52,6 +52,7 @@ stay oriented on what's done, what's next, and where you are in the loop.
 TodoWrite([
   { content: "Design phase",   status: "in_progress", activeForm: "Running design phase" },
   { content: "Dev phase",      status: "pending",     activeForm: "Running dev phase" },
+  { content: "E2E phase",      status: "pending",     activeForm: "Running E2E phase" },
   { content: "Review phase",   status: "pending",     activeForm: "Running review phase" },
   { content: "QA phase",       status: "pending",     activeForm: "Running QA phase" },
   { content: "Simplify phase", status: "pending",     activeForm: "Running simplify phase" },
@@ -65,9 +66,17 @@ TodoWrite([
 - Update `activeForm` with hints from the script's MESSAGE output —
   e.g., `"Design — investigating codebase"` instead of just `"Running design phase"`.
   This gives sub-phase awareness without managing sub-phase todos.
-- When `review_fix` or `qa_fix` dispatches → insert a dynamic item:
-  `"Fix review findings (round N/3)"` or `"Fix QA issues (round N/3)"`
-  with status `in_progress`. Remove it when done.
+- When `review_fix`, `qa_fix`, or `e2e_fix` dispatches → insert a dynamic item:
+  `"Fix review findings (round N/3)"`, `"Fix QA issues (round N/3)"`, or
+  `"Fix E2E failures (round N/3)"` with status `in_progress`. Remove it when done.
+- **Regression gate after qa_fix:** if the MESSAGE says
+  `"Running E2E regression gate"` or `"E2E regression gate passed"`, the
+  script is doing an extra e2e-recheck round to make sure the qa fix didn't
+  break a committed test. Keep the QA todo item (or its fix-round dynamic
+  item) as the active one and update its `activeForm` to
+  `"Running E2E regression gate"` — do NOT re-open the "E2E phase" item,
+  which was already completed earlier in the pipeline. The script returns
+  to qa-recheck automatically once the gate passes.
 - On `escalate` → mark the current phase item as `in_progress` (it stays
   visible so the user sees where the pipeline stopped)
 - On `done` → mark all remaining items `completed`
@@ -141,9 +150,23 @@ report card with a `Status` field. Map it to a verdict:
 
 **2d. Verify (independent check).**
 
-If the initial verdict is `success` or `skip`, run a lightweight verification
-before advancing. This catches cases where the phase agent claims success but
-missed explicit requirements from the prompt.
+**This step is mandatory, not optional.** The orchestrator script does
+deterministic artifact validation (files exist, non-empty) but cannot
+reason about content. The verifier Agent closes that gap — it checks
+that the artifact's *content* matches what the prompt *specifically
+asked for*.
+
+**Why this is non-negotiable:** phase agents have a documented failure
+mode of completing a task incorrectly — missing an explicit requirement,
+skipping a listed artifact field, producing a report that doesn't
+address the stated acceptance criteria — and still marking their
+response as DONE. The script can't detect that; the verifier can.
+Without this step, bad work would advance through the pipeline and
+surface later at review, QA, or (worst case) handoff, where the blast
+radius is larger.
+
+If the initial verdict is `success` or `skip`, run a lightweight
+verification before advancing.
 
 Read `references/phase-verifier.md` for the full verifier prompt. Dispatch a
 verification Agent with:
@@ -173,6 +196,7 @@ Agent(prompt="""
 | dev | Code changes on branch (git diff non-empty) |
 | review | `{{TASK_DIR}}/review.md` |
 | qa | Files in `{{TASK_DIR}}/qa/` |
+| e2e | `{{TASK_DIR}}/e2e/report.md` (exists only if phase didn't SKIP) plus test files under the repo's E2E dir |
 | simplify | `{{TASK_DIR}}/simplify.md` |
 | handoff | PR exists, checks green |
 | learn | Entry in `.learnings/LEARNINGS.md` |
@@ -185,8 +209,11 @@ Agent(prompt="""
 | `pass_with_concerns` | Keep the original verdict, log concerns in summary |
 | `fail` | **Downgrade** verdict to `fail` — include the verifier's gap list as findings |
 
-**Skip verification for:** `review_fix`, `qa_fix`, `learn` phases (these are
-retry/terminal phases where verification adds overhead but little value).
+**Skip verification for:** `review_fix`, `qa_fix`, `e2e_fix`, `learn` phases.
+These are retry/terminal phases: a fix dispatch inherits the same findings
+file it was given, and its output is a code change that the NEXT phase
+(re-review, re-qa, e2e regression gate) verifies on its own. Verifying
+the fix dispatch itself would duplicate that work.
 
 **2e.** If the verdict is `findings` or `fail` and the agent listed specific issues,
 save them to a temp file:
@@ -228,9 +255,10 @@ the task artifacts.
 ### Metrics
 | Metric | Value |
 |--------|-------|
-| Phases completed | <list: design, dev, review, qa, simplify, handoff, learn> |
+| Phases completed | <list: design, dev, e2e, review, qa, simplify, handoff, learn> |
 | Review fix rounds | <N> |
 | QA fix rounds | <N> |
+| E2E fix rounds | <N> |
 | Total agents dispatched | <N> |
 
 ### Artifacts
@@ -265,6 +293,7 @@ the task artifacts.
 | Blocked at | <phase name> |
 | Review fix rounds | <N> |
 | QA fix rounds | <N> |
+| E2E fix rounds | <N> |
 
 ### Next Steps
 1. **Fix manually** — address the blocker, then /ship:auto to resume
@@ -307,5 +336,5 @@ Bash("$SHIP_ORCH complete design --verdict=success --summary='3 stories, verifie
 → ACTION:dispatch  PHASE:dev  PROMPT_FILE:.ship/tasks/.../prompts/dev.md
   MESSAGE:[Auto] Design complete. Starting dev...
 
-── (loop continues: dev → review → qa → simplify → handoff → learn → done) ──
+── (loop continues: dev → e2e → review → qa → simplify → handoff → learn → done) ──
 ```

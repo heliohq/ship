@@ -10,9 +10,10 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 |-------|------|--------------|
 | [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
 | [`/ship:design`](#design) | **Adversarial Designer** | The host agent and a peer agent independently investigate the codebase and produce specs in parallel. Divergences are resolved by code evidence and debate. The merged spec feeds an executable TDD plan validated by a peer drill. |
-| [`/ship:dev`](#dev) | **Implementation Engine** | Executes stories from a plan via parallel waves. Dependency analysis groups independent stories; within each wave stories run in parallel via git worktrees, each reviewed independently, then merged before the next wave. |
+| [`/ship:dev`](#dev) | **Implementation Engine** | Host (Claude) implements directly; peer (Codex) cross-validates each story. File-independent stories in a wave run in parallel via Claude Agent subagents on the same branch — dependency analysis prevents overlap, no worktrees needed. |
+| [`/ship:e2e`](#e2e) | **Regression Codifier** | Converts each change's acceptance criteria into persistent E2E tests committed to the repo. Detects or scaffolds the framework (Playwright, Cypress, pytest-playwright, etc.), runs the suite against the real app, and reports a pass/fail that reviewers see before they review the code. |
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff. Add diagnosis only when multiple findings share one structural root cause. |
-| [`/ship:qa`](#qa) | **Independent QA** | Starts your app, tests every acceptance criterion against the running product. Independence contract: cannot read the review or plan. Only direct observation counts. |
+| [`/ship:qa`](#qa) | **Independent QA** | Exploratory human-like sweep against the running app — finds what the codified E2E suite didn't think to check (UX confusion, visual regressions, perf smells). Independence contract: cannot read review or plan. Only direct observation counts. |
 | [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
 | [`/ship:refactor`](#refactor) | **Code Improver** | Four-lens parallel scan (structure, reuse, quality, efficiency), classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
@@ -27,7 +28,7 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 
 This is the **full pipeline**.
 
-You describe what you want to build. Ship handles the rest — plan, implement, review, verify, QA, simplify, handoff — with quality gates at every transition.
+You describe what you want to build. Ship handles the rest — plan, implement, E2E test, review, QA, simplify, handoff — with quality gates at every transition.
 
 ### Why an orchestrator?
 
@@ -41,19 +42,20 @@ Implementation and review use **separate runtimes**. Cross-provider separation i
 
 The QA evaluator is contractually forbidden from reading the review or the plan. It can only look at the spec, the git diff, and the running application. Fresh context per phase means no accumulated bias, no rubber-stamping.
 
-### Seven phases
+### Eight phases
 
-    Bootstrap -> Design -> Dev -> Review -> QA -> Simplify -> Handoff
+    Bootstrap -> Design -> Dev -> E2E -> Review -> QA -> Simplify -> Handoff
 
 1. **Bootstrap** — init task directory, detect base branch, create feature branch, write state file
 2. **Design** — invoke /ship:design for adversarial planning
-3. **Dev** — invoke /ship:dev to execute implementation stories
-4. **Review** — invoke /ship:review for staff-engineer code review
-5. **QA** — invoke /ship:qa against the running application
-6. **Refactor** — behavior-preserving cleanup via /ship:refactor (four-lens scan: structure, reuse, quality, efficiency)
-7. **Handoff** — invoke /ship:handoff to create PR and shepherd it until checks are green
+3. **Dev** — invoke /ship:dev to execute implementation stories (host implements; peer cross-validates)
+4. **E2E** — invoke /ship:e2e to codify the change as persistent regression tests and run them. First automated gate after dev, so reviewers see green tests alongside the code
+5. **Review** — invoke /ship:review for staff-engineer code review
+6. **QA** — invoke /ship:qa against the running application for exploratory coverage beyond the codified tests
+7. **Simplify** — behavior-preserving cleanup via /ship:refactor (four-lens scan: structure, reuse, quality, efficiency)
+8. **Handoff** — invoke /ship:handoff to create PR and shepherd it until checks are green
 
-Review and QA have fix loops: if bugs/issues are found, auto dispatches dev to fix them, then re-runs the phase. Every phase must produce its required artifacts — the orchestrator validates artifact existence before advancing.
+Review, QA, and E2E all have fix loops: if issues are found, auto dispatches dev to fix them, then re-runs the phase. A `qa_fix:success` routes back through an E2E regression gate before the QA recheck — catches the case where a fix for a QA-reported issue accidentally breaks a committed E2E test. Every phase must produce its required artifacts — the orchestrator validates existence before advancing.
 
 ### State lives on disk
 
@@ -74,21 +76,25 @@ The current phase is tracked in .ship/ship-auto.local.md — a YAML frontmatter 
 
             [Auto] Design complete — 3 stories extracted.
 
-            [Dev] Implementing 3 stories...
-            [Dev] Story 1: PASS — middleware wired, tests green
+            [Dev] Implementing 3 stories (host implements; peer reviews each)...
+            [Dev] Story 1: PASS — middleware wired
             [Dev] Story 2: PASS — quota logic added with Redis counter
             [Dev] Story 3: PASS — 429 + Retry-After verified
 
-            [Review] Code review...
+            [E2E] Detected Playwright (existing tests/e2e/). Added 3 specs
+                  for the new rate-limit flow. Suite green (18 tests).
+
+            [Review] Code review (host sees code + green E2E suite)...
             [Review] 1 finding: Redis key missing TTL
             [Dev] Fixing review bugs...
             [Review] Re-reviewing... clean.
 
-            [QA] Testing against running app...
-            [QA] 3/3 MUST criteria passed (L1 evidence: curl responses)
-            [QA] Verdict: PASS
+            [QA] Exploratory sweep against running app...
+            [QA] Beyond-spec: concurrent uploads surface a 1-request leak;
+                 recorded as concern (not FAIL — counter converges).
+            [QA] Verdict: PASS_WITH_CONCERNS.
 
-            [Refactor] No dead code found.
+            [Simplify] No dead code found.
 
             [Handoff] Creating PR...
             PR #48 created. CI passing. Ready for review.
@@ -162,19 +168,28 @@ Tasks flagged UNCLEAR get revised and re-drilled once. Plans that survive are im
 
 This is the **implementation engine**.
 
-The key insight is role separation: **the peer implements, the fresh reviewer discriminates.** The peer implementer handles each story in an isolated session. A fresh reviewer — ideally on the other provider — checks spec compliance and code correctness independently.
+The key insight is role separation: **the host implements, the peer cross-validates.** Opus 4.7 is a strong implementer, and the host is the session that already has the full context (spec, plan, prior stories, CODE_CONDUCT, TEST_CMD) — asking it to write the code directly is faster and produces better results than dispatching Codex as an implementer. Codex moves to the reviewer seat, where its different provider and training give an independent second eye on the diff.
+
+### Role routing
+
+| Wave shape | Implementer | Reviewer | Fix-round owner |
+|---|---|---|---|
+| Single-story (most common) | Host (you), on current branch | Peer (Codex) via `mcp__codex__codex` | Host — applies fixes directly |
+| Multi-story parallel | Fresh Claude Agent subagents per story, all on the current branch (dependency analysis prevents file overlap — no worktrees) | Peer per story | Fresh Claude Agent subagent — whoever implemented, fixes |
+| Fix mode (/ship:auto review_fix/qa_fix/e2e_fix) | Host — you | Next-phase re-run is the validator | Host — applies fixes directly |
+
+Independence is preserved two ways: different provider (Codex ≠ Claude) AND different session. Both hold across all wave shapes. Fallback: if the peer runtime is unavailable, a fresh Claude Agent reviewer runs — same-provider independence is weaker, and the dev report flags it.
 
 ### Waves and dependency analysis
 
-Stories are analyzed for dependencies (shared files, import chains) and grouped into **waves**. Independent stories within a wave run **in parallel** via git worktrees; waves run sequentially.
+Stories are analyzed for dependencies (shared files, import chains) and grouped into **waves**. Independent stories within a wave run **in parallel** on the same branch — no git worktrees. The wave's dependency analysis is what prevents file-scope overlap; git's `.git/index.lock` serializes concurrent commits automatically.
 
 1. **Build dependency graph** — identify which stories create, modify, or import the same files
 2. **Sort into waves** — topological sort into groups with no intra-group dependencies
-3. **Per wave** — create worktrees, dispatch peer implementers in parallel, review each independently
-4. **Wave merge** — merge all story branches back after review passes
-5. **Cross-story regression** — full test suite after all waves complete
+3. **Per wave** — host implements single-story waves directly; multi-story waves dispatch parallel subagents; peer (Codex) reviews each story's commits
+4. **Cross-story regression** — host runs full test suite after all waves complete
 
-If FAIL — targeted fix (max 2 rounds), not a full rewrite.
+If a reviewer returns FAIL — targeted fix (max 2 rounds), not a full rewrite. Whoever implemented is who fixes: host for single-story and fix mode; a fresh sub-agent for multi-story.
 
 ### Example
 
@@ -186,21 +201,71 @@ If FAIL — targeted fix (max 2 rounds), not a full rewrite.
                   Wave 1: [Story 1, Story 2] <- parallel (no shared files)
                   Wave 2: [Story 3] <- depends on Story 1
 
-            [Dev] Wave 1: creating worktrees, dispatching in parallel...
-            [Peer] Story 1: Wire /api/upload through rate limiter... done
-            [Peer] Story 2: Add per-user upload quota... done
-            [Review] Story 1: PASS
-            [Review] Story 2: FAIL — Redis key uses IP instead of user ID
-            [Dev] Story 2: targeted fix round 1...
-            [Review] Story 2: PASS
-            [Dev] Wave 1: merging branches... clean.
+            [Dev] Wave 1: dispatching 2 Claude Agent subagents in
+                  parallel on current branch (dependency analysis says
+                  their files don't overlap)...
+                  Story 1 subagent: DONE — middleware/rate-limit.ts, commit a1
+                  Story 2 subagent: DONE — services/quota.ts, commit a2
+            [Review] Peer (Codex) reviews Story 1 → PASS
+            [Review] Peer reviews Story 2 → FAIL — Redis key uses IP instead of user ID
+            [Dev] Fresh subagent dispatched to fix Story 2 (round 1/2)
+                  — "whoever implemented, fixes": new subagent plays
+                  the implementer role with the original story + FAIL
+                  findings. Commit a3.
+            [Review] Peer re-reviews Story 2 → PASS.
 
-            [Dev] Wave 2: Story 3 (sequential)
-            [Peer] Return 429 with Retry-After header... done
-            [Review] PASS
+            [Dev] Wave 2: Story 3 is single-story, I implement directly.
+                  Return 429 with Retry-After header. Commit a4.
+            [Review] Peer reviews Story 3 → PASS.
 
-            [Dev] Cross-story regression: all tests green.
+            [Dev] Cross-story regression: npm test → all tests green.
             [Dev] 3/3 stories, 2 waves complete.
+
+---
+
+## e2e
+
+This is the **regression codifier**.
+
+QA proves the change works *now*; E2E makes sure it keeps working *forever* by leaving a committed test behind. In the pipeline, E2E runs right after dev — before review — so reviewers see both the code and its green test suite in a single pass, the way a human PR reviewer does in a CI-green PR.
+
+### How it works
+
+Given the change's acceptance criteria and the diff, E2E:
+
+1. **Detects the framework** — searches for Playwright, Cypress, pytest-playwright, Capybara, chromedp, and their config/manifest signatures. Uses whatever's already there.
+2. **Scaffolds when absent** — if the repo has no E2E framework at all, picks a sensible default for the stack (Playwright for JS/TS with UI, pytest-playwright for Python, the native test runner for CLI-only projects) and installs it. The choice is deterministic, not asked — users who want to swap it later can, but the skill doesn't block on "which one should I pick?"
+3. **Authors tightly-scoped tests** — one test per acceptance criterion, regression sentinels for flows the diff clearly touches, one negative test per new feature. Nothing more. Edge cases that belong in unit tests stay in unit tests.
+4. **Runs the suite against the real app** — reuses `shared/startup.md` to bring the app up (same logic QA uses), then executes the framework's native test command. Traces, videos, and screenshots on failure get copied into the evidence dir.
+5. **Fails on real bugs, not flakiness** — a test that only passes on retry is not passing; the skill fixes the root cause or reports FAIL. It does NOT weaken assertions to go green.
+
+### Skip conditions
+
+Not every change needs E2E. The skill skips when the diff is docs-only, tooling-only with no runtime effect, or an internal refactor with no user-observable change (and existing tests cover the behavior). Each SKIP is justified in the report.
+
+### In the auto pipeline
+
+After dev, E2E runs as the first automated gate. If tests pass, the pipeline advances to review. If a test fails because the implementation is wrong, the fix loop (`e2e_fix`) routes back to dev. When dev finishes and E2E re-checks green, the pipeline continues forward.
+
+### Example
+
+    You:   /ship:e2e
+
+    Assistant: [E2E] Diff touches routes/api/upload.ts + middleware/rate-limit.ts
+            [E2E] Detected Playwright (playwright.config.ts + tests/e2e/)
+                  — using it. No scaffold needed.
+
+            [E2E] Authoring tests under tests/e2e/:
+                  - rate-limit.spec.ts: upload allowed under quota
+                  - rate-limit.spec.ts: upload blocked at quota with 429
+                  - rate-limit.spec.ts: Retry-After header present
+
+            [E2E] Starting app (shared/startup.md)... ready on :3000
+            [E2E] Running new tests... 3/3 PASS
+            [E2E] Running full suite for regression... 18/18 PASS
+
+            [E2E] Cleanup: killed app PID, docker compose stopped, port 3000 free.
+            [E2E] DONE — 3 tests added, suite 18/18 green.
 
 ---
 

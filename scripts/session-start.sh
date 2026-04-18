@@ -41,9 +41,9 @@ DOCS_INDEX_FILE="$REPO_ROOT/docs/DOCS_INDEX.md"
 # skill catalog; this policy only reinforces precedence and default routing.
 PARTS="<EXTREMELY_IMPORTANT>
 Ship skills are available in this repo.
-For code-change, planning, review, QA, refactor, or handoff requests, invoke the matching \`/ship:*\` skill before proceeding.
+For code-change, planning, review, QA, E2E, refactor, or handoff requests, invoke the matching \`/ship:*\` skill before proceeding.
 Use \`/ship:auto\` for end-to-end feature work.
-Follow phase order: design -> dev -> review -> qa -> refactor -> handoff unless the user explicitly asks for a single phase.
+Follow phase order: design -> dev -> e2e -> review -> qa -> refactor -> handoff unless the user explicitly asks for a single phase.
 </EXTREMELY_IMPORTANT>"
 
 # ── Layer 2: Learnings (verified rules only) ───────────────────────────

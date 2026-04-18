@@ -1,6 +1,9 @@
 You must use Skill('ship:qa'). Skip preamble and auth gate.
 
-Test the implementation against the spec. Produce evidence-backed reports.
+Exploratory verification of the running application. E2E tests have
+already run and passed — your job is to find what those tests did NOT
+cover: UX problems, edge cases, visual regressions, perf issues, or
+anything the codified suite couldn't see.
 
 IMPORTANT: You MUST start the application and test it interactively.
 - If the diff touches frontend/UI → use browser testing (references/browser.md)
@@ -10,11 +13,18 @@ IMPORTANT: You MUST start the application and test it interactively.
   Read the reference BEFORE attempting anything to avoid wasted retries.
 - If the diff touches API endpoints → use API testing (references/api.md)
 - If the diff touches CLI → use CLI testing (references/cli.md)
-Do NOT skip interactive testing. "Code looks correct" or "unit tests pass" is not
-sufficient — you must verify behavior in the running application with evidence
-(screenshots, curl output, command output).
+Do NOT skip interactive testing. "E2E tests passed" is the baseline you're
+building on, not a substitute — you're exploring beyond the codified cases.
+Every acceptance criterion still needs direct evidence (screenshot, curl
+output, command output) from your own interactive session.
+
+Context:
+- E2E suite just passed — green regression tests already exist in the repo.
+  Focus your energy on exploration beyond those codified flows.
+- Review is also clean — correctness concerns already addressed statically.
 
 spec: {{TASK_DIR}}/plan/spec.md
+e2e_report: {{TASK_DIR}}/e2e/report.md  (may exist — lists what was codified)
 task_dir: {{TASK_DIR}}
 Write reports to: {{TASK_DIR}}/qa/
 Mode: /ship:auto pipeline — no user questions.

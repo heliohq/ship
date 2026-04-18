@@ -1,8 +1,26 @@
-# Application Startup
+# Application Startup (shared)
 
-How to discover, start, and verify any application. This reference is
+How to discover, start, and verify any application. Used by any skill that
+needs to bring the app up before interacting with it — QA, E2E, and anything
+else that runs the real service end-to-end. This reference is
 discovery-based — probe the project to find out what it needs, then
 act on what you find. Do not assume any specific stack.
+
+## Inputs from the calling skill
+
+The skill that invokes this reference must define one environment variable
+before running the commands below:
+
+```bash
+EVIDENCE_DIR="<path where this phase writes logs, pids, and evidence>"
+# Examples:
+#   QA:  EVIDENCE_DIR=".ship/tasks/$TASK_ID/qa"
+#   E2E: EVIDENCE_DIR=".ship/tasks/$TASK_ID/e2e"
+mkdir -p "$EVIDENCE_DIR"
+```
+
+All subsequent commands write logs and track PIDs under `$EVIDENCE_DIR`.
+The calling skill is responsible for cleanup (see `shared/cleanup.md`).
 
 ## Workflow
 
@@ -15,7 +33,7 @@ act on what you find. Do not assume any specific stack.
 6. Verify      Poll until the app responds (readiness check)
 ```
 
-Note: cleanup is handled by SKILL.md Phase 7 after all testing completes.
+Note: cleanup is handled by the calling skill (see `shared/cleanup.md`).
 Startup only starts — it never stops.
 
 ## Phase 1: Discover
@@ -212,7 +230,7 @@ grep -hiE 'DATABASE_URL|DB_HOST|REDIS_URL|MONGO_URI' .env .env.example 2>/dev/nu
 After probing, print a summary:
 
 ```
-[QA] Discovery:
+[Startup] Discovery:
   Runtime: <node|python|go|rust|ruby|java|elixir>
   Framework: <next|django|fastapi|express|...>
   Package manager: <npm|pnpm|yarn|bun|poetry|uv|cargo|...>
@@ -351,19 +369,19 @@ grep -qE '^(seed|db-seed)\s*:' Makefile 2>/dev/null && make seed 2>&1
 
 ## Phase 5: Start Application
 
-All logs and PID tracking go to the QA evidence directory.
+All logs and PID tracking go to `$EVIDENCE_DIR` (set by the calling skill).
 
 ```bash
-QA_DIR=".ship/tasks/<task_id>/qa"
+# $EVIDENCE_DIR was set before entering this reference — see "Inputs" at top.
 
 # Check port is free
 PORT=<detected_port>
 lsof -i :$PORT -t 2>/dev/null && echo "WARNING: port $PORT already in use" || echo "PORT $PORT: free"
 
 # Start in background, track PID in the same call
-nohup <start_command> > "$QA_DIR/app.log" 2>&1 &
+nohup <start_command> > "$EVIDENCE_DIR/app.log" 2>&1 &
 PID=$!
-echo $PID >> "$QA_DIR/pids.txt"
+echo $PID >> "$EVIDENCE_DIR/pids.txt"
 echo "Started app PID=$PID"
 ```
 
@@ -371,40 +389,40 @@ echo "Started app PID=$PID"
 
 ```bash
 # Next.js
-nohup npx next dev > "$QA_DIR/app.log" 2>&1 &
+nohup npx next dev > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Vite (React, Vue, Svelte)
-nohup npx vite dev > "$QA_DIR/app.log" 2>&1 &
+nohup npx vite dev > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Express / Fastify / Hono
-nohup node server.js > "$QA_DIR/app.log" 2>&1 &
-nohup npm run dev > "$QA_DIR/app.log" 2>&1 &
+nohup node server.js > "$EVIDENCE_DIR/app.log" 2>&1 &
+nohup npm run dev > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Django
-nohup python manage.py runserver 0.0.0.0:8000 > "$QA_DIR/app.log" 2>&1 &
+nohup python manage.py runserver 0.0.0.0:8000 > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # FastAPI
-nohup uvicorn main:app --host 0.0.0.0 --port 8000 > "$QA_DIR/app.log" 2>&1 &
+nohup uvicorn main:app --host 0.0.0.0 --port 8000 > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Flask
-nohup flask run --host 0.0.0.0 > "$QA_DIR/app.log" 2>&1 &
+nohup flask run --host 0.0.0.0 > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Go
-nohup go run ./cmd/server > "$QA_DIR/app.log" 2>&1 &
-nohup go run . > "$QA_DIR/app.log" 2>&1 &
+nohup go run ./cmd/server > "$EVIDENCE_DIR/app.log" 2>&1 &
+nohup go run . > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Rust
-nohup cargo run > "$QA_DIR/app.log" 2>&1 &
+nohup cargo run > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Rails
-nohup bin/rails server > "$QA_DIR/app.log" 2>&1 &
+nohup bin/rails server > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Phoenix
-nohup mix phx.server > "$QA_DIR/app.log" 2>&1 &
+nohup mix phx.server > "$EVIDENCE_DIR/app.log" 2>&1 &
 
 # Spring Boot
-nohup ./gradlew bootRun > "$QA_DIR/app.log" 2>&1 &
-nohup mvn spring-boot:run > "$QA_DIR/app.log" 2>&1 &
+nohup ./gradlew bootRun > "$EVIDENCE_DIR/app.log" 2>&1 &
+nohup mvn spring-boot:run > "$EVIDENCE_DIR/app.log" 2>&1 &
 ```
 
 Always prefer the start command found in discovery (Makefile, package.json scripts,
@@ -417,11 +435,11 @@ Start each one separately with its own PID and log file:
 
 ```bash
 # Example: frontend + backend
-nohup npm run dev --prefix packages/frontend > "$QA_DIR/frontend.log" 2>&1 &
-echo $! >> "$QA_DIR/pids.txt"
+nohup npm run dev --prefix packages/frontend > "$EVIDENCE_DIR/frontend.log" 2>&1 &
+echo $! >> "$EVIDENCE_DIR/pids.txt"
 
-nohup npm run dev --prefix packages/backend > "$QA_DIR/backend.log" 2>&1 &
-echo $! >> "$QA_DIR/pids.txt"
+nohup npm run dev --prefix packages/backend > "$EVIDENCE_DIR/backend.log" 2>&1 &
+echo $! >> "$EVIDENCE_DIR/pids.txt"
 ```
 
 ## Phase 6: Verify Readiness
@@ -447,21 +465,21 @@ done
 if [ $i -eq 30 ]; then
   echo "TIMEOUT: app did not become ready in 90 seconds"
   echo "Last 20 lines of log:"
-  tail -20 "$QA_DIR/app.log"
+  tail -20 "$EVIDENCE_DIR/app.log"
 fi
 ```
 
 ### Verify PID is still alive
 
 ```bash
-PID=$(tail -1 "$QA_DIR/pids.txt")
+PID=$(tail -1 "$EVIDENCE_DIR/pids.txt")
 kill -0 $PID 2>/dev/null && echo "PID $PID: running" || echo "PID $PID: DEAD — check app.log"
 ```
 
 ### Output
 
 ```
-[QA] Services:
+[Startup] Services:
   app:3000 — healthy
   docker:postgres:5432 — healthy
   docker:redis:6379 — healthy
@@ -469,8 +487,8 @@ kill -0 $PID 2>/dev/null && echo "PID $PID: running" || echo "PID $PID: DEAD —
 
 If the app fails to start:
 ```
-[QA] app:3000 — FAILED
-[QA] Last 20 lines of server log:
+[Startup] app:3000 — FAILED
+[Startup] Last 20 lines of server log:
 <tail -20 app.log>
 ```
 
@@ -491,7 +509,7 @@ need the services running.
 ```bash
 # Find what's using the port
 lsof -i :<port> -t 2>/dev/null
-# Kill it if it's a leftover from a previous QA run
+# Kill it if it's a leftover from a previous run
 lsof -i :<port> -t 2>/dev/null | xargs kill -9 2>/dev/null
 ```
 
@@ -522,7 +540,7 @@ docker compose down -v --remove-orphans 2>&1
 
 ```bash
 # Check the log
-tail -50 "$QA_DIR/app.log"
+tail -50 "$EVIDENCE_DIR/app.log"
 
 # Common causes:
 # - Missing .env file (copy from .env.example)

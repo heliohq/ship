@@ -1,0 +1,18 @@
+You must use Skill('ship:e2e'). Skip preamble and auth gate.
+
+Recheck after fixes: re-run the previously-failing tests plus the full
+existing E2E suite to confirm no regressions.
+
+IMPORTANT:
+- Do NOT write new tests. The first pass already authored them.
+- Restart services (prior run cleaned up), run the suite, collect artifacts.
+- If a test fails, decide: test issue (tighten selector, fix arrangement)
+  or real bug (assertion mismatch). Real bugs → FAIL. Test issues → fix
+  and rerun up to 3 times, then PASS if stable.
+- Cleanup is mandatory.
+
+spec: {{TASK_DIR}}/plan/spec.md
+previous_report: {{TASK_DIR}}/e2e/report.md
+task_dir: {{TASK_DIR}}
+Write evidence to: {{TASK_DIR}}/e2e/
+Mode: /ship:auto recheck — no user questions.

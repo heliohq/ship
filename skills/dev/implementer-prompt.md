@@ -1,29 +1,40 @@
-# Implementer — Peer Agent Prompt
+# Implementer Prompt
 
-Used in Phase 2 Step A of `/ship:dev`. The peer agent implements one story.
+Two audiences use this prompt:
 
-## Dispatch
+1. **The host (you)** — read it as your own implementation checklist when
+   you implement single-story waves and fix-mode dispatches directly.
+   No Agent dispatch; just follow the instructions below on the current
+   branch.
 
-Resolve the peer runtime before dispatching:
+2. **Dispatched Claude Agent subagents** — used ONLY for multi-story
+   parallel waves (where the host cannot fork itself) and for multi-story
+   fix rounds (where the original implementer was a sub-agent). All
+   dispatches work on the current branch — no worktrees. The wave's
+   dependency analysis guarantees the subagent's file scope does not
+   overlap other parallel subagents' scopes.
 
-- Preferred: use the non-host provider.
-- Fallback: use a fresh same-provider session and note weaker independence.
-
-If the peer runtime is Codex, use:
+## Dispatch (multi-story waves and their fix rounds)
 
 ```
-mcp__codex__codex({
-  prompt: <prompt below, with all placeholders filled>,
-  approval-policy: "never",
-  cwd: <repo root>
+Agent({
+  subagent_type: "general-purpose",
+  description: "Implement story <i>/<N>",
+  prompt: <prompt below, with all placeholders filled>
 })
 ```
 
-If the peer runtime is Claude, use:
+The subagent runs in the current repo directory (whatever cwd the host
+is running in). The prompt MUST state:
+- Which files/modules the subagent is allowed to modify (from dependency
+  analysis). The subagent must not touch files outside that scope.
+- That the subagent commits its own changes using Conventional Commits.
+- That the subagent reports back with the list of files changed and
+  commit SHAs it produced.
 
-```bash
-claude -p --permission-mode bypassPermissions "<prompt below, with all placeholders filled>"
-```
+For single-story waves and fix mode, the host implements directly — no
+Agent dispatch is needed. The peer reviewer (Codex) validates the host's
+diff in Phase 2 Step B.
 
 ## Prompt
 
