@@ -1,6 +1,6 @@
 ---
 name: handoff
-version: 0.3.0
+version: 0.4.0
 description: >
   Use when code is ready to ship: creates a PR, waits for CI/CD, addresses review
   comments and merge conflicts, and iterates until the PR is ready. Use when: "ship it",
@@ -17,6 +17,8 @@ allowed-tools:
   - Agent
   - AskUserQuestion
   - TodoWrite
+  - Monitor
+  - TaskStop
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -103,7 +105,7 @@ TodoWrite([
   { content: "Run local verification",                status: "pending",     activeForm: "Running local verification" },
   { content: "Update CHANGELOG and docs",             status: "pending",     activeForm: "Updating CHANGELOG and docs" },
   { content: "Push and create PR",                    status: "pending",     activeForm: "Pushing and creating PR" },
-  { content: "Wait for GitHub checks",                status: "pending",     activeForm: "Waiting for GitHub checks" }
+  { content: "Wait for GitHub checks",                status: "pending",     activeForm: "Watching PR checks" }
 ])
 ```
 
@@ -206,32 +208,53 @@ Output: `[Handoff] PR created: <url>`
 Inspect `.github/workflows` and the current PR checks once so you understand
 what this repo expects to run.
 
-Then monitor the PR on GitHub directly using `gh`:
+**Arm a Monitor, don't poll.** `gh pr checks --watch` blocks locally and
+polls GitHub itself every ~10s — you stay idle until checks terminate. This
+replaces the older 30-second agent-side poll loop (which burned ~20
+round-trips per 10-minute CI wait) with a single arm + single handle cycle.
+
+Before arming, check whether a Monitor for this PR is already running — on
+resume after escalation the prior watch may still be alive. If so, wait for
+its event; do not arm a duplicate.
+
+Arm the watch with `persistent: true` so it survives across fix rounds:
+
+    Monitor(
+      command: 'gh pr checks --watch; echo "TERMINAL exit=$?"',
+      description: "PR <number> checks settling",
+      persistent: true,
+      timeout_ms: 3600000
+    )
+
+When a `TERMINAL exit=<code>` event arrives, pull the authoritative state
+once:
 
 ```bash
-# Check PR status and all check runs
-gh pr view --json state,statusCheckRollup,reviews,mergeable
+# Full snapshot for interpretation
+gh pr view --json state,statusCheckRollup,reviews,mergeable,comments
 
-# Read individual check run logs when a check fails
+# Read failing check logs if any
 gh run view <run-id> --log-failed
-
-# List review comments to see what reviewers said
-gh pr view --json reviews,comments
-
-# Check for merge conflicts
-gh pr view --json mergeable --jq '.mergeable'
 ```
 
-Interpret the results:
+Interpret the snapshot:
 
-- `statusCheckRollup` all `SUCCESS` or `NEUTRAL` → green
-- Any check `IN_PROGRESS` or `QUEUED` → pending, keep waiting
-- Any check `FAILURE` or `ACTION_REQUIRED` → enter the fix loop
-- `mergeable` is `CONFLICTING` → merge conflict, enter the fix loop
-- If the wait times out, escalate as an external GitHub wait, not as a code fix failure.
-- Treat `cancelled` checks as informational unless they block the normal CI/CD path.
-- Check roughly every 30 seconds.
-- Continue until the PR is green, clearly needs action, or the wait timeout is exceeded.
+- All checks `SUCCESS` or `NEUTRAL` → green, advance to done
+- Any `FAILURE` or `ACTION_REQUIRED` → Phase 6 fix loop
+- `mergeable` is `CONFLICTING` → Phase 6 fix loop
+- AI review workflow left actionable comments → Phase 6 fix loop
+- `cancelled` checks → informational unless they block normal CI/CD
+- Exit code non-zero but no concrete failure found in snapshot → re-query
+  once, then escalate as ambiguous CI state
+
+**Fallback.** If no `TERMINAL` event fires within the 1h timeout, TaskStop
+the monitor and escalate as an external GitHub wait — not a code fix
+failure. Record which checks were still pending at escalation time so the
+user can investigate on GitHub.
+
+**Re-entering the fix loop.** When Phase 6 finishes pushing a fix, re-arm
+the Monitor (the previous one exited on the prior terminal event) and loop
+back to the event-wait above.
 
 ## Phase 6: Fix Loop
 
