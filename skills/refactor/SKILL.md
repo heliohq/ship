@@ -1,12 +1,13 @@
 ---
 name: refactor
-version: 4.0.0
+version: 4.1.0
 description: >
   Make code better — simpler, less duplication, clearer structure.
   Four-lens parallel scan (structure, reuse, quality, efficiency) detects
   smells across all dimensions. Applies Fowler techniques, verifies each change.
   Use when: refactor, clean up, simplify, reduce duplication, extract method,
-  dead code, code smells, make this cleaner.
+  dead code, code smells, make this cleaner. Local cleanup only — no PR.
+  For refactor + PR + CI in one flow, use /ship:auto instead.
 allowed-tools:
   - Bash
   - Read
