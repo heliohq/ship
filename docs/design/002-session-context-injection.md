@@ -5,7 +5,7 @@ category: "design"
 number: "002"
 status: current
 services: [scripts, docs]
-last_modified: "2026-04-15"
+last_modified: "2026-04-20"
 ---
 
 # 002 — Session Context Injection
@@ -35,16 +35,16 @@ Inject four lightweight layers at session start. A concise Ship routing policy i
 
 ### Layer 1: Ship routing policy (always injected)
 
-A short routing policy is embedded directly in `scripts/session-start.sh` and injected at every session start inside `<EXTREMELY_IMPORTANT>` tags. The host already provides skill names and descriptions; the injected policy only reinforces precedence and the default route through the Ship pipeline.
+A short routing policy is embedded directly in `scripts/session-start.sh` and injected at every session start inside `<EXTREMELY_IMPORTANT>` tags. The host already provides skill names and descriptions; the injected policy only reinforces that Ship skills exist and that the agent should match the user's explicit request rather than defaulting to the full pipeline.
 
-The policy is intentionally minimal. It exists to bias the agent's first move without competing with the user request. It contains:
+The policy is intentionally minimal and deliberately **non-prescriptive**. It exists to make Ship skills discoverable without biasing the agent toward any particular phase. It contains:
 
 - A reminder that Ship skills are available in the repo
-- A directive to invoke a matching `/ship:*` skill for code-change, planning, review, QA, E2E, refactor, or handoff requests
-- A default to `/ship:auto` for end-to-end feature work
-- The canonical phase order (design → dev → e2e → review → qa → refactor → handoff), unless the user explicitly asks for one phase
+- Guidance to run a single phase when the user names one (`/ship:dev`, `/ship:review`, etc.)
+- Guidance to use `/ship:auto` only on explicit end-to-end requests
+- An explicit anti-default: do not assume `/ship:auto` when intent is ambiguous — ask instead
 
-This keeps startup context small and leaves detailed workflow guidance in the actual skill files, which agents read on demand.
+This avoids a prior failure mode where the policy included "Use `/ship:auto` for end-to-end feature work" and "Follow phase order …", which biased the agent into triggering the full auto pipeline on ambiguous requests. Detailed workflow guidance lives in the actual skill files, which agents read on demand.
 
 ### Layer 2: Learnings (verified entries only)
 
