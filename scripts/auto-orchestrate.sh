@@ -70,6 +70,20 @@ state_get() { bash "$STATE_SCRIPT" get "$1"; }
 state_set() { bash "$STATE_SCRIPT" set "$1" "$2" > /dev/null; }
 state_bump() { bash "$STATE_SCRIPT" bump "$1" > /dev/null; }
 
+# Detect whether the task is refactor-shaped based on the leading verb
+# of the description. Conservative: only mode-shifts on clear signals,
+# defaults to "full" for everything else. Refactor mode skips the
+# design phase's execution drill (Phase 6) but keeps peer investigation.
+detect_scope_mode() {
+  local description="$1"
+  if printf '%s' "$description" \
+    | grep -Eqi '^[[:space:]]*(refactor(ing)?|simplify|optimi[sz]e|clean[[:space:]]?up|rename|extract|dedupe|deduplicate|reorganis?e|restructure|tidy)\b'; then
+    echo "refactor"
+  else
+    echo "full"
+  fi
+}
+
 require_state_file() {
   if [ ! -f "$STATE_FILE" ]; then
     emit_error "No active task. State file not found: $STATE_FILE"
@@ -108,12 +122,14 @@ resolve_session_id() {
 
 generate_prompt() {
   local template_name="$1"
-  local task_id branch head_sha description task_dir
+  local task_id branch head_sha description task_dir scope_mode
   task_id=$(state_get "task_id")
   branch=$(state_get "branch")
   head_sha=$(current_head)
   description=$(read_description)
   task_dir=".ship/tasks/$task_id"
+  scope_mode=$(state_get "scope_mode")
+  [ -z "$scope_mode" ] && scope_mode="full"
 
   local template_file="${PROMPTS_DIR}/${template_name}.md.tmpl"
   if [ ! -f "$template_file" ]; then
@@ -147,6 +163,7 @@ generate_prompt() {
   SHIP_T_FINDINGS="$findings" \
   SHIP_T_OUTCOME="$outcome" \
   SHIP_T_EXTRA="$extra_context" \
+  SHIP_T_SCOPE_MODE="$scope_mode" \
   awk '
   BEGIN {
     task_id      = ENVIRON["SHIP_T_TASK_ID"]
@@ -157,6 +174,7 @@ generate_prompt() {
     findings     = ENVIRON["SHIP_T_FINDINGS"]
     outcome      = ENVIRON["SHIP_T_OUTCOME"]
     extra        = ENVIRON["SHIP_T_EXTRA"]
+    scope_mode   = ENVIRON["SHIP_T_SCOPE_MODE"]
   }
   {
     gsub(/\{\{TASK_ID\}\}/, task_id)
@@ -166,6 +184,7 @@ generate_prompt() {
     gsub(/\{\{DESCRIPTION\}\}/, description)
     gsub(/\{\{FINDINGS\}\}/, findings)
     gsub(/\{\{OUTCOME\}\}/, outcome)
+    gsub(/\{\{SCOPE_MODE\}\}/, scope_mode)
     gsub(/\{\{EXTRA_CONTEXT\}\}/, extra)
     print
   }' "$template_file" > "$out_file"
@@ -365,6 +384,10 @@ cmd_init() {
 
   local started_at
   started_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  local scope_mode
+  scope_mode=$(detect_scope_mode "$description")
+
   mkdir -p .ship
   cat > "$STATE_FILE" <<EOF
 ---
@@ -373,6 +396,7 @@ task_id: $task_id
 session_id: $session_id
 branch: $branch
 phase: design
+scope_mode: $scope_mode
 review_fix_round: 0
 qa_fix_round: 0
 e2e_fix_round: 0
@@ -388,7 +412,7 @@ EOF
   local prompt_file
   prompt_file=$(generate_prompt "design")
 
-  emit_dispatch "design" "$prompt_file" "[Auto] Task \"$task_id\" created. Starting design phase..."
+  emit_dispatch "design" "$prompt_file" "[Auto] Task \"$task_id\" created (scope: $scope_mode). Starting design phase..."
 }
 
 # ── RESUME Command ──────────────────────────────────────────
