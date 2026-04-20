@@ -196,7 +196,8 @@ If `SPEC_EXISTS`:
   produce only `plan.md`. You may append an `## Investigation` section
   to the existing spec if it lacks one, but preserve all existing sections.
 - Peer investigation and diff still run — the peer validates the
-  upstream spec independently. Execution drill always runs.
+  upstream spec independently. Execution drill runs per Scope Mode
+  (always in `full`, skipped in `refactor`).
 
 If `NO_SPEC`: proceed to Phase 2.
 
