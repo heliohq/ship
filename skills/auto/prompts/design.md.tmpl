@@ -17,4 +17,12 @@ task_id: {{TASK_ID}}
 Artifacts: .ship/tasks/{{TASK_ID}}/plan/
 Branch: {{BRANCH}}
 HEAD: {{HEAD_SHA}}
+Scope mode: {{SCOPE_MODE}}
 Mode: /ship:auto pipeline — no user questions, treat escalations as blocked.
+
+Scope mode `refactor` means the task is behavior-preserving (refactor,
+simplify, rename, extract, dedupe, etc.). In that mode, skip Phase 6
+(Execution Drill) — the "every step is implementable" check adds little
+value when the steps are small code movements. Peer investigation and
+diff still run. See design SKILL.md "Scope Mode" for details.
+Scope mode `full` runs all six phases.

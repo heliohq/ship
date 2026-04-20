@@ -1,6 +1,6 @@
 ---
 name: design
-version: 1.3.0
+version: 1.4.0
 description: >
   Adversarial pre-coding planning: the host agent and a peer agent independently
   investigate the codebase, diff specs, and validate the final plan with an execution
@@ -44,6 +44,30 @@ See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:design, the peer plays two roles:
 **investigator** (Phase 2) and **drill agent** (Phase 6). Both use the
 same dispatch pattern from the shared reference.
+
+## Scope Mode
+
+The prompt may specify `Scope mode: full` (default) or
+`Scope mode: refactor`. It controls how much adversarial validation runs:
+
+| Phase | `full` | `refactor` |
+|-------|--------|-----------|
+| 1 Init | ✅ | ✅ |
+| 2 Investigate (host + peer) | ✅ | ✅ |
+| 3 Write spec | ✅ | ✅ (behavior-contract template) |
+| 4 Diff & verify | ✅ | ✅ |
+| 5 Write plan | ✅ | ✅ |
+| 6 Execution drill | ✅ | ⏭ **skipped** |
+
+**Why refactor mode skips Phase 6:** for behavior-preserving changes
+(refactor, simplify, rename, extract, dedupe), the plan steps are
+usually small, mechanical code movements. The drill's "is every step
+implementable" check earns little here while adding a full peer
+round-trip. Peer investigation and diff stay on because they catch the
+real refactor failure mode — "moved complexity instead of removing it."
+
+If no scope mode is specified (e.g. standalone /ship:design invocation),
+default to `full`.
 
 ## Process Flow
 
@@ -172,7 +196,8 @@ If `SPEC_EXISTS`:
   produce only `plan.md`. You may append an `## Investigation` section
   to the existing spec if it lacks one, but preserve all existing sections.
 - Peer investigation and diff still run — the peer validates the
-  upstream spec independently. Execution drill always runs.
+  upstream spec independently. Execution drill runs per Scope Mode
+  (always in `full`, skipped in `refactor`).
 
 If `NO_SPEC`: proceed to Phase 2.
 
@@ -272,6 +297,13 @@ and the self-review checklist.
 
 ## Phase 6: Execution Drill
 
+**Skip this phase when `Scope mode: refactor`.** Record in the report
+card that the drill was skipped due to refactor scope, then finish.
+Behavior-preserving plans rarely contain ambiguous steps, and the peer
+round-trip doesn't earn its cost here.
+
+For `full` scope (default), run the drill as below.
+
 The final gate. Give the plan to the peer agent and ask it to validate
 every step is implementable.
 
@@ -354,9 +386,10 @@ Verify `spec.md` and `plan.md` are non-empty on disk, then output the report car
 ### Metrics
 | Metric | Value |
 |--------|-------|
+| Scope mode | <full | refactor> |
 | Files traced | <N> |
 | Divergences resolved | <N> (<M> by evidence, <K> by debate) |
-| Drill steps CLEAR | <N>/<total> |
+| Drill steps CLEAR | <N>/<total>  (or `skipped — refactor scope`) |
 | Stories | <N> |
 
 ### Artifacts

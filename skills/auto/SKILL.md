@@ -1,15 +1,20 @@
 ---
 name: auto
-version: 0.9.0
+version: 0.10.0
 description: >
   Full pipeline orchestrator: design → dev → E2E → review → QA → simplify → handoff.
-  Code-driven coordinator — all state management, artifact validation, phase transitions,
-  and retry logic live in scripts/auto-orchestrate.sh. You are a thin relay that
-  dispatches Agent() calls and interprets sub-skill responses. Use when: "ship this",
-  "build this feature end to end", "implement and ship", "full pipeline", or any scoped
-  code change that should go through the complete design-to-handoff workflow. This is the
-  default entry point for most feature work. For individual phases only, invoke
-  /ship:design, /ship:dev, /ship:review, /ship:qa, /ship:e2e, or /ship:handoff directly.
+  Auto-detects scope from the description — refactor-shaped tasks (refactor, simplify,
+  optimize, rename, extract, dedupe, restructure) run a lighter design phase that skips
+  the execution drill but keeps adversarial peer investigation. Code-driven coordinator —
+  all state management, artifact validation, phase transitions, and retry logic live in
+  scripts/auto-orchestrate.sh. You are a thin relay that dispatches Agent() calls and
+  interprets sub-skill responses. Use when: "ship this", "build this feature end to end",
+  "ship this refactor", "refactor and ship", "implement and ship", "full pipeline", or
+  any scoped code change that should go through the complete design-to-handoff workflow.
+  This is the default entry point for any work the user wants shipped in one flow (PR +
+  CI green), whether feature or refactor. For local refactor without shipping, use
+  /ship:refactor. For individual phases only, invoke /ship:design, /ship:dev, /ship:review,
+  /ship:qa, /ship:e2e, or /ship:handoff directly.
 allowed-tools:
   - Bash
   - Read
