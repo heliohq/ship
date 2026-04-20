@@ -17,6 +17,12 @@ set -u
 
 _SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$(dirname "$_SCRIPT_DIR")}}"
+
+# Anchor all paths at repo root so invocations from subdirectories don't
+# create duplicate .ship/ trees. Falls back to cwd if not in a git repo.
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$REPO_ROOT"
+
 STATE_FILE=".ship/ship-auto.local.md"
 STATE_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/auto-state.sh"
 TASK_ID_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/task-id.sh"
@@ -54,6 +60,15 @@ emit_done() {
 
 emit_escalate() {
   local reason="$1" phase="${2:-}"
+  # Archive the state file so init can start a fresh task.
+  # The task dir is preserved for inspection.
+  if [ -f "$STATE_FILE" ]; then
+    local task_id
+    task_id=$(state_get "task_id" 2>/dev/null || echo "unknown")
+    local archive_dir=".ship/tasks/$task_id"
+    mkdir -p "$archive_dir"
+    mv "$STATE_FILE" "$archive_dir/ship-auto.escalated.md"
+  fi
   emit "ACTION" "escalate"
   emit "REASON" "$reason"
   [ -n "$phase" ] && emit "PHASE" "$phase"
