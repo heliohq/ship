@@ -8,13 +8,13 @@ Detailed guides for every Ship skill — philosophy, workflow, and examples.
 
 | Skill | Role | What it does |
 |-------|------|--------------|
-| [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
+| [`/ship:auto`](#auto) | **Pipeline Orchestrator** | The full pipeline. One command from task description to a PR with checks green and merge-ready. Delegates every phase to fresh subagents with quality gates at every transition. Fully autonomous — no approval gates. |
 | [`/ship:design`](#design) | **Adversarial Designer** | The host agent and a peer agent independently investigate the codebase and produce specs in parallel. Divergences are resolved by code evidence and debate. The merged spec feeds an executable TDD plan validated by a peer drill. |
 | [`/ship:dev`](#dev) | **Implementation Engine** | Host (Claude) implements directly; peer (Codex) cross-validates each story. File-independent stories in a wave run in parallel via Claude Agent subagents on the same branch — dependency analysis prevents overlap, no worktrees needed. |
 | [`/ship:e2e`](#e2e) | **Regression Codifier** | Converts each change's acceptance criteria into persistent E2E tests committed to the repo. Detects or scaffolds the framework (Playwright, Cypress, pytest-playwright, etc.), runs the suite against the real app, and reports a pass/fail that reviewers see before they review the code. |
 | [`/ship:review`](#review) | **Staff Engineer** | Find every bug in the diff. Add diagnosis only when multiple findings share one structural root cause. |
 | [`/ship:qa`](#qa) | **Independent QA** | Exploratory human-like sweep against the running app — finds what the codified E2E suite didn't think to check (UX confusion, visual regressions, perf smells). Independence contract: cannot read review or plan. Only direct observation counts. |
-| [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts. Doesn't stop until the PR checks are green or retries are exhausted. |
+| [`/ship:handoff`](#handoff) | **Release Engineer** | Creates a PR with a concise verification summary, then enters the fix loop: GitHub check failures, review comments, merge conflicts, and merge-readiness blockers. Doesn't stop until the PR is green and merge-ready or retries are exhausted. |
 | [`/ship:refactor`](#refactor) | **Code Improver** | Four-lens parallel scan (structure, reuse, quality, efficiency), classify by risk (quick/planned), apply Fowler techniques with verification after every change. |
 | [`/ship:setup`](#setup) | **Repo Bootstrapper** | Detects stack, installs tools, configures CI/CD and pre-commit hooks, discovers semantic constraints from code and git history, generates AGENTS.md + .learnings/LEARNINGS.md + hookify safety rules. Audits existing harness for staleness. |
 | [`/ship:learn`](#learn) | **Session Learner** | Captures mistakes and discoveries from sessions into .learnings/LEARNINGS.md. Auto-verifies durable entries and prunes stale ones. |
@@ -97,9 +97,9 @@ The current phase is tracked in .ship/ship-auto.local.md — a YAML frontmatter 
             [Simplify] No dead code found.
 
             [Handoff] Creating PR...
-            PR #48 created. CI passing. Ready for review.
+            PR #48 created. CI passing. Merge state clean. Ready for review.
 
-One command. Task description to a PR with checks green. Fully autonomous.
+One command. Task description to a PR with checks green and merge-ready. Fully autonomous.
 
 ---
 
@@ -168,7 +168,7 @@ Tasks flagged UNCLEAR get revised and re-drilled once. Plans that survive are im
 
 This is the **implementation engine**.
 
-The key insight is role separation: **the host implements, the peer cross-validates.** Opus 4.7 is a strong implementer, and the host is the session that already has the full context (spec, plan, prior stories, CODE_CONDUCT, TEST_CMD) — asking it to write the code directly is faster and produces better results than dispatching Codex as an implementer. Codex moves to the reviewer seat, where its different provider and training give an independent second eye on the diff.
+The key insight is role separation: **the host implements, the peer cross-validates.** Opus 4.7 is a strong implementer, and the host is the session that already has the full context (spec, plan, prior stories, CODE_CONDUCT, pattern references, TEST_CMD) — asking it to write the code directly is faster and produces better results than dispatching Codex as an implementer. Codex moves to the reviewer seat, where its different provider and training give an independent second eye on the diff.
 
 ### Role routing
 
@@ -184,10 +184,11 @@ Independence is preserved two ways: different provider (Codex ≠ Claude) AND di
 
 Stories are analyzed for dependencies (shared files, import chains) and grouped into **waves**. Independent stories within a wave run **in parallel** on the same branch — no git worktrees. The wave's dependency analysis is what prevents file-scope overlap; git's `.git/index.lock` serializes concurrent commits automatically.
 
-1. **Build dependency graph** — identify which stories create, modify, or import the same files
-2. **Sort into waves** — topological sort into groups with no intra-group dependencies
-3. **Per wave** — host implements single-story waves directly; multi-story waves dispatch parallel subagents; peer (Codex) reviews each story's commits
-4. **Cross-story regression** — host runs full test suite after all waves complete
+1. **Build pattern references** — for each story, read the closest analogous implementation and tests, then record the files and conventions in `dev-context.md`
+2. **Build dependency graph** — identify which stories create, modify, or import the same files
+3. **Sort into waves** — topological sort into groups with no intra-group dependencies
+4. **Per wave** — host implements single-story waves directly; multi-story waves dispatch parallel subagents; peer (Codex) reviews each story's commits
+5. **Cross-story regression** — host runs full test suite after all waves complete
 
 If a reviewer returns FAIL — targeted fix (max 2 rounds), not a full rewrite. Whoever implemented is who fixes: host for single-story and fix mode; a fresh sub-agent for multi-story.
 
@@ -393,17 +394,31 @@ After creating the PR, handoff enters a loop:
 1. Wait for CI
 2. If CI fails — read logs, dispatch fix, re-push
 3. If review comments — mechanical fixes auto-addressed, judgment calls escalated
-4. If merge conflicts — auto-resolve, re-verify
+4. If merge state is blocked, behind, or conflicting — sync/resolve, re-verify
+5. If unresolved actionable review threads remain — fix or escalate
 
-Max 3 rounds. If it can't get the PR checks green in 3 rounds, it escalates to you with a clear explanation of what's blocking.
+Handoff prefers clean linear history when it can do that safely. Before a
+branch is pushed, that usually means rebase. After a PR exists, the agent
+judges the branch state: if the branch is agent-owned, no human approvals or
+unresolved human review threads exist, no other author has pushed commits, and
+the repo expects linear history, it can rebase and push with
+`--force-with-lease`. If those gates fail, it uses merge/update-branch or
+escalates.
 
-### Harness freshness check
+Completion requires more than green checks: no relevant checks can be pending,
+the PR must not be conflicting, no local conflict state can remain, and any
+branch update required by GitHub or repo policy must be done. Max 3 rounds. If
+it can't get the PR checks green and merge-ready in 3 rounds, it escalates to
+you with a clear explanation of what's blocking.
 
-Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, .learnings/LEARNINGS.md, README.md) still match the code. Stale documentation is treated as a PR-blocking finding — not background noise.
+### Documentation truth check
+
+Before declaring the PR ready, handoff checks the documents directly affected by the diff: commands, config, file paths, workflow behavior, public API, or durable repo guidance. It updates mechanically stale docs in the same loop, or carries semantic doc debt into the PR instead of inventing wording. It does not perform a full-repo documentation audit.
 
 ### What it won't do
 
-- Never force push
+- Never use plain force push; pushed-branch rebases require
+  `--force-with-lease` and the safety gates above
 - Never skip tests
 - Never auto-merge (creates the PR, doesn't merge it)
 - Never address security or architecture review comments without asking you
@@ -417,13 +432,14 @@ Before declaring the PR ready, handoff verifies that harness docs (AGENTS.md, .l
             Lint: PASS at a1b2c3d
             QA: PASS at a1b2c3d
 
-            [Handoff] Merging main into feature branch... clean.
+            [Handoff] Checking merge readiness... clean.
             [Handoff] Creating PR #48...
 
             [Handoff] Waiting for CI...
             CI: 3/3 checks passed
+            Merge state: CLEAN
 
-            [Handoff] PR #48 checks are green.
+            [Handoff] PR #48 checks are green and merge-ready.
             https://github.com/yourorg/yourrepo/pull/48
 
 ---

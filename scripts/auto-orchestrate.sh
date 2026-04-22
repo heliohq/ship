@@ -17,6 +17,10 @@ set -u
 
 _SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$(dirname "$_SCRIPT_DIR")}}"
+PR_READINESS_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/pr-readiness.sh"
+if [ -f "$PR_READINESS_SCRIPT" ]; then
+  source "$PR_READINESS_SCRIPT"
+fi
 
 # Anchor all paths at repo root so invocations from subdirectories don't
 # create duplicate .ship/ trees. Falls back to cwd if not in a git repo.
@@ -261,11 +265,7 @@ validate_artifacts() {
       # Deep check: use gh CLI to verify PR status if available
       if command -v gh >/dev/null 2>&1; then
         local branch; branch=$(state_get "branch")
-        local pr_state
-        pr_state=$(gh pr view "$branch" --json state,statusCheckRollup --jq '.state' 2>/dev/null || true)
-        if [ -n "$pr_state" ] && [ "$pr_state" != "OPEN" ] && [ "$pr_state" != "MERGED" ]; then
-          echo "PR is $pr_state, not OPEN or MERGED"; return 1
-        fi
+        ship_pr_handoff_ready "$REPO_ROOT" "$branch" || return 1
       fi
       ;;
     simplify)

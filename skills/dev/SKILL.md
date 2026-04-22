@@ -147,7 +147,27 @@ TodoWrite([
    Record as `TEST_CMD`.
 4. Extract code conduct from `CLAUDE.md`, `AGENTS.md`, lint/formatter
    configs, and existing code patterns. Record as `CODE_CONDUCT`.
-5. **Build story dependency graph.** For each story, identify:
+5. **Build pattern references.** For each story, find the closest
+   analogous implementation before anyone writes code:
+   - Search adjacent directories, feature folders, test folders, and
+     shared component/module areas for similar files. Read the full
+     files, not just matching snippets.
+   - Record 1-3 references in `<task_dir>/dev-context.md` with:
+     file path, why it is analogous, patterns to mirror, and intentional
+     deviations.
+   - Patterns to capture include import/export shape, file organization,
+     naming, test setup, fixture style, error handling, logging, styling,
+     theme usage, and framework-specific conventions.
+   - For frontend/UI work, if `DESIGN.md` exists at project root, read it
+     and include the relevant design rules. If not, read theme/config
+     files plus representative components before writing styles.
+   - If no analogous file exists, record the searches performed and
+     `none found`; this is allowed, but silent skipping is not.
+
+   Pattern references are evidence, not copy-paste licenses. Mirror the
+   local structure and conventions, but do not clone product-specific
+   logic, stale bugs, or unrelated behavior.
+6. **Build story dependency graph.** For each story, identify:
    - Files/modules it will create or modify (from plan text)
    - Explicit dependencies (e.g., "uses the model from story 1")
    - Shared resources (e.g., two stories both modify the same config file)
@@ -175,6 +195,31 @@ TodoWrite([
    overlap, default to **sequential** (single story per wave). Do not
    guess — false parallelism causes merge conflicts.
 
+### dev-context.md format
+
+Write `<task_dir>/dev-context.md` during setup and update it if fix mode
+adds new pattern evidence:
+
+```markdown
+# Dev Context
+
+## Test Command
+<TEST_CMD>
+
+## Code Conduct
+<CODE_CONDUCT>
+
+## Pattern References
+### Story <i>: <title>
+- Reference: `<path>`
+  - Why analogous: <short reason>
+  - Mirror: <structure/test/style/error-handling conventions>
+  - Deviations: <intentional differences, or "none">
+
+## Waves
+<wave grouping and dependency notes>
+```
+
 ### Locating input
 
 1. **Caller provides paths** → use them directly.
@@ -192,17 +237,21 @@ operate in fix mode instead of the full wave loop:
 
 1. Read the findings/issues provided by the caller.
 2. For each finding, identify the affected file(s) and the fix needed.
-3. **You apply the fixes directly.** No dispatch. Fix mode exists
+3. Read the existing `<task_dir>/dev-context.md` if present. If the fix
+   touches a file or subsystem not covered by the recorded pattern
+   references, read the nearest analogous file and append a short pattern
+   note before editing.
+4. **You apply the fixes directly.** No dispatch. Fix mode exists
    precisely because the caller has already done the analysis — your
    job is surgical application, not re-analysis, so a dispatch
    round-trip adds nothing.
-4. Run `TEST_CMD` after fixes to verify no regressions.
-5. Commit the fixes with Conventional Commit messages.
+5. Run `TEST_CMD` after fixes to verify no regressions.
+6. Commit the fixes with Conventional Commit messages.
 
-Fix mode skips: wave construction, dependency analysis, story-based
-peer review. The fixes are re-validated by Auto's next-phase dispatch
-(`/ship:review`, `/ship:qa`, or the `post_qa_fix → e2e-recheck` gate),
-not by dev's internal reviewer.
+Fix mode skips: wave construction, full pattern-reference inventory,
+dependency analysis, story-based peer review. The fixes are re-validated
+by Auto's next-phase dispatch (`/ship:review`, `/ship:qa`, or the
+`post_qa_fix → e2e-recheck` gate), not by dev's internal reviewer.
 
 Return: which findings were fixed, what verification ran, any remaining
 concerns.
@@ -235,9 +284,10 @@ WAVE_BASE_SHA=$(git rev-parse HEAD)
 **Single-story wave (and all fix rounds where host is the implementer) — you implement directly.**
 
 Use `implementer-prompt.md` as your own checklist: read the story text,
-acceptance criteria, prior stories, CODE_CONDUCT, TEST_CMD, then write
-the code in the current branch. Commit using Conventional Commits as you
-go. Run `TEST_CMD` before declaring the story complete.
+acceptance criteria, prior stories, CODE_CONDUCT, pattern references,
+and TEST_CMD, then write the code in the current branch. Commit using
+Conventional Commits as you go. Run `TEST_CMD` before declaring the
+story complete.
 
 **Multi-story parallel wave — dispatch Claude Agent subagents in parallel.**
 
@@ -393,6 +443,7 @@ Use `[Dev]` prefix:
 
 ```
 [Dev] Starting — N stories in W waves, test cmd: <TEST_CMD>
+[Dev] Pattern references recorded in <task_dir>/dev-context.md
 [Dev] Wave w/W (parallel|sequential): Stories [list]
 [Dev] Story i/N: "<title>" → implementing...
 [Dev] Story i/N: PASS | FAIL — <detail>. Fixing (round/2)...
@@ -404,6 +455,7 @@ Use `[Dev]` prefix:
 
 ```text
 .ship/tasks/<task_id>/
+  dev-context.md — TEST_CMD, CODE_CONDUCT, pattern references, wave notes
   concerns.md   — recorded PASS_WITH_CONCERNS notes (if any)
 ```
 
@@ -414,6 +466,9 @@ story.
 
 ```
 [Dev] Starting — 5 stories, test cmd: npm test
+[Dev] Pattern references:
+  Story 1 "User model" -> models/account.ts, tests/models/account.test.ts
+  Story 2 "Product model" -> models/catalog-item.ts
 [Dev] Dependency analysis:
   Wave 1: [Story 1 "User model", Story 2 "Product model"] ← parallel
   Wave 2: [Story 3 "User API", Story 4 "Product API"]     ← parallel
@@ -491,6 +546,7 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 ### Artifacts
 | File | Purpose |
 |------|---------|
+| .ship/tasks/<task_id>/dev-context.md | TEST_CMD, CODE_CONDUCT, pattern references, wave notes |
 | .ship/tasks/<task_id>/concerns.md | Residual concerns (if any) |
 
 ### Next Steps
@@ -498,4 +554,3 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 2. **QA** — /ship:qa to test the running application
 3. **Full pipeline** — /ship:auto to review, QA, and ship
 ```
-

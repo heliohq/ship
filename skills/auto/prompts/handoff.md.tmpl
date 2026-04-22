@@ -2,10 +2,21 @@ You must use Skill('ship:handoff'). Skip preamble and auth gate.
 
 Ship the implementation: commit, push, create/update PR, work CI loop until green.
 
-IMPORTANT: Before pushing, rebase onto the default branch if the branch is behind.
-The PR must have a clean mergeStateStatus (CLEAN or HAS_HOOKS) before you finish.
-If CI fails, fix and re-push. If there are merge conflicts after rebase, resolve them.
-Do NOT finish until the PR is merge-ready.
+IMPORTANT: Do NOT finish until the PR is merge-ready. Relevant checks must be
+green with no relevant pending checks, actionable review feedback must be
+addressed or escalated, and mergeStateStatus must be merge-ready (CLEAN,
+HAS_HOOKS, or UNSTABLE only when all failing checks are explicitly
+irrelevant/non-blocking). There must be no merge conflicts, no unresolved local
+conflict state, and no required update-from-base left undone. If CI fails,
+comments require mechanical fixes, or mergeStateStatus is
+BEHIND/DIRTY/BLOCKED/UNKNOWN, fix inside the handoff loop, verify locally,
+push, and wait again. Sync with base only when drift, conflicts, or repo
+policy require it; do not sync preemptively. Prefer rebase
+when it preserves clean history safely. For an already-pushed PR branch, rebase
+only if the branch is agent-owned, there are no human approvals or unresolved
+human review threads, no other author has pushed commits, and the repo appears
+to expect linear history. Push rebases with `--force-with-lease`, never plain
+`--force`. If those safety gates fail, use merge/update-branch or escalate.
 
 task_id: {{TASK_ID}}
 task_dir: {{TASK_DIR}}
