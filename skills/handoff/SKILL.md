@@ -1,6 +1,6 @@
 ---
 name: handoff
-version: 0.4.0
+version: 0.4.1
 description: >
   Use when code is ready to ship: creates a PR, waits for CI/CD, addresses review
   comments and merge conflicts, and iterates until the PR is ready. Use when: "ship it",
@@ -34,19 +34,22 @@ SHIP_SKILL_NAME=handoff source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
 # Ship: Handoff
 
 Commit the related changes, push the branch, create or update the PR,
-then keep looping until GitHub checks are fully green.
+then keep looping until GitHub checks are fully green and the PR is
+merge-ready.
 
 Do not stop when the PR is created.
 Do not stop while any GitHub check is pending.
 If any GitHub check fails, fix the problem, push again, and wait again.
+If the PR is not merge-ready, sync with base or resolve conflicts inside
+the same fix loop.
 
 Escalate to the user only for judgment decisions or after retry limits
 are exhausted.
 
-Done means:
-- the PR exists
-- relevant GitHub checks are green
-- no relevant GitHub checks are pending
+Done means every condition in [Completion](#completion) is satisfied:
+the PR exists, checks are green with no relevant pending contexts, the PR
+is merge-ready with no unresolved conflicts or required branch update, and
+no actionable review or bot feedback remains.
 
 (Full termination + escalation criteria in "Completion" at the bottom.)
 
@@ -65,16 +68,20 @@ Run this loop:
 9. If any relevant check is still pending, keep waiting.
 10. If any relevant check fails, or an AI review workflow leaves actionable comments, fix the problem, verify the fix, commit, push, and wait again.
 11. If the branch must be updated from base to clear drift, conflicts, or repo policy, sync with base inside the fix loop, then verify, commit, push, and wait again.
-12. Ignore `cancelled` checks unless they block the repo's normal CI/CD path.
-13. Stop after 3 fix rounds and escalate to the user.
+12. If the PR is not merge-ready, fix the cause inside the same loop.
+13. Ignore `cancelled` checks unless they block the repo's normal CI/CD path.
+14. Stop after 3 fix rounds and escalate to the user.
 
 ## Red Flag
 
 **Never:**
 - **Stop when the PR is created** — #1 failure mode
 - Push code changes without re-running relevant local verification
-- Force push
+- Force push without `--force-with-lease`
+- Rewrite an already-pushed PR branch when there are human review,
+  approval, or shared-branch signals
 - Treat `pending` checks as "good enough"
+- Treat green checks as sufficient when `mergeStateStatus` is still blocked
 - Create the PR before local verification runs
 - Use `git add -A` when unrelated local changes are present
 - Forget to stage and commit changelog or doc edits before the first push
@@ -111,7 +118,8 @@ TodoWrite([
 
 **Adaptations** (not exhaustive — use judgment):
 - No CHANGELOG.md and no doc changes needed → drop that item entirely
-- No CI workflows in the repo → drop "Wait for GitHub checks"
+- No CI workflows and no PR check contexts after PR creation → drop
+  "Wait for GitHub checks"
 - Check fails → insert `"Fix round N/3 — <issue summary>"` with `in_progress`
 - PR already exists (update flow) → rename "Push and create PR" to
   "Push update to existing PR"
@@ -123,6 +131,7 @@ TodoWrite([
 Resolve only the context needed to ship the PR:
 
 1. Determine the current branch.
+   - If HEAD is detached, create a feature branch before continuing.
 2. Determine the base branch:
    - use the existing PR base if a PR already exists
    - otherwise use the repo default branch
@@ -200,13 +209,19 @@ Push and create:
 3. `git push -u origin HEAD`
 4. Create the PR if it does not exist.
 5. If the PR already exists, update the body or add a short comment with the latest verification summary.
+6. If `task_dir` exists, write or update `<task_dir>/handoff.md` with:
+   PR URL, branch, base, verification commands/results, docs outcome,
+   current check summary, current `mergeStateStatus`, and fix-round count.
+   This file is the handoff evidence consumed by the stop gate.
 
 Output: `[Handoff] PR created: <url>`
 
 ## Phase 5: Wait for GitHub Checks
 
-Inspect `.github/workflows` and the current PR checks once so you understand
-what this repo expects to run.
+Inspect `.github/workflows`, branch protection signals, and the current PR
+checks once so you understand what this repo expects to run. A repo can
+have required checks from GitHub Apps even when it has no local workflow
+files, so never skip this phase based on `.github/workflows` alone.
 
 **Arm a Monitor, don't poll.** `gh pr checks --watch` blocks locally and
 polls GitHub itself every ~10s — you stay idle until checks terminate. This
@@ -231,19 +246,65 @@ once:
 
 ```bash
 # Full snapshot for interpretation
-gh pr view --json state,statusCheckRollup,reviews,mergeable,comments
+gh pr view --json state,statusCheckRollup,reviews,reviewDecision,mergeable,mergeStateStatus,comments
 
-# Read failing check logs if any
+# Machine-readable check summary
+gh pr checks --json name,state,bucket,link,workflow
+
+# Read failing check logs if any. Prefer the failed run URL/check URL from
+# the snapshot; use gh run view only after identifying the run id.
 gh run view <run-id> --log-failed
+```
+
+Also inspect unresolved review threads when review comments may be
+actionable. `gh pr view --json comments,reviews` is not enough because it
+does not reliably expose thread resolution state.
+
+```bash
+OWNER=$(gh repo view --json owner --jq '.owner.login')
+REPO=$(gh repo view --json name --jq '.name')
+PR_NUMBER=$(gh pr view --json number --jq '.number')
+gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='
+query($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          comments(first: 20) {
+            nodes {
+              id
+              author { login }
+              body
+              path
+              line
+              outdated
+              url
+            }
+          }
+        }
+      }
+    }
+  }
+}'
 ```
 
 Interpret the snapshot:
 
-- All checks `SUCCESS` or `NEUTRAL` → green, advance to done
-- Any `FAILURE` or `ACTION_REQUIRED` → Phase 6 fix loop
+- All relevant checks `SUCCESS`, `NEUTRAL`, or intentionally ignored
+  optional `SKIPPED`/`CANCELLED` → check gate green
+- Any relevant `FAILURE`, `ERROR`, `ACTION_REQUIRED`, or failed check
+  bucket → Phase 6 fix loop
+- Any relevant pending, queued, in-progress, expected, or waiting check
+  → keep waiting
+- `mergeStateStatus` is `DIRTY`, `BEHIND`, `BLOCKED`, `DRAFT`, or
+  `UNKNOWN` after one re-query → Phase 6 fix loop or escalation
 - `mergeable` is `CONFLICTING` → Phase 6 fix loop
-- AI review workflow left actionable comments → Phase 6 fix loop
-- `cancelled` checks → informational unless they block normal CI/CD
+- Any actionable unresolved review thread, review comment, or bot/workflow
+  comment → Phase 6 fix loop
+- `CANCELLED` checks → informational only when they are optional and do
+  not block normal CI/CD
 - Exit code non-zero but no concrete failure found in snapshot → re-query
   once, then escalate as ambiguous CI state
 
@@ -263,14 +324,117 @@ Max 3 rounds — after that, escalate.
 
 In each fix round:
 
-1. Re-read the current PR status on GitHub.
+1. Re-read the current PR status on GitHub, including checks,
+   `mergeStateStatus`, and unresolved review threads.
 2. If checks failed, inspect the failing check logs and fix the smallest
    real cause.
 3. If review comments are actionable, fix mechanical or correctness issues.
 4. If a comment requires product, security, or architecture judgment,
    escalate instead of guessing.
-5. If the branch has merge conflicts, base drift, or a repo policy requires
-   an update from base, sync with base and resolve it carefully.
+5. If `mergeStateStatus` reports conflicts, base drift, branch protection
+   blockage, or a repo policy requires an update from base, sync with base
+   and resolve it carefully.
+   Use this strategy:
+   - Always start with `git fetch origin <base-branch>`.
+   - Prefer `git rebase origin/<base-branch>` when it can preserve a
+     clean linear history without disrupting collaborators. This is
+     always appropriate before the branch is pushed.
+   - For an already-pushed PR branch, choose rebase only when all of
+     these safety gates pass: the branch is agent-owned, there are no
+     human approvals or unresolved human review threads, no other author
+     has pushed commits to the branch, and the repo appears to expect
+     linear history. Push the result with `git push --force-with-lease`,
+     never plain `--force`.
+   - If any safety gate fails, prefer `git merge --no-ff
+     origin/<base-branch>` (or the repo's equivalent update-branch
+     operation) so the fix can be pushed without rewriting review
+     history.
+   - If repo policy requires linear history but the rebase safety gates
+     do not pass, escalate for user approval.
+
+   For an already-pushed PR branch, prove the safety gates before
+   rebasing. Default to **not safe** if any command fails, returns
+   ambiguous output, or shows collaboration:
+
+   ```bash
+   BRANCH=$(git branch --show-current)
+   BASE=$(gh pr view "$BRANCH" --json baseRefName --jq '.baseRefName')
+   PR_AUTHOR=$(gh pr view "$BRANCH" --json author --jq '.author.login')
+   ME=$(gh api user --jq '.login')
+   export PR_AUTHOR ME
+
+   # 1. Agent-owned branch naming convention.
+   case "$BRANCH" in
+     ship/*|codex/*) echo "agent-owned-name" ;;
+     *) echo "NOT_SAFE: branch name is not agent-owned"; exit 1 ;;
+   esac
+
+   # 2. No human approvals, change requests, comments, or review threads.
+   gh pr view "$BRANCH" --json reviews,comments --jq '
+     [
+       .reviews[]?.author.login,
+       .comments[]?.author.login
+     ]
+     | map(select(. != "github-actions[bot]" and . != "dependabot[bot]"))
+     | map(select(. != env.PR_AUTHOR and . != env.ME))
+     | length == 0
+   ' || { echo "NOT_SAFE: human review/comment signal"; exit 1; }
+
+   # 3. No unresolved review threads from humans.
+   OWNER=$(gh repo view --json owner --jq '.owner.login')
+   REPO=$(gh repo view --json name --jq '.name')
+   PR_NUMBER=$(gh pr view "$BRANCH" --json number --jq '.number')
+   gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='
+   query($owner: String!, $repo: String!, $number: Int!) {
+     repository(owner: $owner, name: $repo) {
+       pullRequest(number: $number) {
+         reviewThreads(first: 100) {
+           nodes {
+             isResolved
+             comments(first: 20) {
+               nodes { author { login } }
+             }
+           }
+         }
+       }
+     }
+   }' --jq '
+     [
+       .data.repository.pullRequest.reviewThreads.nodes[]?
+       | select(.isResolved == false)
+       | .comments.nodes[]?.author.login
+     ]
+     | map(select(. != "github-actions[bot]" and . != "dependabot[bot]"))
+     | map(select(. != env.PR_AUTHOR and . != env.ME))
+     | length == 0
+   ' || { echo "NOT_SAFE: unresolved human review thread"; exit 1; }
+
+   # 4. No other commit authors on this PR branch.
+   git fetch origin "$BASE"
+   MY_EMAIL=$(git config user.email)
+   UNEXPECTED_AUTHORS=$(git log --format='%ae' "origin/$BASE..HEAD" | \
+     sort -u | grep -vxF "$MY_EMAIL" || true)
+   [ -z "$UNEXPECTED_AUTHORS" ] || {
+     echo "NOT_SAFE: unexpected commit authors: $UNEXPECTED_AUTHORS"
+     exit 1
+   }
+
+   # 5. Repo appears to prefer/require linear history.
+   OWNER=$(gh repo view --json owner --jq '.owner.login')
+   REPO=$(gh repo view --json name --jq '.name')
+   gh api "repos/$OWNER/$REPO" --jq '
+     (.allow_rebase_merge == true or .allow_squash_merge == true)
+     and (.allow_merge_commit == false)
+   ' || { echo "NOT_SAFE: repo does not clearly require linear history"; exit 1; }
+   ```
+
+   Only when all gates are proven safe may the agent run:
+
+   ```bash
+   git rebase "origin/$BASE"
+   <relevant local verification command>
+   git push --force-with-lease
+   ```
 6. Do not resolve conflicts mechanically with `--ours` or `--theirs` unless
    one side is clearly disposable.
 7. Read both sides of the conflict and preserve the behavior this PR is
@@ -278,13 +442,14 @@ In each fix round:
 8. If you cannot resolve the conflict confidently, escalate instead of guessing.
 9. After any code change, run the relevant local verification again.
 10. Commit the fix and push it.
-11. If the push fully addresses GitHub feedback, mark the addressed feedback as resolved:
+11. Update `<task_dir>/handoff.md` if `task_dir` exists.
+12. If the push fully addresses GitHub feedback, mark the addressed feedback as resolved:
     - for review threads, resolve the thread
     - for obsolete bot or workflow comments, hide/minimize the comment with
       classifier `RESOLVED`
-12. Never resolve, hide, or minimize feedback that is only partially addressed
+13. Never resolve, hide, or minimize feedback that is only partially addressed
     or still needs user judgment.
-13. Go back to Phase 5.
+14. Go back to Phase 5.
 
 Use GitHub GraphQL when needed:
 
@@ -320,19 +485,22 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 | Field | Value |
 |-------|-------|
 | Status | <DONE / BLOCKED> |
-| Summary | PR #<N> — checks <green / pending / failed> |
+| Summary | PR #<N> — checks <green / pending / failed>, merge <ready / blocked> |
 
 ### Metrics
 | Metric | Value |
 |--------|-------|
 | PR URL | <url> |
 | Check status | <green / N passing, M failed> |
+| Merge state | <mergeStateStatus> |
 | Fix rounds | <N>/3 |
+| Docs outcome | <updated / checked-no-update / debt-noted> |
 
 ### Artifacts
 | File | Purpose |
 |------|---------|
 | PR on GitHub | Shipped code |
+| .ship/tasks/<task_id>/handoff.md | PR URL, checks, merge state, verification, docs outcome |
 | CHANGELOG.md | Updated changelog (if repo has one) |
 ```
 
@@ -357,7 +525,8 @@ verify/commit/push pattern after every fix round.
                  resolved review thread, minimized obsolete bot comment
 
 [Handoff] Wait → all checks green
-[Handoff] DONE — PR #123 green
+[Handoff] Merge state → CLEAN
+[Handoff] DONE — PR #123 green and merge-ready
 ```
 
 Key invariants the example preserves:
@@ -365,6 +534,8 @@ Key invariants the example preserves:
 - Local verify runs before every push (first push AND each fix push).
 - Fix the smallest real cause from logs, not broad refactoring.
 - AI review feedback counts as "action required" — it triggers a fix round.
+- Merge readiness is a gate alongside checks; blocked/behind/conflicting
+  PRs keep looping.
 - Resolve threads / minimize obsolete bot comments only after the fix is pushed.
 - Retry limit is 3 fix rounds, then escalate.
 
@@ -375,9 +546,18 @@ Done when:
 - the PR exists
 - relevant GitHub checks are green
 - no relevant GitHub checks are pending
+- `mergeStateStatus` is merge-ready (`CLEAN`, `HAS_HOOKS`, or `UNSTABLE`
+  only when all failing checks are irrelevant/non-blocking)
+- `mergeable` is not `CONFLICTING`, and there are no unresolved merge
+  conflicts in the local worktree
+- the branch is not behind base in a way GitHub/repo policy requires
+  updating before merge
+- no actionable unresolved review thread or bot/workflow comment remains
 
 Escalate when:
 
 - 3 fix rounds are exhausted
 - a remaining issue requires user judgment
 - GitHub checks stay pending past the wait timeout
+- GitHub state remains ambiguous after one re-query
+- merge conflicts or required branch updates cannot be resolved confidently

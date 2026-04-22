@@ -28,6 +28,8 @@ The subagent runs in the current repo directory (whatever cwd the host
 is running in). The prompt MUST state:
 - Which files/modules the subagent is allowed to modify (from dependency
   analysis). The subagent must not touch files outside that scope.
+- Which analogous files were read for this story and which local
+  conventions the subagent should mirror.
 - That the subagent commits its own changes using Conventional Commits.
 - That the subagent reports back with the list of files changed and
   commit SHAs it produced.
@@ -56,6 +58,27 @@ You are implementing story <i>/<N>. Your code will be reviewed.
 Follow these conventions strictly. Deviating from them is a review
 failure even if the code works. If Code Conduct specifies a commit
 message format, use it. Otherwise use Conventional Commits.
+
+## Pattern References
+<PATTERN_REFERENCES — closest analogous files read for this story>
+
+Before writing code, read the referenced files fully. Mirror their local
+structure and conventions unless the story or plan explicitly requires a
+different shape. If a reference is missing, stale, or clearly unrelated,
+stop and refresh the pattern reference instead of guessing.
+
+Use the references to match:
+- import/export shape
+- file organization and responsibility boundaries
+- naming and type/interface conventions
+- test setup, fixtures, and assertion style
+- error handling, logging, and edge-case treatment
+- styling, theme usage, and component composition for UI work
+
+For UI work, follow `DESIGN.md` when it exists. If no `DESIGN.md` exists,
+read the local theme/config files and representative components before
+writing styles. Avoid hardcoded visual values when the codebase has
+theme tokens or design primitives.
 
 ## Instructions
 
@@ -90,6 +113,8 @@ behavior, not just the current harness behavior.
 
 Before committing, check:
 - Completeness: every requirement in this story implemented?
+- Pattern fit: structure, exports, tests, and styling match the recorded
+  references, or deviations are intentional and documented?
 - Quality: names clear, simplest thing that works?
 - Discipline: ONLY what the story asks, no gold-plating?
 - Testing: tests verify actual behavior, catch real regressions?
