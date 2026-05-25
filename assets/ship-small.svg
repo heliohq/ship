@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ship">
-  <rect width="64" height="64" rx="14" fill="#0F172A"/>
-  <path d="M15 38h34l-5 9H20l-5-9Z" fill="#14B8A6"/>
-  <path d="M22 18h20l4 20H18l4-20Z" fill="#F8FAFC"/>
-  <path d="M25 22h14l2 12H23l2-12Z" fill="#0F766E"/>
-  <path d="M12 47h40" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
-</svg>

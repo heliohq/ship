@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="$ROOT/.codex-plugin/plugin.json"
 CODEX_HOOKS="$ROOT/hooks/codex-hooks.json"
+EXPECTED_VERSION="0.2.0"
 
 PASS=0
 FAIL=0
@@ -50,6 +51,7 @@ fi
 
 assert_jq "name is ship" '.name == "ship"'
 assert_jq "version is strict semver" '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")'
+assert_jq "Codex version is $EXPECTED_VERSION" ".version == \"$EXPECTED_VERSION\""
 assert_jq "description is present" '.description | type == "string" and length > 0'
 assert_jq "author name is present" '.author.name | type == "string" and length > 0'
 assert_jq "author is Helio" '.author.name == "Helio" and .author.url == "https://www.helio.im/"'
@@ -77,9 +79,18 @@ assert_jq "capabilities include Interactive" '.interface.capabilities | index("I
 assert_jq "capabilities include Read" '.interface.capabilities | index("Read")'
 assert_jq "capabilities include Write" '.interface.capabilities | index("Write")'
 assert_jq "default prompts fit Codex UI limits" '.interface.defaultPrompt | type == "array" and length <= 3 and all(.[]; type == "string" and length <= 128)'
-assert_path_exists "composer icon exists" '.interface.composerIcon'
-assert_path_exists "logo exists" '.interface.logo'
+assert_jq "optional icon assets are absent" '(.interface | has("composerIcon") | not) and (.interface | has("logo") | not)'
 assert_jq "screenshots are an array" '.interface.screenshots | type == "array"'
+
+claude_version=$(jq -r '.version' "$ROOT/.claude-plugin/plugin.json")
+cursor_version=$(jq -r '.version' "$ROOT/.cursor-plugin/plugin.json")
+marketplace_version=$(jq -r '.plugins[] | select(.name == "ship") | .version' "$ROOT/.claude-plugin/marketplace.json")
+
+if [[ "$claude_version" == "$EXPECTED_VERSION" && "$cursor_version" == "$EXPECTED_VERSION" && "$marketplace_version" == "$EXPECTED_VERSION" ]]; then
+  pass "Claude, Cursor, and marketplace versions are $EXPECTED_VERSION"
+else
+  fail "Claude, Cursor, and marketplace versions are $EXPECTED_VERSION"
+fi
 
 if [[ ! -e "$ROOT/.agents/plugins/marketplace.json" ]]; then
   pass "repo-local .agents marketplace is absent"

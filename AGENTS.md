@@ -17,7 +17,6 @@
 | `hooks/` | `hooks.json`, `codex-hooks.json` | Plugin-level quality gate hook registration for Claude Code and Codex |
 | `.codex/` | `INSTALL.md` | Codex install docs |
 | `.codex-plugin/` | `plugin.json` | Native Codex plugin metadata for skills, MCP, and Codex UI |
-| `assets/` | SVG icons | Codex plugin composer icon and logo |
 | `skills/` | Skill dirs plus `.shared/` helpers | Slash commands (`/ship:*`) and hidden shared references |
 | `skills/use-ship/` | Routing skill | Agent-facing guide for grouping Ship phases based on task need |
 | `skills/auto/prompts/` | `.md.tmpl` files | Prompt templates for the full workflow runner |

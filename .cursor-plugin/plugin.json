@@ -2,7 +2,7 @@
   "name": "ship",
   "displayName": "Ship",
   "description": "An agent-routed harness for end-to-end software product development",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "author": {
     "name": "Helio",
     "url": "https://www.helio.im/"

@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Ship">
-  <rect width="256" height="256" rx="52" fill="#0F172A"/>
-  <path d="M51 151h154l-25 45H76l-25-45Z" fill="#14B8A6"/>
-  <path d="M86 61h84l19 90H67l19-90Z" fill="#F8FAFC"/>
-  <path d="M100 78h56l10 55H90l10-55Z" fill="#0F766E"/>
-  <path d="M44 196h168" stroke="#F59E0B" stroke-width="16" stroke-linecap="round"/>
-  <path d="M71 151h114" stroke="#0F172A" stroke-width="10" stroke-linecap="round" opacity=".28"/>
-</svg>

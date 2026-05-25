@@ -1,6 +1,6 @@
 {
   "name": "ship",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "An agent-routed harness for end-to-end software product development.",
   "author": {
     "name": "Helio",
@@ -43,8 +43,6 @@
       "Review my current diff with /ship:review"
     ],
     "brandColor": "#0F766E",
-    "composerIcon": "./assets/ship-small.svg",
-    "logo": "./assets/app-icon.svg",
     "screenshots": []
   }
 }
