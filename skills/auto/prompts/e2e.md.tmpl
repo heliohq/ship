@@ -21,10 +21,12 @@ IMPORTANT:
   point in the pipeline (QA runs after review, not before you).
 - Skip the phase (SKIP verdict) only if the diff is docs-only or has no
   user-observable effect. Write a short justification to report.md.
-- Cleanup is mandatory — follow shared/cleanup.md with your EVIDENCE_DIR.
+- Cleanup is mandatory — follow .shared/cleanup.md with your EVIDENCE_DIR.
 
 spec: {{TASK_DIR}}/plan/spec.md
+input_requirement: {{TASK_DIR}}/input/requirement.md
+run_state: {{TASK_DIR}}/control/run_state.yaml
 task_dir: {{TASK_DIR}}
 Write evidence to: {{TASK_DIR}}/e2e/
 Write test files to: repo's framework-idiomatic test directory
-Mode: /ship:auto pipeline — no user questions.
+Mode: /ship:auto staged workflow — no user questions.

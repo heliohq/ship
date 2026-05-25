@@ -2,11 +2,9 @@
 name: handoff
 version: 0.4.1
 description: >
-  Use when code is ready to ship: creates a PR, waits for CI/CD, addresses review
-  comments and merge conflicts, and iterates until the PR is ready. Use when: "ship it",
-  "create a PR", "open a pull request", "push and merge", "handoff", or when code changes
-  are complete and need to go through PR creation and CI. Called by /ship:auto at the end,
-  or invoked directly via /ship:handoff after manual work.
+  Ship completed work: verify locally, commit related changes, push, create or
+  update the PR, watch CI/reviews, and fix until merge-ready or escalated. Use
+  for "ship it", "create PR", "handoff", or finished code needing delivery.
 allowed-tools:
   - Bash
   - Read
@@ -22,14 +20,6 @@ allowed-tools:
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
-
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=handoff source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
 
 # Ship: Handoff
 
@@ -477,7 +467,7 @@ Output: `[Handoff] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Handoff] Report Card

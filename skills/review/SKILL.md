@@ -2,12 +2,9 @@
 name: review
 version: 0.2.1
 description: >
-  Review the active change scope, report concrete correctness findings, rank them
-  P1/P2/P3, and add diagnosis only when it explains multiple findings. Use when:
-  "review the code", "check for bugs", "review my changes", "is this correct",
-  "code review", or after implementation to verify correctness before QA. Note: this
-  checks code correctness via static analysis, not runtime behavior (use /ship:qa for
-  runtime testing).
+  Static code review of the active diff: trace changed paths and report concrete
+  P1/P2/P3 correctness, security, or spec bugs with file:line evidence. Use for
+  code review or bug checks. Not runtime QA.
 allowed-tools:
   - Bash
   - Read
@@ -16,14 +13,6 @@ allowed-tools:
   - Write
   - AskUserQuestion
 ---
-
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=review source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
 
 # Ship: Review
 
@@ -235,7 +224,7 @@ path must remember the same defensive work.
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Review] Report Card
@@ -260,6 +249,5 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 ### Next Steps
 1. **Fix findings** — /ship:dev to fix the reported bugs
 2. **QA next (if clean)** — /ship:qa to test the running application
-3. **Full pipeline** — /ship:auto to handle fixes, QA, simplify, and shipping
+3. **Full workflow** — /ship:auto to handle fixes, QA, refactor, and shipping
 ```
-

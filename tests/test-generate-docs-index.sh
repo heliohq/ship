@@ -2,10 +2,10 @@
 # Test: generate-docs-index.sh scans all category subdirectories
 set -euo pipefail
 
-# Resolve the generator script path from the plugin root (tests/ is one level below)
+# Resolve the generator script path from the repository root (tests/ is one level below)
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_ROOT="$(cd "$TESTS_DIR/.." && pwd)"
-GENERATOR="$PLUGIN_ROOT/scripts/generate-docs-index.sh"
+ROOT="$(cd "$TESTS_DIR/.." && pwd)"
+GENERATOR="$ROOT/scripts/generate-docs-index.sh"
 
 PASS=0
 FAIL=0

@@ -2,12 +2,9 @@
 name: refactor
 version: 4.1.0
 description: >
-  Make code better — simpler, less duplication, clearer structure.
-  Four-lens parallel scan (structure, reuse, quality, efficiency) detects
-  smells across all dimensions. Applies Fowler techniques, verifies each change.
-  Use when: refactor, clean up, simplify, reduce duplication, extract method,
-  dead code, code smells, make this cleaner. Local cleanup only — no PR.
-  For refactor + PR + CI in one flow, use /ship:auto instead.
+  Improve existing code without changing behavior: scan smells, simplify, dedupe,
+  reuse utilities, and verify after edits. Use for refactor, cleanup, simplify,
+  reduce duplication, extract method, dead code, or code smells. No PR.
 allowed-tools:
   - Bash
   - Read
@@ -18,14 +15,6 @@ allowed-tools:
   - Agent
   - AskUserQuestion
 ---
-
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=refactor source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
 
 # Ship: Refactor
 
@@ -191,7 +180,7 @@ High-risk changes. Write an execution card first, get alignment, then execute.
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Refactor] Report Card
@@ -219,9 +208,7 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 | .ship/tasks/<task_id>/refactor/spec.md | Execution card (planned path only) |
 
 ### Next Steps
-1. **Ship** — /ship:handoff to create the PR (pipeline continues here after simplify)
+1. **Ship** — /ship:handoff to create the PR (workflow continues here after refactor)
 2. **Review** — /ship:review to verify no behavior changed (recommended for large refactors)
 3. **Continue** — /ship:refactor on remaining deferred smells
 ```
-
-

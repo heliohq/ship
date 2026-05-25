@@ -1,5 +1,5 @@
 {
-  "description": "Ship plugin hooks — convention injection and workflow quality gates",
+  "description": "Ship plugin hooks — lightweight Ship routing hint and workflow quality gates",
   "hooks": {
     "SessionStart": [
       {

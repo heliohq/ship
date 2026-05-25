@@ -15,10 +15,16 @@ after this pipeline run.
 
 task_id: {{TASK_ID}}
 Artifacts: .ship/tasks/{{TASK_ID}}/plan/
+Raw input: .ship/tasks/{{TASK_ID}}/input/requirement.md
+Run state: .ship/tasks/{{TASK_ID}}/control/run_state.yaml
 Branch: {{BRANCH}}
 HEAD: {{HEAD_SHA}}
 Scope mode: {{SCOPE_MODE}}
-Mode: /ship:auto pipeline — no user questions, treat escalations as blocked.
+Mode: /ship:auto staged workflow — no user questions, treat escalations as blocked.
+
+If lightweight YAML planning notes would help this specific task, you may write
+them under .ship/tasks/{{TASK_ID}}/control/. Choose the schema yourself and keep
+Markdown/code as the real deliverables.
 
 Scope mode `refactor` means the task is behavior-preserving (refactor,
 simplify, rename, extract, dedupe, etc.). In that mode, skip Phase 6

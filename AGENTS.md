@@ -13,29 +13,32 @@
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `scripts/` | Shell scripts | Workflow hooks (stop-gate, session-start, phase-guardrail), orchestrator (auto-orchestrate), and utilities (task-id, preflight, auto-state) |
-| `hooks/` | `hooks.json` | Plugin-level hook registration (SessionStart, PreToolUse, Stop) |
-| `.codex/` | `INSTALL.md`, `hooks.json` | Codex install docs and shipped Codex hook manifest |
-| `skills/` | Skill dirs | Claude Code slash commands (/ship:auto, /ship:design, etc.) |
-| `skills/auto/prompts/` | `.md.tmpl` files | Prompt templates for each auto pipeline phase |
-| `skills/setup/` | Setup skill | Infra bootstrap + convention discovery, AGENTS.md + learnings generation |
+| `scripts/` | Shell scripts | Startup hint, workflow hooks, auto orchestrator, and utilities (task-id, auto-state) |
+| `hooks/` | `hooks.json`, `codex-hooks.json` | Plugin-level quality gate hook registration for Claude Code and Codex |
+| `.codex/` | `INSTALL.md` | Codex install docs |
+| `.codex-plugin/` | `plugin.json` | Native Codex plugin metadata for skills, MCP, and Codex UI |
+| `assets/` | SVG icons | Codex plugin composer icon and logo |
+| `skills/` | Skill dirs plus `.shared/` helpers | Slash commands (`/ship:*`) and hidden shared references |
+| `skills/use-ship/` | Routing skill | Agent-facing guide for grouping Ship phases based on task need |
+| `skills/auto/prompts/` | `.md.tmpl` files | Prompt templates for the full workflow runner |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata for ShipAI |
 | `.mcp.json` | MCP config | Codex MCP server registration |
 
 ## Architecture
 
-Two independent layers:
+Ship has one opt-in workflow layer. It fires only during user-triggered Ship
+workflows, especially `/ship:auto`:
 
-**Harness layer (opt-in via /ship:setup):** AI analyzes the project and generates enforceable conventions.
-- Generates `AGENTS.md` (prevention — AI reads at session start)
-- Generates `.learnings/LEARNINGS.md` (verified rules + session learnings — injected at session start via SessionStart hook)
-- Generates `.claude/hookify.ship-*.local.md` (deterministic safety rules — real-time PreToolUse block via hookify)
-
-**Workflow layer (opt-in via /ship:auto):** Fires only during ship-coding sessions.
+- `session-start.sh` injects only a small `/ship:use-ship` routing hint; no docs index or artifact content.
+- `/ship:use-ship` chooses the smallest useful standalone skill, phase bundle, or full workflow.
+- Full workflow runs write raw input to `.ship/tasks/<task_id>/input/requirement.md`.
+- The runner owns only minimal state in `.ship/tasks/<task_id>/control/run_state.yaml`; agents may create task-specific YAML notes if useful.
+- Markdown artifacts and repository code are the output plane.
+- Durable production artifacts may be organized under `docs/ship/<task-id-or-req-id>/` when the repo lacks an existing convention.
 - `stop-gate.sh` — blocks session exit while `.ship/ship-auto.local.md` is active (with fast-path for terminal phases)
-- `auto-orchestrate.sh` — code-driven state machine for /ship:auto (init, resume, complete, status commands)
+- `auto-orchestrate.sh` — code-driven state machine for staged workflows (init, resume, complete, status commands)
 - `phase-guardrail.sh` — PreToolUse hook enforcing artifact access rules per phase (QA independence, review read-only, state file protection)
-- Claude Code loads hooks through plugin `hooks/hooks.json`; Codex installs the same scripts via global `~/.codex/hooks.json` using the shipped `.codex/hooks.json` manifest
+- Claude Code loads hooks through plugin `hooks/hooks.json`; Codex discovers skills through `.codex-plugin/plugin.json` and loads Codex hook definitions from `hooks/codex-hooks.json`
 
 ## Code Style
 
@@ -63,4 +66,4 @@ Two independent layers:
 - macOS `/tmp` resolves to `/private/tmp` via symlink. `git rev-parse --show-toplevel` returns the resolved path. All path matching must handle both forms.
 - Plugin-level hooks fire for ALL sessions. Project-level hooks (in `.claude/settings.json`) fire only for that project.
 - Hook handlers run in parallel when multiple match the same event. Hooks must not depend on execution order.
-- `stop-gate.sh` reads `.ship/ship-auto.local.md` state file. Blocks only the session that started the pipeline (session isolation). Subagents are never blocked.
+- `stop-gate.sh` reads `.ship/ship-auto.local.md` state file. Blocks only the session that started the workflow (session isolation). Subagents are never blocked.

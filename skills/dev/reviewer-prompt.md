@@ -1,8 +1,8 @@
 # Reviewer — Peer Cross-Validation Prompt
 
-Used in Phase 2 Step B of `/ship:dev`. The peer (Codex when host is
-Claude, vice versa) reviews each story independently — different
-provider, different session from whoever implemented the code.
+Used in Phase 2 Step B of `/ship:dev`. The peer reviews each story
+independently — preferably a different provider, always a different
+session from whoever implemented the code.
 
 ## Dispatch (preferred: peer for cross-provider independence)
 
@@ -12,9 +12,9 @@ mcp__codex__codex({
 })
 ```
 
-If the peer runtime is unavailable (e.g., Codex MCP not configured),
-fall back to a fresh Claude Agent subagent — same-provider review is
-weaker than cross-provider, so note this in the dev report:
+If the non-host peer runtime is unavailable, fall back to a fresh Agent
+subagent. Same-provider review is weaker than cross-provider review, so
+note this in the dev report:
 
 ```
 Agent({
@@ -26,21 +26,18 @@ Agent({
 
 ## Design notes (for the host reading this file)
 
-The prompt is tuned for Codex ergonomics first, with fallback Claude
-compatibility:
+The prompt is tuned for modern literal coding agents:
 
 - **ASCII status tags** (`[OK]`, `[MISSING]`, `[DEVIATES]`, `[SCOPE_CREEP]`)
   — more reliably emitted and parsed than emoji markers.
-- **Rule lists beat narrative prose** — Codex follows explicit
+- **Rule lists beat narrative prose** — current models follow explicit
   enumerated rules more tightly than paragraphs.
 - **Describe bugs, don't write patches** — under the flipped dev roles,
   the host applies fixes. Patch text from the reviewer is noise.
-- **Enumerated bug categories** — Codex is pattern-matching by training;
-  giving it the categories explicitly produces better signal than
-  asking it to "look for bugs."
-- **Strict output template + "no preamble" directive** — Codex tends
-  to add framing commentary unless explicitly told not to; the host
-  parses the verdict literally.
+- **Enumerated bug categories** — agents produce better signal when the
+  target categories are explicit.
+- **Strict output template + "no preamble" directive** — the host parses
+  the verdict literally, so extra framing is harmful.
 
 ## Prompt
 

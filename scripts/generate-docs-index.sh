@@ -4,7 +4,7 @@
 # Usage: bash scripts/generate-docs-index.sh
 #
 # Extracts YAML frontmatter from all docs/*/**/*.md and produces
-# a compact markdown table for AI session context injection.
+# a compact markdown table for on-demand agent reading.
 
 set -euo pipefail
 

@@ -1,15 +1,15 @@
 {
   "name": "heliohq",
-  "description": "Heliopause plugin registry",
+  "description": "Helio plugin registry",
   "owner": {
-    "name": "Heliopause",
-    "url": "https://www.ship.tech"
+    "name": "Helio",
+    "url": "https://www.helio.im/"
   },
   "plugins": [
     {
       "name": "ship",
-      "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
-      "version": "1.9.1",
+      "description": "An agent-routed harness for end-to-end software product development",
+      "version": "0.1.7",
       "source": "./"
     }
   ]

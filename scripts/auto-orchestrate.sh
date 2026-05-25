@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-# Ship auto orchestrator — code-based state machine for /ship:auto.
+# Ship auto orchestrator — code-based state machine for staged production work.
 #
 # All deterministic logic lives here: state management, artifact validation,
 # phase transitions, retry tracking, and prompt generation from templates.
@@ -16,8 +16,7 @@ set -u
 #   status [--json]          Print current state (debugging)
 
 _SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$(dirname "$_SCRIPT_DIR")}}"
-PR_READINESS_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/pr-readiness.sh"
+PR_READINESS_SCRIPT="${_SCRIPT_DIR}/pr-readiness.sh"
 if [ -f "$PR_READINESS_SCRIPT" ]; then
   source "$PR_READINESS_SCRIPT"
 fi
@@ -27,10 +26,11 @@ fi
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$REPO_ROOT"
 
-STATE_FILE=".ship/ship-auto.local.md"
-STATE_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/auto-state.sh"
-TASK_ID_SCRIPT="${SHIP_PLUGIN_ROOT}/scripts/task-id.sh"
-PROMPTS_DIR="${SHIP_PLUGIN_ROOT}/skills/auto/prompts"
+STATE_FILE="${SHIP_AUTO_STATE_FILE:-.ship/ship-auto.local.md}"
+export SHIP_AUTO_STATE_FILE="$STATE_FILE"
+STATE_SCRIPT="${_SCRIPT_DIR}/auto-state.sh"
+TASK_ID_SCRIPT="${_SCRIPT_DIR}/task-id.sh"
+PROMPTS_DIR="${_SCRIPT_DIR}/../skills/auto/prompts"
 
 MAX_RETRIES=3
 
@@ -71,6 +71,7 @@ emit_escalate() {
     task_id=$(state_get "task_id" 2>/dev/null || echo "unknown")
     local archive_dir=".ship/tasks/$task_id"
     mkdir -p "$archive_dir"
+    write_run_state "$task_id" "${phase:-unknown}" "blocked"
     mv "$STATE_FILE" "$archive_dir/ship-auto.escalated.md"
   fi
   emit "ACTION" "escalate"
@@ -88,6 +89,49 @@ emit_error() {
 state_get() { bash "$STATE_SCRIPT" get "$1"; }
 state_set() { bash "$STATE_SCRIPT" set "$1" "$2" > /dev/null; }
 state_bump() { bash "$STATE_SCRIPT" bump "$1" > /dev/null; }
+
+task_dir_for() {
+  printf '.ship/tasks/%s' "$1"
+}
+
+ensure_task_artifacts() {
+  local task_id="$1" description="$2" task_dir
+  task_dir=$(task_dir_for "$task_id")
+
+  mkdir -p \
+    "$task_dir/input/attachments" \
+    "$task_dir/control"
+
+  {
+    printf '# Requirement\n\n'
+    printf '## Original Input\n\n'
+    printf '%s\n' "$description"
+  } > "$task_dir/input/requirement.md"
+
+  {
+    printf 'task_id: %s\n' "$task_id"
+    printf 'source_type: user_request\n'
+    printf 'source_ref: conversation\n'
+    printf 'received_at: "%s"\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    printf 'input_artifacts:\n'
+    printf '  - path: input/requirement.md\n'
+    printf '    type: markdown\n'
+    printf '    role: raw_requirement\n'
+  } > "$task_dir/input/source.yaml"
+}
+
+write_run_state() {
+  local task_id="$1" phase="$2" status="${3:-running}" task_dir
+  task_dir=$(task_dir_for "$task_id")
+  mkdir -p "$task_dir/control"
+  {
+    printf 'task_id: %s\n' "$task_id"
+    printf 'active: %s\n' "$( [ "$status" = "running" ] && echo "true" || echo "false" )"
+    printf 'current_phase: %s\n' "$phase"
+    printf 'status: %s\n' "$status"
+    printf 'updated_at: "%s"\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  } > "$task_dir/control/run_state.yaml"
+}
 
 # Detect whether the task is refactor-shaped based on the leading verb
 # of the description. Conservative: only mode-shifts on clear signals,
@@ -131,7 +175,7 @@ current_branch() {
 
 resolve_session_id() {
   local sid
-  sid="$(cat .ship/session-id.local 2>/dev/null || printf '%s' "${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-unknown}}}")"
+  sid="${SHIP_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_SESSION_ID:-}}}"
   sid="$(printf '%s' "$sid" | tr -d '\r\n')"
   [ -n "$sid" ] || sid="unknown"
   printf '%s' "$sid"
@@ -268,10 +312,9 @@ validate_artifacts() {
         ship_pr_handoff_ready "$REPO_ROOT" "$branch" || return 1
       fi
       ;;
-    simplify)
-      file_exists_nonempty "$task_dir/simplify.md" || { echo "simplify.md missing or empty"; return 1; }
+    refactor)
+      file_exists_nonempty "$task_dir/refactor.md" || { echo "refactor.md missing or empty"; return 1; }
       ;;
-    learn) ;;
   esac
   return 0
 }
@@ -332,10 +375,8 @@ phase_template() {
     qa_recheck)       echo "qa-recheck" ;;
     e2e)              echo "e2e" ;;
     e2e_recheck)      echo "e2e-recheck" ;;
-    simplify)         echo "simplify" ;;
-    # simplify_verify removed — simplify handles its own verification
+    refactor)         echo "refactor" ;;
     handoff)          echo "handoff" ;;
-    learn)            echo "learn" ;;
     *)                echo "" ;;
   esac
 }
@@ -404,6 +445,7 @@ cmd_init() {
   scope_mode=$(detect_scope_mode "$description")
 
   mkdir -p .ship
+  ensure_task_artifacts "$task_id" "$description" "$scope_mode"
   cat > "$STATE_FILE" <<EOF
 ---
 active: true
@@ -421,6 +463,7 @@ started_at: "$started_at"
 
 $description
 EOF
+  write_run_state "$task_id" "design" "running"
 
   init_local_retries
 
@@ -448,6 +491,7 @@ cmd_resume() {
   local session_id
   session_id=$(resolve_session_id)
   state_set "session_id" "$session_id"
+  write_run_state "$task_id" "$phase" "running"
 
   if ! git rev-parse --verify --quiet "$branch" >/dev/null 2>&1; then
     emit_error "Task branch '$branch' not found. Cannot resume."
@@ -524,7 +568,6 @@ cmd_complete() {
       summary="Artifact validation failed: $validation_err"
     fi
   fi
-
   # Deterministic override: if the relay says review passed but review.md
   # contains P1/P2 findings, force the verdict to "findings".
   if [ "$phase" = "review" ] && [ "$verdict" = "success" ]; then
@@ -541,6 +584,7 @@ cmd_complete() {
       # execution drill). Artifact validation already checks spec quality and peer
       # eval completeness. No separate evaluator needed.
       state_set "phase" "dev"
+      write_run_state "$task_id" "dev" "running"
       state_set "pre_dev_sha" "$(current_head)"
       local pf; pf=$(generate_prompt "dev")
       emit_dispatch "dev" "$pf" "[Auto] Design complete. Starting dev..."
@@ -549,6 +593,7 @@ cmd_complete() {
 
     dev:success)
       state_set "phase" "e2e"
+      write_run_state "$task_id" "e2e" "running"
       local pf; pf=$(generate_prompt "e2e")
       emit_dispatch "e2e" "$pf" "[Auto] Dev complete. Writing E2E tests..."
       ;;
@@ -556,15 +601,17 @@ cmd_complete() {
 
     review:success)
       state_set "phase" "qa"
+      write_run_state "$task_id" "qa" "running"
       local pf; pf=$(generate_prompt "qa")
       emit_dispatch "qa" "$pf" "[Auto] Review clean. Starting QA..."
       ;;
     review:findings)
       local round; round=$(state_get "review_fix_round")
       if [ "${round:-0}" -ge "$MAX_RETRIES" ]; then
-        dispatch_learn_then_escalate "Review fix exhausted after $MAX_RETRIES rounds. $summary"
+        emit_retry_exhausted_escalation "Review fix exhausted after $MAX_RETRIES rounds. $summary"
       else
         state_set "phase" "review_fix"
+        write_run_state "$task_id" "review_fix" "running"
         local ff_arg=""
         [ -n "$findings_file" ] && [ -f "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         [ -z "$ff_arg" ] && [ -f "$task_dir/review.md" ] && ff_arg="--findings-file=$task_dir/review.md"
@@ -581,6 +628,7 @@ cmd_complete() {
 
     dev_fix:success|review_fix:success)
       state_set "phase" "review"
+      write_run_state "$task_id" "review" "running"
       local pf; pf=$(generate_prompt "review")
       emit_dispatch "review" "$pf" "[Auto] Review fixes applied. Re-reviewing..."
       ;;
@@ -588,7 +636,7 @@ cmd_complete() {
       state_bump "review_fix_round"
       local round; round=$(state_get "review_fix_round")
       if [ "$round" -ge "$MAX_RETRIES" ]; then
-        dispatch_learn_then_escalate "Review fix failed after $MAX_RETRIES rounds. $summary"
+        emit_retry_exhausted_escalation "Review fix failed after $MAX_RETRIES rounds. $summary"
       else
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
@@ -599,17 +647,19 @@ cmd_complete() {
       ;;
 
     qa:success|qa:skip)
-      state_set "phase" "simplify"
-      state_set "pre_simplify_sha" "$(current_head)"
-      local pf; pf=$(generate_prompt "simplify")
-      emit_dispatch "simplify" "$pf" "[Auto] QA passed. Running simplify..."
+      state_set "phase" "refactor"
+      write_run_state "$task_id" "refactor" "running"
+      state_set "pre_refactor_sha" "$(current_head)"
+      local pf; pf=$(generate_prompt "refactor")
+      emit_dispatch "refactor" "$pf" "[Auto] QA passed. Running refactor cleanup..."
       ;;
     qa:fail)
       local round; round=$(state_get "qa_fix_round")
       if [ "${round:-0}" -ge "$MAX_RETRIES" ]; then
-        dispatch_learn_then_escalate "QA fix exhausted after $MAX_RETRIES rounds. $summary"
+        emit_retry_exhausted_escalation "QA fix exhausted after $MAX_RETRIES rounds. $summary"
       else
         state_set "phase" "qa_fix"
+        write_run_state "$task_id" "qa_fix" "running"
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         local pf; pf=$(generate_prompt "dev-fix" ${ff_arg:+"$ff_arg"})
@@ -626,6 +676,7 @@ cmd_complete() {
       # flag tells the e2e:success handler to route to qa-recheck rather than
       # back to review (which already passed earlier in the pipeline).
       state_set "phase" "e2e"
+      write_run_state "$task_id" "e2e" "running"
       state_set "post_qa_fix" "true"
       local pf; pf=$(generate_prompt "e2e-recheck")
       emit_dispatch "e2e" "$pf" "[Auto] QA fixes applied. Running E2E regression gate..."
@@ -634,7 +685,7 @@ cmd_complete() {
       state_bump "qa_fix_round"
       local round; round=$(state_get "qa_fix_round")
       if [ "$round" -ge "$MAX_RETRIES" ]; then
-        dispatch_learn_then_escalate "QA fix failed after $MAX_RETRIES rounds. $summary"
+        emit_retry_exhausted_escalation "QA fix failed after $MAX_RETRIES rounds. $summary"
       else
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
@@ -650,11 +701,13 @@ cmd_complete() {
         # QA recheck so the human-like exploratory sweep confirms the fix.
         state_set "post_qa_fix" "false"
         state_set "phase" "qa"
+        write_run_state "$task_id" "qa" "running"
         local pf; pf=$(generate_prompt "qa-recheck")
         emit_dispatch "qa" "$pf" "[Auto] E2E regression gate passed. Re-running QA..."
       else
         # Normal forward flow: fresh e2e after dev → review.
         state_set "phase" "review"
+        write_run_state "$task_id" "review" "running"
         local pf; pf=$(generate_prompt "review")
         emit_dispatch "review" "$pf" "[Auto] E2E tests green. Starting review..."
       fi
@@ -662,9 +715,10 @@ cmd_complete() {
     e2e:fail)
       local round; round=$(state_get "e2e_fix_round")
       if [ "${round:-0}" -ge "$MAX_RETRIES" ]; then
-        dispatch_learn_then_escalate "E2E fix exhausted after $MAX_RETRIES rounds. $summary"
+        emit_retry_exhausted_escalation "E2E fix exhausted after $MAX_RETRIES rounds. $summary"
       else
         state_set "phase" "e2e_fix"
+        write_run_state "$task_id" "e2e_fix" "running"
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
         [ -z "$ff_arg" ] && [ -f "$task_dir/e2e/report.md" ] && ff_arg="--findings-file=$task_dir/e2e/report.md"
@@ -676,6 +730,7 @@ cmd_complete() {
 
     e2e_fix:success)
       state_set "phase" "e2e"
+      write_run_state "$task_id" "e2e" "running"
       local pf; pf=$(generate_prompt "e2e-recheck")
       emit_dispatch "e2e" "$pf" "[Auto] E2E fixes applied. Re-testing..."
       ;;
@@ -683,7 +738,7 @@ cmd_complete() {
       state_bump "e2e_fix_round"
       local round; round=$(state_get "e2e_fix_round")
       if [ "$round" -ge "$MAX_RETRIES" ]; then
-        dispatch_learn_then_escalate "E2E fix failed after $MAX_RETRIES rounds. $summary"
+        emit_retry_exhausted_escalation "E2E fix failed after $MAX_RETRIES rounds. $summary"
       else
         local ff_arg=""
         [ -n "$findings_file" ] && ff_arg="--findings-file=$findings_file"
@@ -693,36 +748,25 @@ cmd_complete() {
       fi
       ;;
 
-    simplify:success)
-      # Simplify handles its own verification internally (runs tests after changes,
-      # reverts if broken). simplify.md must exist (validated above).
+    refactor:success)
+      # Refactor handles its own verification internally (runs tests after changes,
+      # reverts if broken). refactor.md must exist (validated above).
       state_set "phase" "handoff"
+      write_run_state "$task_id" "handoff" "running"
       local pf; pf=$(generate_prompt "handoff")
-      emit_dispatch "handoff" "$pf" "[Auto] Simplify done. Starting handoff..."
+      emit_dispatch "handoff" "$pf" "[Auto] Refactor done. Starting handoff..."
       ;;
-    simplify:fail|simplify:blocked|simplify:skip)
-      # No skip allowed — simplify must always produce simplify.md.
+    refactor:fail|refactor:blocked|refactor:skip)
+      # No skip allowed — refactor must always produce refactor.md.
       # Even if nothing changed, the agent should write a brief summary.
-      retry_or_escalate "simplify" "$summary"
+      retry_or_escalate "refactor" "$summary"
       ;;
 
     handoff:success)
-      state_set "phase" "learn"
-      local pf; pf=$(generate_prompt "learn" "--outcome=completed")
-      emit_dispatch "learn" "$pf" "[Auto] Handoff complete. Capturing learnings..."
+      write_run_state "$task_id" "handoff" "complete"
+      emit_done "[Auto] Workflow complete. $summary"
       ;;
     handoff:fail|handoff:blocked) retry_or_escalate "handoff" "$summary" ;;
-
-    learn:*)
-      local esc_reason esc_phase
-      esc_reason=$(state_get "escalation_reason")
-      esc_phase=$(state_get "escalation_phase")
-      if [ -n "$esc_reason" ]; then
-        emit_escalate "$esc_reason" "$esc_phase"
-      else
-        emit_done "[Auto] Pipeline complete. $summary"
-      fi
-      ;;
 
     *) emit_error "Unknown phase:verdict combination: ${phase}:${verdict}" ;;
   esac
@@ -734,24 +778,23 @@ retry_or_escalate() {
   local count
   count=$(get_retry_count "$phase")
   if [ "$count" -ge "$MAX_RETRIES" ]; then
-    dispatch_learn_then_escalate "$phase blocked after $MAX_RETRIES retries. $reason"
+    emit_escalate "$phase blocked after $MAX_RETRIES retries. $reason" "$phase"
   else
     local template pf
     template=$(phase_template "$phase")
     pf=$(generate_prompt "$template" "--extra=$reason")
+    local task_id
+    task_id=$(state_get "task_id")
+    write_run_state "$task_id" "$phase" "running"
     emit_dispatch "$phase" "$pf" "[Auto] Retrying $phase (attempt $count/$MAX_RETRIES)..."
   fi
 }
 
-dispatch_learn_then_escalate() {
+emit_retry_exhausted_escalation() {
   local reason="$1"
   local orig_phase
   orig_phase=$(state_get "phase")
-  state_set "phase" "learn"
-  state_set "escalation_reason" "$reason"
-  state_set "escalation_phase" "$orig_phase"
-  local pf; pf=$(generate_prompt "learn" "--outcome=escalated at $orig_phase")
-  emit_dispatch "learn" "$pf" "[Auto] Capturing learnings before escalation..."
+  emit_escalate "$reason" "$orig_phase"
 }
 
 # ── STATUS Command ──────────────────────────────────────────

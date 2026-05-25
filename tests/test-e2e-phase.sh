@@ -3,8 +3,8 @@ set -u
 
 # ── Regression tests for the new e2e phase in auto-orchestrate.sh ──
 # Covers the three behaviors introduced alongside skills/e2e/:
-#   1. Forward pipeline reorder: dev→e2e→review, qa_pass→simplify,
-#      simplify→handoff (e2e slots between dev and review).
+#   1. Forward pipeline reorder: dev→e2e→review, qa_pass→refactor,
+#      refactor→handoff (e2e slots between dev and review).
 #   2. e2e phase machinery: e2e/e2e_fix/e2e_recheck in cmd_complete,
 #      e2e_fix_round state key, artifact validation accepting SKIP.
 #   3. Regression gate after qa_fix: qa_fix:success routes through e2e
@@ -90,7 +90,7 @@ reset_state() {
 # validate_artifacts is satisfied.
 seed_through_dev() {
   local task_desc="$1"
-  OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "$task_desc" 2>/dev/null)
+  OUT=$(bash "$ORCH" init "$task_desc" 2>/dev/null)
   TASK_ID=$(get_state task_id)
   TASK_DIR=".ship/tasks/$TASK_ID"
   mkdir -p "$TASK_DIR/plan"
@@ -121,10 +121,10 @@ reset_state
 seed_through_dev "reorder: dev routes to e2e"
 
 # Advance through design:success first, then make a commit so dev validation sees a diff
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="3 stories" >/dev/null 2>&1
+bash "$ORCH" complete design --verdict=success --summary="3 stories" >/dev/null 2>&1
 make_dummy_commit
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete dev --verdict=success --summary="3/3 done" 2>/dev/null)
+OUT=$(bash "$ORCH" complete dev --verdict=success --summary="3/3 done" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -138,7 +138,7 @@ echo ""
 echo "▸ Test B: e2e:success (fresh) dispatches review"
 
 # e2e artifacts not required unless e2e/ dir exists, so SKIP-style is fine
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="suite green" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=success --summary="suite green" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -148,11 +148,11 @@ assert_eq "post_qa_fix still false" "false" "$(get_state post_qa_fix)"
 
 echo ""
 
-# ── Test C: Pipeline reorder — qa:success → simplify ────────
-echo "▸ Test C: qa:success dispatches simplify (was e2e)"
+# ── Test C: Pipeline reorder — qa:success → refactor ────────
+echo "▸ Test C: qa:success dispatches refactor (was e2e)"
 reset_state
-seed_through_dev "reorder: qa routes to simplify"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
+seed_through_dev "reorder: qa routes to refactor"
+bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
 make_dummy_commit
 # Fast-forward to qa; set up review + qa report for validation
 set_state phase qa
@@ -160,12 +160,12 @@ echo "# Review" > "$TASK_DIR/review.md"
 mkdir -p "$TASK_DIR/qa"
 echo "PASS" > "$TASK_DIR/qa/browser-report.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa --verdict=success --summary="all pass" 2>/dev/null)
+OUT=$(bash "$ORCH" complete qa --verdict=success --summary="all pass" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "qa:success action is dispatch" "dispatch" "$ACTION"
-assert_eq "qa:success phase is simplify" "simplify" "$PHASE"
-assert_eq "state advanced to simplify" "simplify" "$(get_state phase)"
+assert_eq "qa:success phase is refactor" "refactor" "$PHASE"
+assert_eq "state advanced to refactor" "refactor" "$(get_state phase)"
 
 echo ""
 
@@ -173,11 +173,11 @@ echo ""
 echo "▸ Test D: e2e:skip (no e2e/ dir) validates OK"
 reset_state
 seed_through_dev "e2e skip honored"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
 make_dummy_commit
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete dev --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete dev --verdict=success --summary="ok" >/dev/null 2>&1
 # No e2e/ directory created — skip case
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=skip --summary="docs-only" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=skip --summary="docs-only" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "e2e:skip action is dispatch" "dispatch" "$ACTION"
@@ -189,14 +189,14 @@ echo ""
 echo "▸ Test E: e2e:success with empty e2e/ dir → validation fails → e2e_fix"
 reset_state
 seed_through_dev "e2e report required"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
 make_dummy_commit
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete dev --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete dev --verdict=success --summary="ok" >/dev/null 2>&1
 # e2e/ dir exists but no report.md → validation converts success→fail,
 # which enters the e2e_fix loop (by design: a claimed-pass with missing
 # artifact is treated as a real failure, not a simple retry).
 mkdir -p "$TASK_DIR/e2e"
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="claimed pass" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=success --summary="claimed pass" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "validation failure → dispatch" "dispatch" "$ACTION"
@@ -206,7 +206,7 @@ assert_eq "state is e2e_fix" "e2e_fix" "$(get_state phase)"
 # Writing the report makes a fresh success stick — move back to e2e first
 set_state phase e2e
 echo "# E2E report" > "$TASK_DIR/e2e/report.md"
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="now with report" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=success --summary="now with report" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "with report: advances to review" "review" "$PHASE"
 
@@ -216,14 +216,14 @@ echo ""
 echo "▸ Test F: e2e:fail → e2e_fix; e2e_fix:fail bumps round"
 reset_state
 seed_through_dev "e2e fix loop"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
 make_dummy_commit
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete dev --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete dev --verdict=success --summary="ok" >/dev/null 2>&1
 
 mkdir -p "$TASK_DIR/e2e"
 echo "# E2E FAIL: selector drift" > "$TASK_DIR/e2e/report.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=fail --summary="login.spec failing" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=fail --summary="login.spec failing" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "e2e:fail action is dispatch" "dispatch" "$ACTION"
 assert_eq "e2e:fail phase is e2e_fix" "e2e_fix" "$PHASE"
@@ -231,13 +231,13 @@ assert_eq "state is e2e_fix" "e2e_fix" "$(get_state phase)"
 assert_eq "e2e_fix_round stays 0 (bumps on fix fail)" "0" "$(get_state e2e_fix_round)"
 
 # Fix fails → round bumps
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e_fix --verdict=fail --summary="still broken" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e_fix --verdict=fail --summary="still broken" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "e2e_fix:fail action is dispatch" "dispatch" "$ACTION"
 assert_eq "e2e_fix_round bumped to 1" "1" "$(get_state e2e_fix_round)"
 
 # Fix success → re-e2e with recheck template
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e_fix --verdict=success --summary="fixed" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e_fix --verdict=success --summary="fixed" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "e2e_fix:success → back to e2e" "e2e" "$PHASE"
 if [ -f "$PROMPT_FILE" ]; then
@@ -250,7 +250,7 @@ echo ""
 echo "▸ Test G: qa_fix:success → e2e (not qa-recheck) with post_qa_fix=true"
 reset_state
 seed_through_dev "qa fix regression gate"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
 make_dummy_commit
 # Jump to qa_fix
 set_state phase qa_fix
@@ -258,7 +258,7 @@ echo "# Review" > "$TASK_DIR/review.md"
 mkdir -p "$TASK_DIR/qa"
 echo "FAIL: item" > "$TASK_DIR/qa/report.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa_fix --verdict=success --summary="fix applied" 2>/dev/null)
+OUT=$(bash "$ORCH" complete qa_fix --verdict=success --summary="fix applied" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "qa_fix:success action is dispatch" "dispatch" "$ACTION"
 assert_eq "qa_fix:success phase is e2e (regression gate)" "e2e" "$PHASE"
@@ -275,7 +275,7 @@ echo ""
 echo "▸ Test H: e2e:success after qa_fix routes to qa-recheck and clears flag"
 
 # Still at state phase=e2e, post_qa_fix=true from Test G
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="regression green" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=success --summary="regression green" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "e2e:success action is dispatch" "dispatch" "$ACTION"
 assert_eq "phase is qa (not review)" "qa" "$PHASE"
@@ -291,7 +291,7 @@ echo ""
 echo "▸ Test I: post_qa_fix survives e2e_fix loop back to e2e:success → qa-recheck"
 reset_state
 seed_through_dev "regression gate with e2e fix"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
+bash "$ORCH" complete design --verdict=success --summary="ok" >/dev/null 2>&1
 make_dummy_commit
 set_state phase qa_fix
 echo "# Review" > "$TASK_DIR/review.md"
@@ -299,23 +299,23 @@ mkdir -p "$TASK_DIR/qa"
 echo "FAIL" > "$TASK_DIR/qa/report.md"
 
 # qa_fix:success sets post_qa_fix=true and routes to e2e
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa_fix --verdict=success --summary="fix" >/dev/null 2>&1
+bash "$ORCH" complete qa_fix --verdict=success --summary="fix" >/dev/null 2>&1
 assert_eq "flag set after qa_fix" "true" "$(get_state post_qa_fix)"
 
 # Regression gate e2e fails → e2e_fix
 mkdir -p "$TASK_DIR/e2e"
 echo "# FAIL" > "$TASK_DIR/e2e/report.md"
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=fail --summary="regression found" >/dev/null 2>&1
+bash "$ORCH" complete e2e --verdict=fail --summary="regression found" >/dev/null 2>&1
 assert_eq "phase is e2e_fix" "e2e_fix" "$(get_state phase)"
 assert_eq "flag preserved during e2e_fix" "true" "$(get_state post_qa_fix)"
 
 # e2e_fix:success → back to e2e (recheck)
-SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e_fix --verdict=success --summary="e2e fixed" >/dev/null 2>&1
+bash "$ORCH" complete e2e_fix --verdict=success --summary="e2e fixed" >/dev/null 2>&1
 assert_eq "phase back to e2e for recheck" "e2e" "$(get_state phase)"
 assert_eq "flag still preserved" "true" "$(get_state post_qa_fix)"
 
 # e2e:success → because flag is true, route to qa-recheck, clear flag
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="green" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=success --summary="green" 2>/dev/null)
 parse_output "$OUT"
 assert_eq "eventual e2e:success → qa" "qa" "$PHASE"
 assert_eq "flag cleared at end" "false" "$(get_state post_qa_fix)"

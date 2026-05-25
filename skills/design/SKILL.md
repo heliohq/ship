@@ -2,13 +2,9 @@
 name: design
 version: 1.4.0
 description: >
-  Adversarial pre-coding planning: the host agent and a peer agent independently
-  investigate the codebase, diff specs, and validate the final plan with an execution
-  drill. Use when: "plan this", "design the approach", "how should we implement",
-  "write a plan", "scope the work", "what's the best approach", or any task that needs
-  investigation and planning before writing code. This is the default for tasks that
-  need a plan but not the full pipeline. Note: this is for implementation planning,
-  NOT visual design (use /ship:visual-design) or full pipeline execution (use /ship:auto).
+  Plan implementation before coding: investigate the repo, write spec and plan,
+  and validate with a peer. Use for "plan", "design approach", "scope", or any
+  coding task needing a plan. Not visual/system design or full /ship:auto.
 allowed-tools:
   - Bash
   - Read
@@ -23,14 +19,6 @@ allowed-tools:
   - mcp__codex__codex-reply
 ---
 
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=design source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
-
 # Ship: Design
 
 You ARE the planner. You read code, investigate, write spec and plan.
@@ -40,7 +28,7 @@ independently and produces its own spec for adversarial comparison.
 
 ## Runtime Resolution
 
-See `../shared/runtime-resolution.md` for the host/peer concept and
+See `../.shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:design, the peer plays two roles:
 **investigator** (Phase 2) and **drill agent** (Phase 6). Both use the
 same dispatch pattern from the shared reference.
@@ -172,9 +160,10 @@ TodoWrite([
 ### Task ID
 
 1. If invoked by /ship:auto, the task_id is provided.
-2. If invoked standalone, generate `task_id` using the shared script:
+2. If invoked standalone, resolve the bundled `../../scripts/task-id.sh` path
+   relative to this skill file and generate `task_id` with it:
    ```bash
-   TASK_ID=$(bash "${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}/scripts/task-id.sh" "<description>")
+   TASK_ID=$(bash "../../scripts/task-id.sh" "<description>")
    ```
 
 Artifacts go to `.ship/tasks/<task_id>/plan/`. The Write tool creates
@@ -281,7 +270,7 @@ code evidence was cited during debate, and the final disposition
     Record the user's ruling in diff-report.md with disposition
     `user-resolved` and what they decided. Update spec.md accordingly.
   - **/ship:auto mode:** do NOT ask user. Treat escalated items as BLOCKED
-    and return. Auto owns the only user-approval gate.
+    and return. `/ship:auto` owns the only user-approval gate.
 - If diff reveals a critical investigation gap (e.g., the peer found
   important code you missed entirely), go back to Phase 2 for
   targeted re-investigation. Maximum 1 re-investigation loop.
@@ -373,7 +362,7 @@ best available independent review. Add a warning:
 ### Execution Handoff
 
 Verify `spec.md` and `plan.md` are non-empty on disk, then output the report card
-(read `skills/shared/report-card.md` for the standard format):
+(read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Design] Report Card
@@ -401,7 +390,7 @@ Verify `spec.md` and `plan.md` are non-empty on disk, then output the report car
 | .ship/tasks/<task_id>/plan/diff-report.md | Divergence resolutions |
 
 ### Next Steps
-1. **Full pipeline (recommended)** — /ship:auto to implement, review, QA, and ship
+1. **Full workflow (recommended)** — /ship:auto to implement, review, QA, refactor, and ship
 2. **Implement only** — /ship:dev to execute this plan
 3. **Review the plan** — read the artifacts and give feedback
 ```

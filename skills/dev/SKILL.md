@@ -2,15 +2,9 @@
 name: dev
 version: 0.6.0
 description: >
-  Execute implementation stories from a plan via parallel waves. Host (Claude) is the
-  primary implementer; peer (Codex) is the independent reviewer. Dependency analysis
-  groups file-independent stories into waves that can run in parallel on the current
-  branch — single-story waves are implemented by the host; multi-story waves dispatch
-  Claude Agent subagents in parallel. Each story is reviewed by the peer before the
-  wave advances. Use when: "implement this plan", "execute the stories", "code this up",
-  "build from the plan", or when a plan/stories already exist and need implementation.
-  Note: if no plan exists yet, use /ship:design first. For the full pipeline
-  (plan → code → e2e → review → QA → ship), use /ship:auto.
+  Implement from a spec or plan: extract stories, build in safe waves, test,
+  commit, and get peer review per story. Use for "implement", "build/code this
+  plan", or targeted fix findings. If no plan exists, use /ship:design first.
 allowed-tools:
   - Bash
   - Read
@@ -25,14 +19,6 @@ allowed-tools:
   - mcp__codex__codex-reply
 ---
 
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=dev source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
-
 # Ship: Implement
 
 ```
@@ -42,22 +28,24 @@ EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
 
 ## Runtime Resolution
 
-See `../shared/runtime-resolution.md` for the host/peer concept and
+See `../.shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:dev, the **host is the primary implementer**
-and the **peer (Codex when host is Claude, vice versa) is the independent
-reviewer** — cross-validation across providers.
+and the **peer is the independent reviewer**. Prefer a non-host provider
+for cross-model validation; if unavailable, use a fresh same-provider
+session and record the weaker independence in the report.
 
 Two wave shapes, different dispatch patterns:
 
 | Wave shape | Implementer | Reviewer | Fix-round owner |
 |---|---|---|---|
-| **Single-story** (most common) | Host (you), on current branch | Peer via `mcp__codex__codex` | Host — you apply fixes directly |
-| **Multi-story parallel** | Fresh Claude Agent subagents per story, all on the current branch (dependency analysis guarantees their file scopes don't overlap — no worktrees needed) | Peer per story | Fresh Claude Agent subagent dispatch — whoever implemented a story is who fixes it |
+| **Single-story** (most common) | Host (you), on current branch | Peer agent | Host — you apply fixes directly |
+| **Multi-story parallel** | Fresh Agent subagents per story, all on the current branch (dependency analysis guarantees their file scopes don't overlap — no worktrees needed) | Peer per story | Fresh Agent subagent dispatch — whoever implemented a story is who fixes it |
 | **Fix mode** (/ship:auto review_fix/qa_fix/e2e_fix dispatch) | Host — you | (next phase re-runs its own verification) | Host — you apply fixes directly |
 
 The independence contract — reviewer MUST differ from implementer —
-is met two ways: different provider (Codex ≠ Claude) AND different
-session. Both hold across all wave shapes.
+is strongest when it uses a different provider and a different session.
+If only same-provider dispatch is available, use a fresh session and
+make the limitation explicit.
 
 The fix-routing rule — **whoever implemented, fixes** — keeps context
 tight. The implementer knows what they built and why; asking someone
@@ -68,9 +56,9 @@ else to fix their code loses that context.
 | Role | Who |
 |------|-----|
 | Orchestrator + primary implementer | **You (host agent)** — implement directly in single-story waves and fix mode |
-| Parallel implementer | **Fresh Claude Agent subagent** — only in multi-story parallel waves, all on current branch (dependency analysis prevents file overlap) |
-| Reviewer | **Peer agent (Codex)** — fresh dispatch per story |
-| Multi-story fixer | **Fresh Claude Agent subagent** — dispatched when a sub-agent-implemented story needs a fix; "whoever implemented, fixes" |
+| Parallel implementer | **Fresh Agent subagent** — only in multi-story parallel waves, all on current branch (dependency analysis prevents file overlap) |
+| Reviewer | **Peer agent** — fresh dispatch per story |
+| Multi-story fixer | **Fresh Agent subagent** — dispatched when a sub-agent-implemented story needs a fix; "whoever implemented, fixes" |
 
 ## Quality Gates
 
@@ -84,7 +72,7 @@ else to fix their code loses that context.
 ## Red Flag
 
 **Never:**
-- Skip the peer review — every story goes through Codex (or fallback)
+- Skip the peer review — every story goes through peer review (or fallback)
   before the wave merges. This is the only cross-validation in the
   pipeline until /ship:review runs.
 - Parallelize stories that share files without dependency analysis
@@ -250,7 +238,7 @@ operate in fix mode instead of the full wave loop:
 
 Fix mode skips: wave construction, full pattern-reference inventory,
 dependency analysis, story-based peer review. The fixes are re-validated
-by Auto's next-phase dispatch (`/ship:review`, `/ship:qa`, or the
+by `/ship:auto`'s next-phase dispatch (`/ship:review`, `/ship:qa`, or the
 `post_qa_fix → e2e-recheck` gate), not by dev's internal reviewer.
 
 Return: which findings were fixed, what verification ran, any remaining
@@ -289,7 +277,7 @@ and TEST_CMD, then write the code in the current branch. Commit using
 Conventional Commits as you go. Run `TEST_CMD` before declaring the
 story complete.
 
-**Multi-story parallel wave — dispatch Claude Agent subagents in parallel.**
+**Multi-story parallel wave — dispatch Agent subagents in parallel.**
 
 You cannot fork yourself, so multi-story parallelism needs sub-agents.
 Dispatch one Agent per story, all in a single message so they run in
@@ -321,10 +309,10 @@ Proceed to **Step B**. A story is only complete when peer review returns PASS.
 
 ### Step B: Review (peer cross-validation)
 
-Dispatch the peer (Codex) using the prompt template in
-`reviewer-prompt.md`. Fill all placeholders (story number, commit SHAs
-or file list from Step A, TEST_CMD, spec requirements, story text)
-before dispatch.
+Dispatch the peer using the prompt template in `reviewer-prompt.md`.
+Prefer the non-host provider when available. Fill all placeholders
+(story number, commit SHAs or file list from Step A, TEST_CMD, spec
+requirements, story text) before dispatch.
 
 ```
 mcp__codex__codex({
@@ -333,10 +321,9 @@ mcp__codex__codex({
 })
 ```
 
-**Fallback if Codex is unavailable**: dispatch a fresh Claude Agent
-(`subagent_type: "general-purpose"`) with the same prompt. Independence
-is weaker (same provider) but better than no review — note this in the
-report.
+**Fallback if the non-host peer is unavailable**: dispatch a fresh Agent
+session with the same prompt. Independence is weaker when the provider is
+the same, but still better than no review — note this in the report.
 
 After the reviewer returns, read the verdict:
 - **PASS** → proceed to Step D.
@@ -476,12 +463,12 @@ story.
 
 ═══ Wave 1 (parallel, 2 stories, same branch) ═══════════
 
-[Dev] WAVE_BASE_SHA = abc1234. Dispatching 2 Claude Agent subagents
+[Dev] WAVE_BASE_SHA = abc1234. Dispatching 2 Agent subagents
       in parallel (same cwd — dependency analysis says their files
       don't overlap).
       Story 1 subagent: DONE — edited models/user.ts, committed abc5
       Story 2 subagent: DONE — edited models/product.ts, committed abc6
-[Dev] Peer (Codex) reviews each story's commits — both PASS.
+[Dev] Peer reviews each story's commits — both PASS.
 
 ═══ Wave 2 (parallel, 2 stories) ═══════════════════════
 
@@ -516,7 +503,7 @@ story.
 | Reviewer FAIL, rounds < 2 | Fix is applied by whoever implemented (host or fresh sub-agent) → fresh peer re-review |
 | Reviewer FAIL, rounds exhausted | Escalate BLOCKED with findings |
 | Reviewer malformed output | Re-dispatch peer reviewer once with format reminder; treat second failure as FAIL |
-| Reviewer unavailable (Codex down) | Fall back to fresh Claude Agent reviewer; note weaker independence in report |
+| Peer reviewer unavailable | Fall back to fresh Agent reviewer; note weaker independence in report |
 | Sub-agent implementer (multi-story wave) reports BLOCKED or NEEDS_CONTEXT | Escalate to caller |
 | Sub-agent implementer reports DONE_WITH_CONCERNS | Log concerns, proceed to review |
 | Sub-agent implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
@@ -525,7 +512,7 @@ story.
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Dev] Report Card
@@ -552,5 +539,5 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 ### Next Steps
 1. **Review (recommended)** — /ship:review to review the full diff
 2. **QA** — /ship:qa to test the running application
-3. **Full pipeline** — /ship:auto to review, QA, and ship
+3. **Full workflow** — /ship:auto to review, QA, refactor, and ship
 ```

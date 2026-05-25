@@ -1,13 +1,9 @@
 ---
 name: arch-design
 description: >
-  System architecture and design thinking — requirements analysis, component design,
-  data modeling, scaling strategy, and trade-off analysis. Use when: "design this system",
-  "what's the architecture for", "trade-offs for X", "how should we architect",
-  "system design for", "API design", "data model for", "service boundaries",
-  "architecture doc", "create an ADR". When the design thinking is done, this skill
-  hands off to /ship:write-docs to write the design document. Note: this is NOT for
-  visual design (use /ship:visual-design) or implementation planning (use /ship:design).
+  Think through architecture, API/data design, service boundaries, trade-offs,
+  and assumptions. Use for system design, ADRs, API plans, and architecture docs;
+  then hand off to /ship:write-docs. Not visual or implementation planning.
 ---
 
 # Architectural Design
@@ -123,7 +119,7 @@ When the design thinking is complete, invoke `Skill("write-docs")` to write the 
 
 ## Execution Handoff
 
-After writing the doc via write-docs, output the report card (read `skills/shared/report-card.md` for the standard format):
+After writing the doc via write-docs, output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Arch Design] Report Card
@@ -142,6 +138,6 @@ After writing the doc via write-docs, output the report card (read `skills/share
 
 ### Next Steps
 1. **Write the doc (required)** — /ship:write-docs with category design
-2. **Full pipeline** — /ship:auto to implement the design
+2. **Full workflow** — /ship:auto to implement the design
 3. **Plan implementation** — /ship:design to create executable stories
 ```

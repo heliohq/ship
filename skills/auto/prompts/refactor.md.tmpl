@@ -1,13 +1,13 @@
-You must use Skill('ship:refactor'). If Skill('ship:refactor') is unavailable, use Skill('ship:simplify') instead.
+You must use Skill('ship:refactor').
 Skip preamble and auth gate.
 
 Do behavior-preserving cleanup on files changed in this task.
 After making changes, run the repo's test command to verify nothing broke.
 If tests fail after your changes, revert them.
 
-You MUST always write {{TASK_DIR}}/simplify.md with a summary of what was done.
+You MUST always write {{TASK_DIR}}/refactor.md with a summary of what was done.
 Even if no changes were needed, write a brief explanation of why the code is already clean.
 
 Scope: files changed on this branch (use git diff origin/HEAD...HEAD --name-only)
 task_dir: {{TASK_DIR}}
-Mode: /ship:auto pipeline — no user questions.
+Mode: /ship:auto staged workflow — no user questions.

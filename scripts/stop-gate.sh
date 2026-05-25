@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -u
-# Ship auto stop gate — Ralph-style outer verifier for /ship:auto.
+# Ship workflow stop gate — outer verifier for /ship:auto.
 #
 # Logic:
 #   1. No active auto state → allow exit
@@ -61,7 +61,7 @@ collect_text_artifacts() {
   append_labeled_file "Spec" "$task_dir/plan/spec.md" 20000
   append_labeled_file "Plan" "$task_dir/plan/plan.md" 20000
   append_labeled_file "Review" "$task_dir/review.md" 16000
-  append_labeled_file "Simplify" "$task_dir/simplify.md" 12000
+  append_labeled_file "Refactor" "$task_dir/refactor.md" 12000
 
   if [ -d "$task_dir/qa" ]; then
     local qa_file
@@ -89,7 +89,7 @@ build_verifier_prompt() {
   text_artifacts=$(collect_text_artifacts "$task_dir")
 
   cat <<EOF
-You are Ship's external completion verifier for an active /ship:auto run.
+You are Ship's external completion verifier for an active Ship workflow run.
 
 Decide whether the user's requested task is fully complete based on the
 original request, the current git diff, and the produced artifacts. Judge the
@@ -229,16 +229,19 @@ TASK_ID=$(frontmatter_value "task_id")
 BRANCH=$(frontmatter_value "branch")
 
 # ── SESSION ISOLATION ────────────────────────────────────────
-# Only gate the session that owns the active pipeline.
+# Only gate the session that owns the active workflow.
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""')
 STATE_SESSION=$(frontmatter_value "session_id")
-if [ -n "$STATE_SESSION" ] && [ -n "$SESSION_ID" ] && [ "$STATE_SESSION" != "$SESSION_ID" ]; then
+if [ -n "$STATE_SESSION" ] \
+  && [ "$STATE_SESSION" != "unknown" ] \
+  && [ -n "$SESSION_ID" ] \
+  && [ "$STATE_SESSION" != "$SESSION_ID" ]; then
   exit 0
 fi
 
 # ── VALIDATE STATE ───────────────────────────────────────────
 if [ -z "$PHASE" ] || [ -z "$TASK_ID" ]; then
-  echo "⚠️  Ship auto: State file corrupted (missing phase or task_id). Removing." >&2
+  echo "⚠️  Ship workflow: State file corrupted (missing phase or task_id). Removing." >&2
   rm -f "$STATE_FILE"
   exit 0
 fi
@@ -251,28 +254,11 @@ DESCRIPTION=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 # transitions deterministically. If we're in a terminal state, trust it
 # and skip the expensive external verifier call.
 #
-# Terminal conditions (allow exit without verifier):
-#   1. phase=learn (pipeline already past handoff)
-#   2. phase=handoff AND the task dir has handoff evidence (PR URL)
+# Terminal condition (allow exit without verifier):
+#   phase=handoff AND the task dir has handoff evidence (PR URL)
 
 
 case "$PHASE" in
-  learn)
-    PR_READY_REASON=$(ship_pr_handoff_ready "$CWD" "$BRANCH" 2>&1) && exit 0
-
-    MERGE_STATE=$(cd "$CWD" && gh pr view "$BRANCH" --json mergeStateStatus --jq '.mergeStateStatus' 2>/dev/null || echo "UNKNOWN")
-    REASON="[Ship] PR is not handoff-ready (mergeStateStatus: $MERGE_STATE).
-Task: $TASK_ID
-Current phase: $PHASE
-Branch: $BRANCH
-
-$PR_READY_REASON
-
-The PR needs to be updated before the pipeline can complete.
-Sync with the base branch or resolve conflicts as needed, push, then resume /ship:auto."
-    block_with_reason "$REASON" "Ship: PR not handoff-ready ($MERGE_STATE) — sync and resume"
-    exit 0
-    ;;
   handoff)
     # Check for PR evidence (handoff) and merge readiness (both).
     # "Past handoff" does not mean the PR is merge-ready — the branch
@@ -308,7 +294,7 @@ VERIFIER_OUTPUT=$(run_verifier)
 VERIFIER_RC=$?
 
 if [ "$VERIFIER_RC" -ne 0 ]; then
-  REASON="[Ship] External auto verifier could not determine task completion. Do not exit yet.
+  REASON="[Ship] External workflow verifier could not determine task completion. Do not exit yet.
 Task: $TASK_ID
 Current phase: $PHASE
 Branch: $BRANCH
@@ -330,7 +316,7 @@ case "$VERDICT" in
     ;;
   TASK_BLOCKED)
     BLOCKER=$(extract_section "BLOCKER:" "$VERIFIER_OUTPUT")
-    echo "🛑 Ship auto verifier: task blocked." >&2
+    echo "🛑 Ship workflow verifier: task blocked." >&2
     [ -n "$BLOCKER" ] && printf '%s\n' "$BLOCKER" >&2
     exit 0
     ;;
@@ -349,7 +335,7 @@ $MISSING"
     exit 0
     ;;
   *)
-    REASON="[Ship] External auto verifier returned an unrecognized verdict. Do not exit yet.
+    REASON="[Ship] External workflow verifier returned an unrecognized verdict. Do not exit yet.
 Task: $TASK_ID
 Current phase: $PHASE
 

@@ -7,7 +7,7 @@ Two audiences use this prompt:
    No Agent dispatch; just follow the instructions below on the current
    branch.
 
-2. **Dispatched Claude Agent subagents** — used ONLY for multi-story
+2. **Dispatched Agent subagents** — used ONLY for multi-story
    parallel waves (where the host cannot fork itself) and for multi-story
    fix rounds (where the original implementer was a sub-agent). All
    dispatches work on the current branch — no worktrees. The wave's
@@ -35,8 +35,8 @@ is running in). The prompt MUST state:
   commit SHAs it produced.
 
 For single-story waves and fix mode, the host implements directly — no
-Agent dispatch is needed. The peer reviewer (Codex) validates the host's
-diff in Phase 2 Step B.
+Agent dispatch is needed. The peer reviewer validates the host's diff in
+Phase 2 Step B.
 
 ## Prompt
 

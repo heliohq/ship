@@ -1,13 +1,13 @@
 {
   "name": "ship",
   "displayName": "Ship",
-  "description": "A comprehensive agent harness for end-to-end, large-scale software product development",
-  "version": "0.1.6",
+  "description": "An agent-routed harness for end-to-end software product development",
+  "version": "0.1.7",
   "author": {
-    "name": "Heliopause",
-    "url": "https://www.ship.tech"
+    "name": "Helio",
+    "url": "https://www.helio.im/"
   },
-  "homepage": "https://www.ship.tech",
+  "homepage": "https://www.helio.im/",
   "repository": "https://github.com/heliohq/ship",
   "license": "MIT",
   "keywords": [

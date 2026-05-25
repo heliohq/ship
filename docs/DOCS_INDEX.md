@@ -4,5 +4,8 @@
 
 | Category | # | Status | Name | Description | Last Modified | Path |
 |----------|---|--------|------|-------------|---------------|------|
-| design | 002 | current | Session Context Injection | Lightweight session-start injection of a Ship routing policy, learnings, docs index, and design pointer. | 2026-04-20 | [002](docs/design/002-session-context-injection.md) |
+| design | 002 | current | Minimal Use-Ship Startup Hint | SessionStart injects only a small /ship:use-ship routing hint, not docs, memory, or artifact content. | 2026-05-25 | [002](docs/design/002-session-context-injection.md) |
+| design | 003 | current | Codex Plugin Packaging | Native Codex plugin manifest for Ship skills, MCP, and hook definitions. | 2026-05-25 | [003](docs/design/003-codex-plugin-packaging.md) |
+| design | 004 | current | Agent-Owned Ship Routing | Production workflow model where agents choose phase bundles while Ship preserves input, minimal state, and Markdown/code outputs. | 2026-05-25 | [004](docs/design/004-stage-driven-workflow.md) |
+| design | 005 | current | Production Artifact Organization | Guidance for organizing requirement, design, engineering, quality, and delivery artifacts without a scaffold command. | 2026-05-25 | [005](docs/design/005-production-artifacts.md) |
 

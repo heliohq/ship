@@ -10,7 +10,7 @@
 # What this does: before compact strips the evidence, scan the pre-compact
 # transcript for a cancellation pattern — a turn interrupt followed by
 # user messages that do NOT reference ship/continue/resume. If found,
-# archive the state file so post-compact auto sees a clean slate.
+# archive the state file so post-compact resume sees a clean slate.
 #
 # False positive bias: the pattern requires BOTH an interrupt marker AND
 # no subsequent ship re-engagement. Normal mid-task compact (no interrupt)

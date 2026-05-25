@@ -1,6 +1,6 @@
 ---
 name: visual-design
-description: "Create DESIGN.md files — structured markdown visual design systems (colors, typography, spacing, components) that AI coding agents read to generate consistent UI. Use when the user mentions DESIGN.md, visual design, design system, design tokens, extracting a design from a website, or documenting UI tokens. Also triggers on 'make it look like [brand]', 'capture the design of [site]', 'extract design tokens'. Note: this is NOT for architectural design docs (use /ship:write-docs for those) or system design thinking (use /ship:arch-design for that)."
+description: "Create or extract DESIGN.md visual design systems from scratch, a URL, or a codebase, with tokens, components, and preview HTML. Use for visual design, design tokens, or brand/style capture. Not architecture docs."
 ---
 
 # Visual Design

@@ -2,12 +2,9 @@
 name: qa
 version: 3.0.0
 description: >
-  Independent QA: starts the application, tests the code changes against the spec, and
-  explores beyond the spec for edge cases. Reports verdict with evidence. All testing
-  logic lives in reference files. Use when: "test this", "QA the changes", "does it
-  actually work", "run QA", "exploratory testing", or after code review to verify runtime
-  behavior. Note: this runs the app and tests behavior end-to-end, not just code
-  correctness (use /ship:review for static review).
+  Runtime QA of a change: start the app, test acceptance criteria and edge cases,
+  and report evidence. Use for "test this", "QA", "does it work", exploratory
+  checks, or post-review runtime verification. Not static code review.
 allowed-tools:
   - Bash
   - Read
@@ -17,14 +14,6 @@ allowed-tools:
   - Agent
   - AskUserQuestion
 ---
-
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=qa source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
 
 # Ship: QA
 
@@ -44,7 +33,7 @@ regressions, perf smells, odd edge cases, unexpected interactions,
 
 ```
 1. Understand   Read spec + git diff to know WHAT changed and WHAT to test
-2. Start        Start the application (../shared/startup.md)
+2. Start        Start the application (../.shared/startup.md)
 3. Test         Test changes using the matching references
 4. Cleanup      Kill services you started
 5. Report       Summarize what you found
@@ -95,7 +84,7 @@ Match the testing effort to the change.
 
 ## Phase 2: Start the application
 
-Follow `../shared/startup.md` — it will discover the stack, install
+Follow `../.shared/startup.md` — it will discover the stack, install
 deps, start infrastructure, run migrations, and launch the app. Set
 `EVIDENCE_DIR=".ship/tasks/<task_id>/qa"` before running the reference's
 commands so logs and PIDs land in the QA folder.
@@ -147,7 +136,7 @@ its report using the template from `references/report.md`.
 ## Phase 4: Cleanup
 
 **Mandatory — never skip, even on failure or timeout.** Follow
-`../shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 2.
+`../.shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 2.
 It kills tracked PIDs, stops any docker compose stack you started, and
 verifies ports are free.
 
@@ -191,8 +180,8 @@ When invoked with `--recheck`:
 
 ## Reference Files
 
-- `../shared/startup.md` — project discovery, install, start, verify (shared with /ship:e2e)
-- `../shared/cleanup.md` — mandatory cleanup contract (shared with /ship:e2e)
+- `../.shared/startup.md` — project discovery, install, start, verify (shared with /ship:e2e)
+- `../.shared/cleanup.md` — mandatory cleanup contract (shared with /ship:e2e)
 - `references/browser.md` — web UI testing via agent-browser
 - `references/api.md` — API endpoint testing
 - `references/cli.md` — CLI testing
@@ -204,7 +193,7 @@ When invoked with `--recheck`:
 Never stop for individual criterion failures (record and continue)
 or a single service failing to start (test what you can).
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [QA] Report Card
@@ -229,8 +218,7 @@ Output the report card (read `skills/shared/report-card.md` for the standard for
 
 ### Next Steps
 1. **Fix failures** — /ship:dev to fix the reported issues
-2. **Simplify next (if passing)** — /ship:refactor to clean up before shipping
-3. **Ship** — /ship:handoff to create the PR (after simplify)
-4. **Full pipeline** — /ship:auto to handle fixes, simplify, and shipping
+2. **Refactor next (if passing)** — /ship:refactor to clean up before shipping
+3. **Ship** — /ship:handoff to create the PR (after refactor)
+4. **Full workflow** — /ship:auto to handle fixes, refactor, and shipping
 ```
-

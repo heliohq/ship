@@ -2,14 +2,9 @@
 name: e2e
 version: 1.0.0
 description: >
-  Codify the change's user-facing behavior as persistent end-to-end tests that
-  live in the repo and run in CI. Detects the existing E2E framework (Playwright,
-  Cypress, pytest-playwright, etc.) or scaffolds one when absent, then writes or
-  extends tests that lock in the spec's acceptance criteria. Use when: "add e2e
-  tests", "write a playwright test", "codify this behavior", "regression test for
-  this flow", or after QA passes in the auto pipeline. Note: this writes
-  persistent test code — it is NOT the same as /ship:qa (which runs one-off
-  exploratory checks and produces reports, not test code).
+  Add durable end-to-end tests for user/API-visible behavior. Detect or scaffold
+  the E2E framework, write tests, run the app, and store evidence. Use for E2E,
+  Playwright/Cypress, regression tests, or quality gates. Not exploratory QA.
 allowed-tools:
   - Bash
   - Read
@@ -20,14 +15,6 @@ allowed-tools:
   - Agent
   - AskUserQuestion
 ---
-
-## Preamble (run first)
-
-```bash
-SHIP_PLUGIN_ROOT="${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null || echo "$HOME/.codex/ship")}"
-SHIP_SKILL_NAME=e2e source "${SHIP_PLUGIN_ROOT}/scripts/preflight.sh"
-```
-
 
 # Ship: E2E
 
@@ -65,7 +52,7 @@ MATCH THE REPO'S EXISTING STYLE BEFORE INVENTING A NEW ONE.
 2. Detect      Find the existing E2E framework, or scaffold one
 3. Author      Write/extend tests that cover the change
 4. Run         Execute the suite, iterate until green or a real failure
-5. Cleanup     Kill anything you started (shared/cleanup.md)
+5. Cleanup     Kill anything you started (.shared/cleanup.md)
 6. Report      Summarize tests added, results, and any regressions
 ```
 
@@ -100,7 +87,7 @@ git diff "$BASE"...HEAD --name-only
 1. **Spec** — `<task_dir>/plan/spec.md` (acceptance criteria you must codify)
 2. **Diff** — what code actually changed, which flows it touches
 
-That's it. In the /ship:auto pipeline you run right after dev and before
+That's it. In the staged workflow you run right after dev and before
 review/QA, so there is no earlier verification report to read. If you're
 in re-run mode after an `e2e_fix`, the previous `<task_dir>/e2e/report.md`
 may exist — useful for knowing which tests already failed.
@@ -187,7 +174,7 @@ scratch, prefer `tests/e2e/` (readable, language-agnostic).
 Bring the app up via the shared startup reference:
 
 ```
-Read ../shared/startup.md. Set EVIDENCE_DIR=".ship/tasks/<task_id>/e2e"
+Read ../.shared/startup.md. Set EVIDENCE_DIR=".ship/tasks/<task_id>/e2e"
 before running its commands so logs and PIDs land under the e2e folder.
 Start services → run migrations → verify readiness.
 ```
@@ -214,7 +201,7 @@ Playwright/Cypress produce traces, videos, and screenshots on failure. Copy
 them into `<task_dir>/e2e/` so debuggers (human or agent) have evidence:
 
 ```bash
-# $EVIDENCE_DIR was set before entering shared/startup.md — reuse it here
+# $EVIDENCE_DIR was set before entering .shared/startup.md — reuse it here
 mkdir -p "$EVIDENCE_DIR/artifacts"
 # Framework-specific examples — adapt to whatever the runner actually produces
 [ -d playwright-report ] && cp -r playwright-report "$EVIDENCE_DIR/artifacts/" 2>/dev/null
@@ -226,7 +213,7 @@ mkdir -p "$EVIDENCE_DIR/artifacts"
 ## Phase 5: Cleanup
 
 **Mandatory — never skip, even on failure or timeout.** Follow
-`../shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 4.
+`../.shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 4.
 It kills tracked PIDs (graceful then forceful), stops any docker compose
 stack, and verifies ports are free. Do not inline your own cleanup logic —
 the shared contract is the single source of truth.
@@ -280,8 +267,8 @@ When invoked outside `/ship:auto` (user types `/ship:e2e` directly):
 
 ## Reference files
 
-- `../shared/startup.md` — bring the app up (shared with /ship:qa)
-- `../shared/cleanup.md` — mandatory cleanup contract (shared with /ship:qa)
+- `../.shared/startup.md` — bring the app up (shared with /ship:qa)
+- `../.shared/cleanup.md` — mandatory cleanup contract (shared with /ship:qa)
 - `references/frameworks.md` — detection checks + framework selection matrix
 - `references/scaffolding.md` — install recipes for each default framework
 - `references/authoring.md` — writing good E2E tests (selectors, data,
@@ -289,7 +276,7 @@ When invoked outside `/ship:auto` (user types `/ship:e2e` directly):
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard
+Output the report card (read `skills/.shared/report-card.md` for the standard
 format):
 
 ```
@@ -322,4 +309,3 @@ format):
 2. **Review next (if green)** — /ship:review to check correctness of the code
 3. **Iterate tests** — /ship:e2e --recheck after fixes
 ```
-

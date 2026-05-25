@@ -1,14 +1,9 @@
 ---
 name: write-docs
 description: >
-  Write, edit, and manage structured project documentation under docs/ — enforces
-  frontmatter format, category conventions, numbering, status lifecycle, and writing
-  rules. Use when: "write a doc", "document this", "create a guide", "write a design doc",
-  "write a troubleshooting guide", "create a reference doc", "update the docs",
-  "document this decision", or when capturing guides, troubleshooting playbooks,
-  reference material, or design decisions as docs. Note: for system design thinking
-  (architecture, trade-offs, scaling), use /ship:arch-design first, then come here
-  to write it up. For visual design (DESIGN.md), use /ship:visual-design.
+  Create or update structured docs under docs/ with frontmatter, numbering,
+  lifecycle status, and index regeneration. Use for guides, references,
+  troubleshooting, decisions, and architecture docs after /ship:arch-design.
 ---
 
 # Documentation Standard
@@ -48,7 +43,7 @@ last_modified: "2026-04-13"
 ### Required Fields
 
 - **title**: Match the `# heading` below the frontmatter. Use quotes if it contains special chars.
-- **description**: One concise sentence. This gets injected into session context as an index — write it for an AI that needs to decide "should I read this doc?" without opening it. Max 120 chars.
+- **description**: One concise sentence for the docs index — write it for an AI that needs to decide "should I read this doc?" without opening it. Max 120 chars.
 - **category**: Matches the subdirectory name (e.g., `"design"`, `"guides"`, `"troubleshooting"`). Must be one of the subdirectories under `docs/`.
 - **number**: Unique within its category. Zero-padded 3 digits (e.g., `"002"`, `"029"`). Used for file naming (`029-topic.md`) and cross-referencing.
 - **status**: One of the 5 allowed values. See Status Lifecycle below.
@@ -65,10 +60,10 @@ last_modified: "2026-04-13"
 After creating or updating a doc, regenerate the index:
 
 ```bash
-bash "${SHIP_PLUGIN_ROOT:-$(ship-plugin-root 2>/dev/null)}/scripts/generate-docs-index.sh"
+bash "../../scripts/generate-docs-index.sh"
 ```
 
-This produces `docs/DOCS_INDEX.md` — a compact table (Category, #, Status, Name, Description, Last Modified, Path) injected at session start so agents know what docs exist without reading each one. Superseded docs are excluded from the index.
+This produces `docs/DOCS_INDEX.md` — a compact table (Category, #, Status, Name, Description, Last Modified, Path) that agents can read on demand to see what docs exist without opening each one. Superseded docs are excluded from the index.
 
 ## Status Lifecycle
 
@@ -185,7 +180,7 @@ Update `last_modified` when you complete verification.
 
 ## Execution Handoff
 
-After writing or updating a doc, regenerate the index and output the report card (read `skills/shared/report-card.md` for the standard format):
+After writing or updating a doc, regenerate the index and output the report card (read `skills/.shared/report-card.md` for the standard format):
 
 ```
 ## [Write Docs] Report Card

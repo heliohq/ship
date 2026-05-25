@@ -92,6 +92,26 @@ reset_state() {
   git checkout -q -B main 2>/dev/null || true
 }
 
+mock_ready_gh() {
+  local bin_dir="$TEST_DIR/bin"
+  mkdir -p "$bin_dir"
+  cat > "$bin_dir/gh" <<'GHEOF'
+#!/usr/bin/env bash
+set -u
+
+if [ "$1" = "pr" ] && [ "${2:-}" = "view" ]; then
+  printf '%s\n' '{"state":"OPEN","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE"}'
+elif [ "$1" = "pr" ] && [ "${2:-}" = "checks" ]; then
+  printf '%s\n' '[{"name":"ci","state":"SUCCESS","bucket":"pass"}]'
+else
+  echo "unexpected gh args: $*" >&2
+  exit 1
+fi
+GHEOF
+  chmod +x "$bin_dir/gh"
+  PATH="$bin_dir:$PATH"
+}
+
 # Create a mock task-id.sh that returns a predictable ID
 mock_task_id() {
   mkdir -p "${SCRIPT_DIR}/scripts"
@@ -111,7 +131,7 @@ echo ""
 echo "▸ Test 1: Init command"
 reset_state
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "add dark mode toggle" 2>/dev/null)
+OUT=$(bash "$ORCH" init "add dark mode toggle" 2>/dev/null)
 RC=$?
 
 assert_eq "init exits 0" "0" "$RC"
@@ -120,6 +140,8 @@ assert_eq "action is dispatch" "dispatch" "$ACTION"
 assert_eq "phase is design" "design" "$PHASE"
 assert_file_exists "prompt file created" "$PROMPT_FILE"
 assert_file_exists "state file created" ".ship/ship-auto.local.md"
+assert_file_exists "input requirement created" ".ship/tasks/$(get_state task_id)/input/requirement.md"
+assert_file_exists "run state created" ".ship/tasks/$(get_state task_id)/control/run_state.yaml"
 assert_eq "state phase is design" "design" "$(get_state phase)"
 
 TASK_ID=$(get_state task_id)
@@ -159,7 +181,7 @@ printf '# Diff Report\n## Resolved\n- All aligned\n' > "$TASK_DIR/plan/diff-repo
 echo "test" > dummy.txt
 git add dummy.txt && git commit -q -m "dummy"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="3 stories" 2>/dev/null)
+OUT=$(bash "$ORCH" complete design --verdict=success --summary="3 stories" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -170,11 +192,11 @@ assert_file_exists "dev prompt created" "$PROMPT_FILE"
 echo ""
 
 # ── Test 3: Complete dev:success → e2e ──────────────────────
-# Pipeline order is design → dev → e2e → review → qa → simplify → handoff.
+# Pipeline order is design → dev → e2e → review → qa → refactor → handoff.
 # E2E runs before review so reviewers see green tests alongside the code.
 echo "▸ Test 3: Dev success → E2E dispatch"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete dev --verdict=success --summary="3/3 stories done" 2>/dev/null)
+OUT=$(bash "$ORCH" complete dev --verdict=success --summary="3/3 stories done" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -190,7 +212,7 @@ echo "▸ Test 3b: E2E success → Review dispatch"
 mkdir -p "$TASK_DIR/e2e"
 echo "# E2E Report" > "$TASK_DIR/e2e/report.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete e2e --verdict=success --summary="5 tests green" 2>/dev/null)
+OUT=$(bash "$ORCH" complete e2e --verdict=success --summary="5 tests green" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -209,7 +231,7 @@ echo "# Review\nP1: null check missing" > "$TASK_DIR/review.md"
 FINDINGS_FILE=$(mktemp /tmp/ship-findings-XXXXXX.md)
 echo "P1: null check missing in useTheme" > "$FINDINGS_FILE"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete review --verdict=findings --summary="1 P1 bug" --findings-file="$FINDINGS_FILE" 2>/dev/null)
+OUT=$(bash "$ORCH" complete review --verdict=findings --summary="1 P1 bug" --findings-file="$FINDINGS_FILE" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -228,7 +250,7 @@ echo ""
 # ── Test 5: Review fix success → back to review ─────────────
 echo "▸ Test 5: Review fix success → Re-review"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete review_fix --verdict=success --summary="bug fixed" 2>/dev/null)
+OUT=$(bash "$ORCH" complete review_fix --verdict=success --summary="bug fixed" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -240,7 +262,7 @@ echo ""
 # ── Test 6: Clean review → QA ────────────────────────────────
 echo "▸ Test 6: Clean review → QA dispatch"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete review --verdict=success --summary="clean" 2>/dev/null)
+OUT=$(bash "$ORCH" complete review --verdict=success --summary="clean" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -249,30 +271,30 @@ assert_eq "state advanced to qa" "qa" "$(get_state phase)"
 
 echo ""
 
-# ── Test 7: QA pass → simplify ───────────────────────────────
-echo "▸ Test 7: QA pass → Simplify dispatch"
+# ── Test 7: QA pass → refactor ───────────────────────────────
+echo "▸ Test 7: QA pass → Refactor dispatch"
 
 # Create QA artifact
 mkdir -p "$TASK_DIR/qa"
 echo "# Browser Report\nAll pass" > "$TASK_DIR/qa/browser-report.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa --verdict=success --summary="all criteria pass" 2>/dev/null)
+OUT=$(bash "$ORCH" complete qa --verdict=success --summary="all criteria pass" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
-assert_eq "phase is simplify" "simplify" "$PHASE"
-assert_eq "state advanced to simplify" "simplify" "$(get_state phase)"
+assert_eq "phase is refactor" "refactor" "$PHASE"
+assert_eq "state advanced to refactor" "refactor" "$(get_state phase)"
 
 echo ""
 
-# ── Test 8: Simplify success → handoff ───────────────────────
-echo "▸ Test 8: Simplify success → Handoff dispatch"
+# ── Test 8: Refactor success → handoff ───────────────────────
+echo "▸ Test 8: Refactor success → Handoff dispatch"
 
-# simplify.md must exist for success
+# refactor.md must exist for success
 TASK_ID_T8=$(get_state task_id)
-echo "# Simplify\nNo changes needed — code is clean." > ".ship/tasks/$TASK_ID_T8/simplify.md"
+echo "# Refactor\nNo changes needed — code is clean." > ".ship/tasks/$TASK_ID_T8/refactor.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete simplify --verdict=success --summary="code already clean" 2>/dev/null)
+OUT=$(bash "$ORCH" complete refactor --verdict=success --summary="code already clean" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -281,26 +303,15 @@ assert_eq "state advanced to handoff" "handoff" "$(get_state phase)"
 
 echo ""
 
-# ── Test 9: Handoff success → learn ──────────────────────────
-echo "▸ Test 9: Handoff success → Learn dispatch"
+# ── Test 9: Handoff success → done ───────────────────────────
+echo "▸ Test 9: Handoff success → Done"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete handoff --verdict=success --summary="PR #42 green" 2>/dev/null)
-parse_output "$OUT"
-
-assert_eq "action is dispatch" "dispatch" "$ACTION"
-assert_eq "phase is learn" "learn" "$PHASE"
-assert_eq "state advanced to learn" "learn" "$(get_state phase)"
-
-echo ""
-
-# ── Test 10: Learn → done ────────────────────────────────────
-echo "▸ Test 10: Learn complete → Done"
-
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete learn --verdict=success --summary="2 learnings captured" 2>/dev/null)
+mock_ready_gh
+OUT=$(bash "$ORCH" complete handoff --verdict=success --summary="PR #42 green" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is done" "done" "$ACTION"
-assert_contains "done message" "Pipeline complete" "$MESSAGE"
+assert_contains "done message" "Workflow complete" "$MESSAGE"
 
 echo ""
 
@@ -310,12 +321,12 @@ reset_state
 git checkout -q -B main 2>/dev/null
 
 # Init a new task
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "test artifact validation" 2>/dev/null)
+OUT=$(bash "$ORCH" init "test artifact validation" 2>/dev/null)
 TASK_ID=$(get_state task_id)
 TASK_DIR=".ship/tasks/$TASK_ID"
 
 # DON'T create spec.md/plan.md — design artifacts missing
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete design --verdict=success --summary="design done" 2>/dev/null)
+OUT=$(bash "$ORCH" complete design --verdict=success --summary="design done" 2>/dev/null)
 parse_output "$OUT"
 
 # Script should override to retry because artifacts are missing
@@ -330,7 +341,7 @@ echo "▸ Test 12: QA fail → QA fix loop"
 reset_state
 git checkout -q -B main 2>/dev/null
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "test qa fix loop" 2>/dev/null)
+OUT=$(bash "$ORCH" init "test qa fix loop" 2>/dev/null)
 TASK_ID=$(get_state task_id)
 TASK_DIR=".ship/tasks/$TASK_ID"
 
@@ -347,7 +358,7 @@ bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
 # Create QA report then report fail
 echo "FAIL: localStorage not set" > "$TASK_DIR/qa/browser-report.md"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa --verdict=fail --summary="localStorage missing" 2>/dev/null)
+OUT=$(bash "$ORCH" complete qa --verdict=fail --summary="localStorage missing" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -365,7 +376,7 @@ echo ""
 # review, which already passed earlier in the pipeline).
 echo "▸ Test 13: QA fix success → E2E regression gate"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete qa_fix --verdict=success --summary="fixed localStorage" 2>/dev/null)
+OUT=$(bash "$ORCH" complete qa_fix --verdict=success --summary="fixed localStorage" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -389,7 +400,7 @@ echo "▸ Test 14: Resume from qa phase"
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set post_qa_fix false > /dev/null
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" resume 2>/dev/null)
+OUT=$(bash "$ORCH" resume 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch" "dispatch" "$ACTION"
@@ -398,12 +409,12 @@ assert_contains "message mentions resume" "Resuming" "$MESSAGE"
 
 echo ""
 
-# ── Test 15: Simplify fail → retry (not skip) ────────────────
-echo "▸ Test 15: Simplify fail retries (simplify.md required)"
+# ── Test 15: Refactor fail → retry (not skip) ────────────────
+echo "▸ Test 15: Refactor fail retries (refactor.md required)"
 reset_state
 git checkout -q -B main 2>/dev/null
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "test simplify fail" 2>/dev/null)
+OUT=$(bash "$ORCH" init "test refactor fail" 2>/dev/null)
 TASK_ID=$(get_state task_id)
 TASK_DIR=".ship/tasks/$TASK_ID"
 
@@ -415,13 +426,13 @@ printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.m
 echo "report" > "$TASK_DIR/qa/report.md"
 echo "test" > dummy3.txt && git add dummy3.txt && git commit -q -m "dummy3"
 echo "review" > "$TASK_DIR/review.md"
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase simplify > /dev/null
+bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase refactor > /dev/null
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete simplify --verdict=fail --summary="simplify crashed" 2>/dev/null)
+OUT=$(bash "$ORCH" complete refactor --verdict=fail --summary="refactor crashed" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is dispatch (retry)" "dispatch" "$ACTION"
-assert_eq "phase is simplify (retry)" "simplify" "$PHASE"
+assert_eq "phase is refactor (retry)" "refactor" "$PHASE"
 assert_contains "message mentions retry" "Retrying" "$MESSAGE"
 
 echo ""
@@ -429,9 +440,9 @@ echo ""
 # ── Test 16: Status command ──────────────────────────────────
 echo "▸ Test 16: Status command"
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" status 2>/dev/null)
+OUT=$(bash "$ORCH" status 2>/dev/null)
 assert_contains "status has TASK_ID" "TASK_ID" "$OUT"
-assert_contains "status has PHASE" "PHASE:simplify" "$OUT"
+assert_contains "status has PHASE" "PHASE:refactor" "$OUT"
 
 echo ""
 
@@ -440,7 +451,7 @@ echo "▸ Test 17: Escalation after 3× review fix rounds"
 reset_state
 git checkout -q -B main 2>/dev/null
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" init "test escalation" 2>/dev/null)
+OUT=$(bash "$ORCH" init "test escalation" 2>/dev/null)
 TASK_ID=$(get_state task_id)
 TASK_DIR=".ship/tasks/$TASK_ID"
 mkdir -p "$TASK_DIR/plan"
@@ -456,15 +467,7 @@ echo "P1: bug" > "$TASK_DIR/review.md"
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase review > /dev/null
 bash "${SCRIPT_DIR}/scripts/auto-state.sh" set review_fix_round 3 > /dev/null
 
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete review --verdict=findings --summary="still buggy" 2>/dev/null)
-parse_output "$OUT"
-
-# dispatch_learn_then_escalate now dispatches learn first (not escalate directly)
-assert_eq "action is dispatch (learn before escalate)" "dispatch" "$ACTION"
-assert_eq "phase is learn" "learn" "$PHASE"
-
-# Complete learn → should now emit escalate with original phase
-OUT=$(SHIP_PLUGIN_ROOT="$SCRIPT_DIR" bash "$ORCH" complete learn --verdict=success --summary="learnings captured" 2>/dev/null)
+OUT=$(bash "$ORCH" complete review --verdict=findings --summary="still buggy" 2>/dev/null)
 parse_output "$OUT"
 
 assert_eq "action is escalate" "escalate" "$ACTION"

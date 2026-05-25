@@ -8,14 +8,14 @@ _BOOTSTRAP="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/path-bootstrap.sh"
 # Ship phase guardrail — PreToolUse hook that enforces artifact access
 # rules per pipeline phase.
 #
-# Only active when .ship/ship-auto.local.md exists (auto pipeline running).
+# Only active when .ship/ship-auto.local.md exists (Ship workflow running).
 # Only gates subagent calls (agent_id present), not the orchestrator itself.
 #
 # Rules:
 #   QA phase:     block Read of review.md and plan.md (independence)
 #   Review phase: block Write/Edit of source code (review finds, doesn't fix)
 #   QA phase:     block Write/Edit of source code (QA reports, doesn't fix)
-#   All phases:   block Write/Edit of .ship/ship-auto.local.md (auto owns state)
+#   All phases:   block Write/Edit of .ship/ship-auto.local.md (orchestrator owns state)
 
 INPUT=$(cat)
 
@@ -27,7 +27,7 @@ esac
 
 STATE_FILE=".ship/ship-auto.local.md"
 
-# Only active during auto pipeline
+# Only active during a Ship workflow
 [ -f "$STATE_FILE" ] || exit 0
 
 # Only gate subagents, not the orchestrator
