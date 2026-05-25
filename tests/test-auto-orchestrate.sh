@@ -83,7 +83,34 @@ assert_file_exists() {
 
 get_state() {
   local key="$1"
-  bash "${SCRIPT_DIR}/scripts/auto-state.sh" get "$key"
+  sed -n '/^---$/,/^---$/{ /^---$/d; p; }' .ship/ship-auto.local.md \
+    | grep "^${key}:" \
+    | head -1 \
+    | sed "s/^${key}: *//" \
+    | sed 's/^"\(.*\)"$/\1/' \
+    | tr -d '\r' || true
+}
+
+set_state() {
+  local key="$1" value="$2" tmp_file
+  tmp_file=$(mktemp)
+  awk -v key="$key" -v value="$value" '
+    BEGIN { in_frontmatter = 0; replaced = 0 }
+    NR == 1 && $0 == "---" { in_frontmatter = 1; print; next }
+    in_frontmatter && $0 == "---" {
+      if (!replaced) print key ": " value
+      in_frontmatter = 0
+      print
+      next
+    }
+    in_frontmatter && $0 ~ ("^" key ":") {
+      print key ": " value
+      replaced = 1
+      next
+    }
+    { print }
+  ' .ship/ship-auto.local.md > "$tmp_file"
+  mv "$tmp_file" .ship/ship-auto.local.md
 }
 
 reset_state() {
@@ -110,13 +137,6 @@ fi
 GHEOF
   chmod +x "$bin_dir/gh"
   PATH="$bin_dir:$PATH"
-}
-
-# Create a mock task-id.sh that returns a predictable ID
-mock_task_id() {
-  mkdir -p "${SCRIPT_DIR}/scripts"
-  # The real task-id.sh exists; we'll use env to override if needed
-  :
 }
 
 # ── Test Suites ──────────────────────────────────────────────
@@ -353,7 +373,7 @@ printf '# Peer Spec\n## Criteria\n- Must work\n' > "$TASK_DIR/plan/peer-spec.md"
 printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.md"
 echo "test" > dummy2.txt && git add dummy2.txt && git commit -q -m "dummy2"
 
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
+set_state phase qa
 
 # Create QA report then report fail
 echo "FAIL: localStorage not set" > "$TASK_DIR/qa/browser-report.md"
@@ -397,8 +417,8 @@ echo ""
 # e2e-resume path is covered in test-e2e-phase.sh.
 echo "▸ Test 14: Resume from qa phase"
 
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase qa > /dev/null
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set post_qa_fix false > /dev/null
+set_state phase qa
+set_state post_qa_fix false
 
 OUT=$(bash "$ORCH" resume 2>/dev/null)
 parse_output "$OUT"
@@ -426,7 +446,7 @@ printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.m
 echo "report" > "$TASK_DIR/qa/report.md"
 echo "test" > dummy3.txt && git add dummy3.txt && git commit -q -m "dummy3"
 echo "review" > "$TASK_DIR/review.md"
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase refactor > /dev/null
+set_state phase refactor
 
 OUT=$(bash "$ORCH" complete refactor --verdict=fail --summary="refactor crashed" 2>/dev/null)
 parse_output "$OUT"
@@ -464,8 +484,8 @@ echo "P1: bug" > "$TASK_DIR/review.md"
 
 # Set phase to review with review_fix_round=3 (3 fix failures already happened).
 # The next review:findings should trigger escalation (round >= MAX_RETRIES).
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set phase review > /dev/null
-bash "${SCRIPT_DIR}/scripts/auto-state.sh" set review_fix_round 3 > /dev/null
+set_state phase review
+set_state review_fix_round 3
 
 OUT=$(bash "$ORCH" complete review --verdict=findings --summary="still buggy" 2>/dev/null)
 parse_output "$OUT"

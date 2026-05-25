@@ -30,16 +30,6 @@
           }
         ]
       }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/auto-pre-compact.sh"
-          }
-        ]
-      }
     ]
   }
 }

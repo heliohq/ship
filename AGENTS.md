@@ -13,7 +13,7 @@
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `scripts/` | Shell scripts | Startup hint, workflow hooks, auto orchestrator, and utilities (task-id, auto-state) |
+| `scripts/` | Shell scripts | Startup hint, workflow hooks, auto orchestrator, PR readiness, docs index generation, and PATH bootstrap |
 | `hooks/` | `hooks.json`, `codex-hooks.json` | Plugin-level quality gate hook registration for Claude Code and Codex |
 | `.codex/` | `INSTALL.md` | Codex install docs |
 | `.codex-plugin/` | `plugin.json` | Native Codex plugin metadata for skills, MCP, and Codex UI |

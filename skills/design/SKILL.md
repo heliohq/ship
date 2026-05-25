@@ -160,10 +160,14 @@ TodoWrite([
 ### Task ID
 
 1. If invoked by /ship:auto, the task_id is provided.
-2. If invoked standalone, resolve the bundled `../../scripts/task-id.sh` path
-   relative to this skill file and generate `task_id` with it:
+2. If invoked standalone, generate a concise deterministic task slug:
    ```bash
-   TASK_ID=$(bash "../../scripts/task-id.sh" "<description>")
+   TASK_ID=$(printf '%s' "<description>" \
+     | tr '[:upper:]' '[:lower:]' \
+     | sed 's/[^a-z0-9]/-/g' \
+     | sed 's/--*/-/g' \
+     | sed 's/^-//;s/-$//' \
+     | cut -c1-60)
    ```
 
 Artifacts go to `.ship/tasks/<task_id>/plan/`. The Write tool creates

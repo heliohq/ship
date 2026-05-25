@@ -28,8 +28,6 @@ cd "$REPO_ROOT"
 
 STATE_FILE="${SHIP_AUTO_STATE_FILE:-.ship/ship-auto.local.md}"
 export SHIP_AUTO_STATE_FILE="$STATE_FILE"
-STATE_SCRIPT="${_SCRIPT_DIR}/auto-state.sh"
-TASK_ID_SCRIPT="${_SCRIPT_DIR}/task-id.sh"
 PROMPTS_DIR="${_SCRIPT_DIR}/../skills/auto/prompts"
 
 MAX_RETRIES=3
@@ -86,9 +84,79 @@ emit_error() {
 
 # ── State Helpers ───────────────────────────────────────────
 
-state_get() { bash "$STATE_SCRIPT" get "$1"; }
-state_set() { bash "$STATE_SCRIPT" set "$1" "$2" > /dev/null; }
-state_bump() { bash "$STATE_SCRIPT" bump "$1" > /dev/null; }
+frontmatter_value() {
+  local key="$1"
+
+  sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE" \
+    | grep "^${key}:" \
+    | head -1 \
+    | sed "s/^${key}: *//" \
+    | sed 's/^"\(.*\)"$/\1/' \
+    | tr -d '\r' || true
+}
+
+state_get() {
+  local key="$1"
+  [ -f "$STATE_FILE" ] || { echo "Ship auto state file not found: $STATE_FILE" >&2; exit 1; }
+  frontmatter_value "$key"
+}
+
+state_set() {
+  local key="$1" value="$2" tmp_file
+  [ -f "$STATE_FILE" ] || { echo "Ship auto state file not found: $STATE_FILE" >&2; exit 1; }
+  tmp_file=$(mktemp)
+
+  awk -v key="$key" -v value="$value" '
+    BEGIN {
+      in_frontmatter = 0
+      replaced = 0
+    }
+
+    NR == 1 && $0 == "---" {
+      in_frontmatter = 1
+      print
+      next
+    }
+
+    in_frontmatter && $0 == "---" {
+      if (!replaced) {
+        print key ": " value
+      }
+      in_frontmatter = 0
+      print
+      next
+    }
+
+    in_frontmatter {
+      if ($0 ~ ("^" key ":")) {
+        print key ": " value
+        replaced = 1
+        next
+      }
+    }
+
+    { print }
+  ' "$STATE_FILE" > "$tmp_file"
+
+  mv "$tmp_file" "$STATE_FILE"
+}
+
+state_bump() {
+  local key="$1" current
+  current=$(state_get "$key")
+  [ -n "$current" ] || current=0
+  state_set "$key" "$((current + 1))"
+}
+
+generate_task_id() {
+  local description="$1"
+  printf '%s' "$description" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^a-z0-9]/-/g' \
+    | sed 's/--*/-/g' \
+    | sed 's/^-//;s/-$//' \
+    | cut -c1-60
+}
 
 task_dir_for() {
   printf '.ship/tasks/%s' "$1"
@@ -405,7 +473,7 @@ cmd_init() {
   fi
 
   local task_id
-  task_id=$(bash "$TASK_ID_SCRIPT" "$description" 2>/dev/null)
+  task_id=$(generate_task_id "$description")
   if [ -z "$task_id" ]; then
     emit_error "Failed to generate task ID"
     exit 1

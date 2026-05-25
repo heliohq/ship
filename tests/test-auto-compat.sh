@@ -37,8 +37,11 @@ retired_workflow_word="flo""w"
 
 assert_file "auto skill exists" "$ROOT/skills/auto/SKILL.md"
 assert_file "auto orchestrator exists" "$ROOT/scripts/auto-orchestrate.sh"
-assert_file "auto state helper exists" "$ROOT/scripts/auto-state.sh"
-assert_file "auto pre-compact hook exists" "$ROOT/scripts/auto-pre-compact.sh"
+if [ ! -e "$ROOT/scripts/auto-state.sh" ] && [ ! -e "$ROOT/scripts/task-id.sh" ]; then
+  pass "auto state and task id helpers are folded into orchestrator"
+else
+  fail "auto state and task id helpers are folded into orchestrator"
+fi
 
 if [ -d "$ROOT/skills/auto/prompts" ] && [ ! -d "$ROOT/skills/$retired_workflow_word" ]; then
   pass "auto owns prompt templates"
@@ -56,11 +59,11 @@ OUT=$("$ROOT/scripts/auto-orchestrate.sh" init "auto smoke test" 2>/dev/null)
 assert_contains "auto init dispatches design" "PHASE:design" "$OUT"
 assert_file "auto init creates auto state file" ".ship/ship-auto.local.md"
 
-TASK_ID=$("$ROOT/scripts/auto-state.sh" get task_id)
+TASK_ID=$("$ROOT/scripts/auto-orchestrate.sh" status --json | jq -r '.task_id')
 if [ -n "$TASK_ID" ] && [ -f ".ship/tasks/$TASK_ID/input/requirement.md" ]; then
-  pass "auto state helper reads task id"
+  pass "auto status reads task id"
 else
-  fail "auto state helper reads task id"
+  fail "auto status reads task id"
 fi
 
 mkdir -p custom
@@ -73,7 +76,7 @@ phase: design
 custom auto state
 EOF
 
-if [ "$(SHIP_AUTO_STATE_FILE=custom/override-state.md "$ROOT/scripts/auto-state.sh" get task_id)" = "override-task" ]; then
+if [ "$(SHIP_AUTO_STATE_FILE=custom/override-state.md "$ROOT/scripts/auto-orchestrate.sh" status --json | jq -r '.task_id')" = "override-task" ]; then
   pass "SHIP_AUTO_STATE_FILE override works"
 else
   fail "SHIP_AUTO_STATE_FILE override works"

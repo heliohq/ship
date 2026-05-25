@@ -72,8 +72,9 @@ for retired_stage_skill in \
 done
 
 assert_file "auto orchestrator exists" "$ROOT/scripts/auto-orchestrate.sh"
-assert_file "auto state helper exists" "$ROOT/scripts/auto-state.sh"
-assert_file "auto pre-compact hook exists" "$ROOT/scripts/auto-pre-compact.sh"
+assert_no_file "standalone auto state helper is absent" "$ROOT/scripts/auto-state.sh"
+assert_no_file "standalone task id helper is absent" "$ROOT/scripts/task-id.sh"
+assert_no_file "optional auto pre-compact hook is absent" "$ROOT/scripts/auto-pre-compact.sh"
 assert_file "refactor prompt exists" "$ROOT/skills/auto/prompts/refactor.md.tmpl"
 assert_no_file "retired staged process orchestrator is absent" "$ROOT/scripts/$retired_workflow_word-orchestrate.sh"
 assert_no_file "retired staged process state helper is absent" "$ROOT/scripts/$retired_workflow_word-state.sh"
@@ -127,6 +128,12 @@ else
   fail "hook manifests include startup hint"
 fi
 
+if jq -e '.hooks | has("PreCompact") | not' "$ROOT/hooks/hooks.json" >/dev/null; then
+  pass "optional pre-compact hook is not registered"
+else
+  fail "optional pre-compact hook is not registered"
+fi
+
 STARTUP_OUT=$(printf '{"cwd":"%s"}\n' "$ROOT" | bash "$ROOT/scripts/$startup_script.sh")
 if printf '%s' "$STARTUP_OUT" | grep -q '/ship:use-ship' \
   && ! printf '%s' "$STARTUP_OUT" | grep -Eq 'DOCS_INDEX|DESIGN\\.md|Documentation index|docs/ship'; then
@@ -141,7 +148,7 @@ git commit --allow-empty -m init -q
 git update-ref refs/remotes/origin/HEAD "$(git rev-parse HEAD)"
 
 OUT=$("$ROOT/scripts/auto-orchestrate.sh" init "add staged workflow smoke test" 2>/dev/null)
-TASK_ID=$(SHIP_AUTO_STATE_FILE=.ship/ship-auto.local.md bash "$ROOT/scripts/auto-state.sh" get task_id)
+TASK_ID=$("$ROOT/scripts/auto-orchestrate.sh" status --json | jq -r '.task_id')
 TASK_DIR=".ship/tasks/$TASK_ID"
 
 case "$OUT" in

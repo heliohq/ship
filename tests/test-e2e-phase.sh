@@ -72,11 +72,35 @@ assert_contains() {
 }
 
 get_state() {
-  bash "${SCRIPT_DIR}/scripts/auto-state.sh" get "$1"
+  local key="$1"
+  sed -n '/^---$/,/^---$/{ /^---$/d; p; }' .ship/ship-auto.local.md \
+    | grep "^${key}:" \
+    | head -1 \
+    | sed "s/^${key}: *//" \
+    | sed 's/^"\(.*\)"$/\1/' \
+    | tr -d '\r' || true
 }
 
 set_state() {
-  bash "${SCRIPT_DIR}/scripts/auto-state.sh" set "$1" "$2" > /dev/null
+  local key="$1" value="$2" tmp_file
+  tmp_file=$(mktemp)
+  awk -v key="$key" -v value="$value" '
+    BEGIN { in_frontmatter = 0; replaced = 0 }
+    NR == 1 && $0 == "---" { in_frontmatter = 1; print; next }
+    in_frontmatter && $0 == "---" {
+      if (!replaced) print key ": " value
+      in_frontmatter = 0
+      print
+      next
+    }
+    in_frontmatter && $0 ~ ("^" key ":") {
+      print key ": " value
+      replaced = 1
+      next
+    }
+    { print }
+  ' .ship/ship-auto.local.md > "$tmp_file"
+  mv "$tmp_file" .ship/ship-auto.local.md
 }
 
 reset_state() {
