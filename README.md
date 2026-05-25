@@ -67,7 +67,7 @@ Run `/ship:use-ship` when you want the agent to choose the right Ship route. Run
 | Skill | Description |
 |-------|-------------|
 | `/ship:use-ship` | Route the request to a standalone skill, phase bundle, or full flow |
-| `/ship:auto` | Staged workflow: input → plan → design → dev → E2E → review → QA → refactor → handoff |
+| `/ship:auto` | Staged workflow: input → design/spec+plan → dev → E2E → review → QA → refactor → handoff |
 | `/ship:design` | Adversarial spec + plan with peer challenge rounds |
 | `/ship:dev` | Host implements, peer cross-validates; parallel waves for file-independent stories |
 | `/ship:e2e` | Codify the change's acceptance criteria as persistent E2E tests, detect or scaffold the framework, run them against the real app |
