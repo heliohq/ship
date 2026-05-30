@@ -26,6 +26,7 @@
   "interface": {
     "displayName": "Ship",
     "shortDescription": "Agent-routed software delivery workflows for coding agents",
+    "composerIcon": "./assets/icon.svg",
     "longDescription": "Use Ship to choose the right delivery route for a task: standalone skills, grouped quality/build phases, or the full raw-requirement-to-PR flow with design, implementation, E2E, review, QA, refactor, and handoff.",
     "developerName": "Helio",
     "category": "Coding",
