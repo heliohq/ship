@@ -81,6 +81,9 @@ Run this loop:
 - Forget to stage and commit changelog or doc edits before the first push
 - Mark a thread or comment as resolved before the fix is actually pushed
 - Resolve comments that still need product, security, or architecture judgment
+- Silently ignore a comment — a decline is a visible reply with a reason
+- Apply "further fixes add no value" to CI or merge-readiness — that
+  judgment exists only for the comment decline classes
 - Fix failures without reading the actual check logs or review comments
 - Sync with base preemptively — only when drift, conflicts, or repo policy require it
 - Re-attempt a fix for a failure signature that already survived a fix
@@ -374,6 +377,26 @@ The loop is governed by progress, not a counter — see Loop Governance:
 compare each new failure against the round ledger before acting, and
 escalate the moment a failure signature survives a fix aimed at it.
 
+### Comment Triage
+
+Review comments are not all action-required. Triage each one before
+spending a fix round on it — "addressed" means fixed OR declined with a
+visible reason, never silently ignored:
+
+| Comment class | Action |
+|---|---|
+| Correctness, security, or spec violation (any author) | Fix it — this is what fix rounds are for |
+| Human reviewer explicitly requests changes | Fix it, or escalate to the user — never self-judge a human's request away |
+| Style, polish, or subjective preference (especially bot/AI reviews) | Fix only if trivial and local; otherwise reply with a one-line reasoned decline and move on |
+| Out-of-scope suggestion (new feature, broader refactor) | Decline with a reply; note it as a follow-up in the PR body |
+
+**Diminishing returns is a stop signal for comments — never for CI or
+merge-readiness.** When every remaining comment falls in the decline
+classes, the comment gate is satisfied: reply, minimize what's obsolete,
+and stop polishing. Checks green and merge-ready stay objective gates —
+"I think further fixes add no value" is never grounds to stop while a
+check is red or the PR is not merge-ready.
+
 In each fix round:
 
 0. Compare the current failure signature against the round ledger in
@@ -384,7 +407,9 @@ In each fix round:
    `mergeStateStatus`, and unresolved review threads.
 2. If checks failed, inspect the failing check logs and fix the smallest
    real cause.
-3. If review comments are actionable, fix mechanical or correctness issues.
+3. Triage review comments per Comment Triage above: fix the
+   correctness/security/spec class, decline the polish and out-of-scope
+   classes with a reasoned reply.
 4. If a comment requires product, security, or architecture judgment,
    escalate instead of guessing.
 5. If `mergeStateStatus` reports conflicts, base drift, branch protection
@@ -610,7 +635,9 @@ Done when:
   conflicts in the local worktree
 - the branch is not behind base in a way GitHub/repo policy requires
   updating before merge
-- no actionable unresolved review thread or bot/workflow comment remains
+- every review thread and bot/workflow comment is addressed: fixed, or
+  declined with a reasoned reply per Comment Triage (a human "changes
+  requested" review is never satisfied by an agent-side decline)
 
 Escalate when:
 
