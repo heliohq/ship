@@ -161,7 +161,6 @@ assert_eq "phase is design" "design" "$PHASE"
 assert_file_exists "prompt file created" "$PROMPT_FILE"
 assert_file_exists "state file created" ".ship/ship-auto.local.md"
 assert_file_exists "input requirement created" ".ship/tasks/$(get_state task_id)/input/requirement.md"
-assert_file_exists "run state created" ".ship/tasks/$(get_state task_id)/control/run_state.yaml"
 assert_eq "state phase is design" "design" "$(get_state phase)"
 
 TASK_ID=$(get_state task_id)
@@ -365,6 +364,20 @@ parse_output "$OUT"
 assert_eq "action is dispatch (retry)" "dispatch" "$ACTION"
 assert_eq "phase still design" "design" "$PHASE"
 assert_contains "message mentions retry" "Retrying" "$MESSAGE"
+assert_contains "first failure counts" "attempt 1/3" "$MESSAGE"
+
+# The cap is persisted in the state frontmatter — it must survive across
+# separate `complete` invocations (each is a fresh process) and escalate
+# on the third consecutive failure.
+OUT=$(bash "$ORCH" complete design --verdict=success --summary="still broken" 2>/dev/null)
+parse_output "$OUT"
+assert_eq "second failure still dispatches" "dispatch" "$ACTION"
+assert_contains "retry count persists across invocations" "attempt 2/3" "$MESSAGE"
+
+OUT=$(bash "$ORCH" complete design --verdict=success --summary="still broken" 2>/dev/null)
+parse_output "$OUT"
+assert_eq "third failure escalates" "escalate" "$ACTION"
+assert_contains "escalation reason mentions retries" "3 retries" "$REASON"
 
 echo ""
 

@@ -93,15 +93,11 @@ The runner creates:
 .ship/tasks/<task_id>/
   input/
     requirement.md
-    source.yaml
-    attachments/
-  control/
-    run_state.yaml
 ```
 
-The runner still uses `.ship/ship-auto.local.md` for session isolation and
-resume behavior. `run_state.yaml` is a minimal mirror for agents and tools. Any
-additional YAML is agent-owned and task-specific.
+The runner's only state surface is `.ship/ship-auto.local.md` (frontmatter:
+phase, branch, session, retry counters) — used for session isolation and
+resume behavior. Any additional YAML is agent-owned and task-specific.
 
 Pipeline order today:
 

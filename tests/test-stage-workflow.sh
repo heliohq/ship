@@ -164,16 +164,18 @@ case "$OUT" in
 esac
 
 assert_file "raw requirement captured" "$TASK_DIR/input/requirement.md"
-assert_file "source metadata written" "$TASK_DIR/input/source.yaml"
-assert_file "run state written" "$TASK_DIR/control/run_state.yaml"
+# Write-only side-state was removed (2026-07-02): the frontmatter in
+# .ship/ship-auto.local.md is the single source of truth. Nothing read
+# these files.
+assert_no_file "write-only source metadata is not generated" "$TASK_DIR/input/source.yaml"
+assert_no_file "write-only run state is not generated" "$TASK_DIR/control/run_state.yaml"
 assert_no_file "framework execution plan is not generated" "$TASK_DIR/control/execution_plan.yaml"
 assert_no_file "framework stage report is not generated" "$TASK_DIR/stage0_orchestration/stage_report.yaml"
 
-if grep -q "current_phase: design" "$TASK_DIR/control/run_state.yaml" \
-  && ! grep -q "current_stage:" "$TASK_DIR/control/run_state.yaml"; then
-  pass "run state is minimal and phase-based"
+if "$ROOT/scripts/auto-orchestrate.sh" status --json | jq -e '.phase == "design"' >/dev/null; then
+  pass "state frontmatter is the single phase source"
 else
-  fail "run state is minimal and phase-based"
+  fail "state frontmatter is the single phase source"
 fi
 
 echo ""

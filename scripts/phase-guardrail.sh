@@ -47,25 +47,23 @@ PHASE=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE" \
 
 [ -n "$PHASE" ] || exit 0
 
-# Normalize file path for matching
-BASENAME=$(basename "$FILE_PATH")
-
 block() {
   local reason="$1"
   jq -n --arg reason "$reason" '{"decision":"block","reason":$reason}'
 }
 
-# ── Rule 1: QA must not read review.md or plan.md ────────────
+# ── Rule 1: QA must not read Ship's review.md or plan.md ─────
 # Only applies during qa phase itself, NOT qa_fix (which runs dev-fix
-# agent that legitimately needs plan.md for context).
+# agent that legitimately needs plan.md for context). Scoped to Ship's
+# task artifacts — a user repo's own docs/plan.md is fair game.
 if [ "$PHASE" = "qa" ]; then
   if [ "$TOOL" = "Read" ]; then
-    case "$BASENAME" in
-      review.md)
+    case "$FILE_PATH" in
+      *.ship/tasks/*/review.md)
         block "[Ship guardrail] QA phase cannot read review.md — breaks independence"
         exit 0
         ;;
-      plan.md)
+      *.ship/tasks/*/plan/plan.md)
         block "[Ship guardrail] QA phase cannot read plan.md — breaks independence"
         exit 0
         ;;
