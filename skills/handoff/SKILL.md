@@ -1,6 +1,6 @@
 ---
 name: handoff
-version: 0.4.1
+version: 0.5.0
 description: >
   Ship completed work: verify locally, commit related changes, push, create or
   update the PR, watch CI/reviews, and fix until merge-ready or escalated. Use
@@ -33,8 +33,10 @@ If any GitHub check fails, fix the problem, push again, and wait again.
 If the PR is not merge-ready, sync with base or resolve conflicts inside
 the same fix loop.
 
-Escalate to the user only for judgment decisions or after retry limits
-are exhausted.
+This is a goal-directed loop, not a counted one. Keep looping while each
+round makes progress toward the completion conditions; escalate on
+evidence, never on a round counter — the specific evidence classes are
+in [Loop Governance](#loop-governance).
 
 Done means every condition in [Completion](#completion) is satisfied:
 the PR exists, checks are green with no relevant pending contexts, the PR
@@ -60,7 +62,9 @@ Run this loop:
 11. If the branch must be updated from base to clear drift, conflicts, or repo policy, sync with base inside the fix loop, then verify, commit, push, and wait again.
 12. If the PR is not merge-ready, fix the cause inside the same loop.
 13. Ignore `cancelled` checks unless they block the repo's normal CI/CD path.
-14. Stop after 3 fix rounds and escalate to the user.
+14. Before each fix round, compare the new failure against the round
+    ledger (Loop Governance): progress → keep looping; the same failure
+    surviving a fix aimed at it → escalate with the evidence.
 
 ## Red Flag
 
@@ -79,10 +83,51 @@ Run this loop:
 - Resolve comments that still need product, security, or architecture judgment
 - Fix failures without reading the actual check logs or review comments
 - Sync with base preemptively — only when drift, conflicts, or repo policy require it
-- Loop past 3 fix rounds — escalate instead
+- Re-attempt a fix for a failure signature that already survived a fix
+  aimed at it — the second identical outcome is evidence the approach is
+  wrong; escalate with the ledger instead of iterating on hope
+- Count rounds as a stopping condition — progress, judgment, and external
+  blockers are the only reasons to stop looping
 - Leave doc debt implicit — carry it into the PR
 
 ---
+
+## Loop Governance
+
+Modern harnesses run goal-directed loops natively — a fixed retry cap
+abandons hard-but-progressing PRs while adding no safety that progress
+detection doesn't provide better. The loop is governed by three things:
+
+**1. Progress detection (the round ledger).** Every fix round appends one
+block to `<task_dir>/handoff.md` (or tracks inline when no task dir):
+
+```
+Round <i>: trigger=<check name + error class, or "conflict"/"review">
+  action=<what was changed, one line>
+  result=<next terminal state: new signature | same signature | green>
+```
+
+Before starting a round, compare the current failure to the ledger:
+
+- **New failure signature** (different check, or same check failing
+  differently) → progress; loop.
+- **Same signature after a fix aimed at it** → the approach is wrong.
+  Escalate with the ledger as evidence — do not iterate on hope.
+- The ledger survives context compaction; after a compaction, trust it
+  over recollection.
+
+**2. Judgment boundaries.** Product/security/architecture review
+comments, conflicts you cannot resolve confidently, and rebase-policy
+dead ends escalate immediately regardless of progress. A fix that would
+change the shipped behavior (not just repair its delivery) is scope
+drift — escalate; the fix loop repairs delivery, it does not redesign.
+
+**3. The harness's own goal net.** Under `/ship:auto`, the stop gate
+already blocks session exit until the PR is merge-ready. In a standalone
+run on a harness with a native goal condition (e.g. Claude Code's
+`/goal`), suggest the user arm one at the start — `PR checks green and
+merge-ready, or stop after 25 turns` — as the outer bound; the harness's
+turn bound replaces any hand-rolled cap.
 
 ## Progress Tracking
 
@@ -110,7 +155,7 @@ TodoWrite([
 - No CHANGELOG.md and no doc changes needed → drop that item entirely
 - No CI workflows and no PR check contexts after PR creation → drop
   "Wait for GitHub checks"
-- Check fails → insert `"Fix round N/3 — <issue summary>"` with `in_progress`
+- Check fails → insert `"Fix round N — <failure signature>"` with `in_progress`
 - PR already exists (update flow) → rename "Push and create PR" to
   "Push update to existing PR"
 
@@ -201,8 +246,10 @@ Push and create:
 5. If the PR already exists, update the body or add a short comment with the latest verification summary.
 6. If `task_dir` exists, write or update `<task_dir>/handoff.md` with:
    PR URL, branch, base, verification commands/results, docs outcome,
-   current check summary, current `mergeStateStatus`, and fix-round count.
-   This file is the handoff evidence consumed by the stop gate.
+   current check summary, current `mergeStateStatus`, and the round
+   ledger (Loop Governance format — one block per fix round). This file
+   is the handoff evidence consumed by the stop gate, and the ledger is
+   what makes progress detection survive context compaction.
 
 Output: `[Handoff] PR created: <url>`
 
@@ -213,26 +260,37 @@ checks once so you understand what this repo expects to run. A repo can
 have required checks from GitHub Apps even when it has no local workflow
 files, so never skip this phase based on `.github/workflows` alone.
 
-**Arm a Monitor, don't poll.** `gh pr checks --watch` blocks locally and
-polls GitHub itself every ~10s — you stay idle until checks terminate. This
-replaces the older 30-second agent-side poll loop (which burned ~20
-round-trips per 10-minute CI wait) with a single arm + single handle cycle.
+**Let the harness wait — never agent-side sleep polling.**
+`gh pr checks --watch` blocks locally and polls GitHub itself every ~10s;
+your job is to park on it with whatever waiting primitive your harness
+has, so idle waiting costs nothing:
 
-Before arming, check whether a Monitor for this PR is already running — on
-resume after escalation the prior watch may still be alive. If so, wait for
-its event; do not arm a duplicate.
+- **Monitor available** (Claude Code): arm one watch per wait cycle. A
+  Monitor is single-use — it wakes you when output arrives and is
+  re-armed fresh after each fix push. Use an explicit timeout, NOT
+  `persistent: true` (persistent overrides `timeout_ms` entirely and
+  needs a manual TaskStop; it is meant for dev servers, not bounded
+  waits):
 
-Arm the watch with `persistent: true` so it survives across fix rounds:
+      Monitor(
+        command: 'timeout 3600 gh pr checks --watch; echo "TERMINAL exit=$?"',
+        description: "PR <number> checks settling",
+        timeout_ms: 3600000
+      )
 
-    Monitor(
-      command: 'gh pr checks --watch; echo "TERMINAL exit=$?"',
-      description: "PR <number> checks settling",
-      persistent: true,
-      timeout_ms: 3600000
-    )
+  Before arming, check whether a Monitor for this PR is already running —
+  on resume the prior watch may still be alive. If so, wait for its
+  event; do not arm a duplicate.
+- **Background command support, no Monitor**: run
+  `timeout 3600 gh pr checks --watch` as a background command — the
+  completion notification wakes you with the exit code.
+- **Neither** (e.g. Codex today): run
+  `timeout 3600 gh pr checks --watch` as a plain blocking command; the
+  harness waits on the process. If the harness offers a scheduled-wakeup
+  loop instead, poll `gh pr checks` on a few-minute interval.
 
-When a `TERMINAL exit=<code>` event arrives, pull the authoritative state
-once:
+When the watch terminates (`TERMINAL exit=<code>` event, background
+completion, or command return), pull the authoritative state once:
 
 ```bash
 # Full snapshot for interpretation
@@ -298,22 +356,30 @@ Interpret the snapshot:
 - Exit code non-zero but no concrete failure found in snapshot → re-query
   once, then escalate as ambiguous CI state
 
-**Fallback.** If no `TERMINAL` event fires within the 1h timeout, TaskStop
-the monitor and escalate as an external GitHub wait — not a code fix
-failure. Record which checks were still pending at escalation time so the
-user can investigate on GitHub.
+**Wait timeout.** If the watch hits its 1h bound with checks still
+pending, re-query once: checks that moved → re-arm the watch and keep
+waiting (slow CI is progress, not failure); checks frozen with no
+movement since the previous query → escalate as an external GitHub wait,
+not a code-fix failure. Record which checks were still pending so the
+user can investigate.
 
-**Re-entering the fix loop.** When Phase 6 finishes pushing a fix, re-arm
-the Monitor (the previous one exited on the prior terminal event) and loop
-back to the event-wait above.
+**Re-entering the fix loop.** When Phase 6 finishes pushing a fix, arm a
+fresh watch (the previous one terminated on its event) and loop back to
+the event-wait above.
 
 ## Phase 6: Fix Loop
 
 If CI failures, review comments, or merge conflicts exist, fix them.
-Max 3 rounds — after that, escalate.
+The loop is governed by progress, not a counter — see Loop Governance:
+compare each new failure against the round ledger before acting, and
+escalate the moment a failure signature survives a fix aimed at it.
 
 In each fix round:
 
+0. Compare the current failure signature against the round ledger in
+   `<task_dir>/handoff.md`. Same signature as the previous round's
+   target → stop and escalate with the ledger. New signature → append
+   the new round entry and continue.
 1. Re-read the current PR status on GitHub, including checks,
    `mergeStateStatus`, and unresolved review threads.
 2. If checks failed, inspect the failing check logs and fix the smallest
@@ -461,7 +527,7 @@ gh api graphql -f query='
   }' -F subjectId="<comment-node-id>"
 ```
 
-Output: `[Handoff] Fix round <i>/3 — <what was fixed>. Tests pass. Re-checking CI...`
+Output: `[Handoff] Fix round <i> — target: <failure signature> — <what was fixed>. Tests pass. Re-checking CI...`
 
 ---
 
@@ -483,7 +549,7 @@ Output the report card (read `skills/.shared/report-card.md` for the standard fo
 | PR URL | <url> |
 | Check status | <green / N passing, M failed> |
 | Merge state | <mergeStateStatus> |
-| Fix rounds | <N>/3 |
+| Fix rounds | <N> (each targeting a new failure signature) |
 | Docs outcome | <updated / checked-no-update / debt-noted> |
 
 ### Artifacts
@@ -509,10 +575,11 @@ verify/commit/push pattern after every fix round.
 [Handoff] Push, PR created: https://github.com/org/repo/pull/123
 
 [Handoff] Wait → ci/test FAILURE
-[Handoff] Fix round 1/3 — added nil guard, re-verify PASS, push
+[Handoff] Fix round 1 — target: ci/test nil deref — added nil guard, re-verify PASS, push
 [Handoff] Wait → AI review: requested error-path coverage
-[Handoff] Fix round 2/3 — added error-path test, re-verify PASS, push
+[Handoff] Fix round 2 — target: review error-path coverage — added test, re-verify PASS, push
                  resolved review thread, minimized obsolete bot comment
+                 (each round hit a NEW signature — progress; ledger updated)
 
 [Handoff] Wait → all checks green
 [Handoff] Merge state → CLEAN
@@ -527,7 +594,8 @@ Key invariants the example preserves:
 - Merge readiness is a gate alongside checks; blocked/behind/conflicting
   PRs keep looping.
 - Resolve threads / minimize obsolete bot comments only after the fix is pushed.
-- Retry limit is 3 fix rounds, then escalate.
+- The loop is bounded by progress, not a count: each round targets a new
+  failure signature; a repeated signature escalates with the ledger.
 
 ## Completion
 
@@ -546,8 +614,12 @@ Done when:
 
 Escalate when:
 
-- 3 fix rounds are exhausted
-- a remaining issue requires user judgment
-- GitHub checks stay pending past the wait timeout
+- a failure signature survives a fix aimed at it (no-progress evidence —
+  bring the round ledger)
+- a remaining issue requires user judgment (product, security,
+  architecture, or a fix that would change shipped behavior rather than
+  repair its delivery)
+- GitHub checks stay frozen past the wait timeout with no movement
+  between re-queries (external blocker)
 - GitHub state remains ambiguous after one re-query
 - merge conflicts or required branch updates cannot be resolved confidently
