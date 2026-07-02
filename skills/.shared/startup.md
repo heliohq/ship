@@ -1,575 +1,135 @@
 # Application Startup (shared)
 
 How to discover, start, and verify any application. Used by any skill that
-needs to bring the app up before interacting with it — QA, E2E, and anything
-else that runs the real service end-to-end. This reference is
-discovery-based — probe the project to find out what it needs, then
-act on what you find. Do not assume any specific stack.
+needs the app running before interacting with it — QA, E2E, and anything
+else that exercises the real service. Discovery-based: probe the project,
+act on what you find, assume no specific stack. You know how to start
+apps; this reference fixes the contract — where logs and PIDs go, what
+"ready" means, and what to do when startup fails.
 
 ## Inputs from the calling skill
 
-The skill that invokes this reference must define one environment variable
-before running the commands below:
+The calling skill must set one environment variable first:
 
 ```bash
 EVIDENCE_DIR="<path where this phase writes logs, pids, and evidence>"
-# Examples:
-#   QA:  EVIDENCE_DIR=".ship/tasks/$TASK_ID/qa"
-#   E2E: EVIDENCE_DIR=".ship/tasks/$TASK_ID/e2e"
+# QA:  EVIDENCE_DIR=".ship/tasks/$TASK_ID/qa"
+# E2E: EVIDENCE_DIR=".ship/tasks/$TASK_ID/e2e"
 mkdir -p "$EVIDENCE_DIR"
 ```
 
-All subsequent commands write logs and track PIDs under `$EVIDENCE_DIR`.
-The calling skill is responsible for cleanup (see `shared/cleanup.md`).
+All logs and PID tracking go under `$EVIDENCE_DIR`. Cleanup belongs to the
+calling skill (see `cleanup.md`) — **startup only starts, it never stops.**
 
 ## Workflow
 
 ```
 1. Discover    Probe project files to detect stack, commands, ports, deps
-2. Install     Install dependencies based on what was detected
+2. Install     Install dependencies with the detected package manager
 3. Infra       Start infrastructure (docker, databases, caches)
-4. Migrate     Run database migrations if detected
+4. Migrate     Run database migrations if a migration tool exists
 5. Start       Launch the application, track PIDs
 6. Verify      Poll until the app responds (readiness check)
 ```
 
-Note: cleanup is handled by the calling skill (see `shared/cleanup.md`).
-Startup only starts — it never stops.
-
 ## Phase 1: Discover
 
-The goal is to answer five questions:
-1. **What runtime/framework?** (Node, Python, Go, Rust, Ruby, Java, etc.)
-2. **How to start it?** (which command)
-3. **What port?** (where does it listen)
-4. **What dependencies?** (docker, database, cache, etc.)
-5. **What testing tools are available?** (agent-browser, curl, etc.)
+Answer five questions: runtime/framework? start command? port?
+infrastructure dependencies? available testing tools?
 
-### Probe project files
+Probe in this order and stop when you have clear answers — human-written
+instructions outrank inference:
 
-Check these files in order. Stop as soon as you have clear answers.
+1. `CLAUDE.md` / `AGENTS.md` / README ("getting started", "development")
+2. `Makefile` targets (`dev`, `start`, `serve`, `run`, `up`, `migrate`)
+3. Package-manager manifests (`package.json` scripts, `pyproject.toml`,
+   `go.mod`, `Cargo.toml`, `Gemfile`, `mix.exs`, …) — these also identify
+   the runtime, the package manager (from the lockfile), and the framework
+4. `docker-compose.yml` / `Dockerfile`, `.env` / `.env.example` (ports,
+   DATABASE_URL, required env)
 
-```bash
-# 1. Project docs (highest signal — human-written instructions)
-cat CLAUDE.md 2>/dev/null | head -50
-cat AGENTS.md 2>/dev/null | head -50
-cat README.md 2>/dev/null | grep -A 20 -iE 'getting started|quick start|development|setup|run'
+**Always prefer the start command found in discovery over a framework
+default you infer.**
 
-# 2. Makefile (common in mature projects)
-cat Makefile 2>/dev/null | grep -E '^[a-zA-Z_-]+:' | head -20
-# Look for: dev, start, serve, run, up, setup, install, migrate
+### Testing tools
 
-# 3. Package manager files (detect runtime)
-ls package.json Cargo.toml go.mod pyproject.toml setup.py Gemfile build.gradle pom.xml mix.exs 2>/dev/null
+`curl` is assumed. Browser and Electron testing need the `agent-browser`
+CLI — if `which agent-browser` fails, AskUserQuestion:
 
-# 4. Docker
-ls docker-compose.yml compose.yml Dockerfile 2>/dev/null
-```
+> Browser testing requires agent-browser (https://github.com/vercel-labs/agent-browser).
+> A) Install it now (`npm install -g agent-browser`)  B) Skip browser testing this run
 
-### Detect testing tools
+On A, install and re-verify (continue without it if the install fails).
+On B, skip `references/browser.md` and `references/electron.md` — API and
+CLI testing still run with curl.
 
-```bash
-# Check agent-browser
-which agent-browser 2>/dev/null && echo "TOOL: agent-browser" || echo "TOOL: agent-browser NOT FOUND"
+## Phase 2: Install dependencies
 
-# Check curl (should always be available)
-which curl 2>/dev/null && echo "TOOL: curl" || echo "TOOL: curl NOT FOUND"
+Install with the package manager the lockfile names (pnpm/yarn/bun/npm,
+poetry/uv/pipenv/pip, bundler, cargo, go mod). Don't switch managers.
 
-# Check docker
-which docker 2>/dev/null && echo "TOOL: docker" || echo "TOOL: docker NOT FOUND"
-```
+## Phase 3: Infrastructure
 
-**If agent-browser is not found:** AskUserQuestion:
+If a compose file exists: `docker compose up -d`, then wait for services
+to report healthy (poll `docker compose ps`, ~120s budget; fall back to a
+TCP check on the service ports). If there is no compose file but `.env`
+carries a database URL, assume an external database and skip this phase.
 
-> Browser testing requires agent-browser CLI (https://github.com/vercel-labs/agent-browser).
-> Without it, browser and Electron testing will be skipped — only API and CLI testing will run.
->
-> A) Install agent-browser now (`npm install -g agent-browser`)
-> B) Skip browser testing for this run
+## Phase 4: Migrations and seed
 
-If A → run `npm install -g agent-browser`, verify with `which agent-browser`.
-If install fails, continue without it.
+If a migration tool is present, run it (prisma/drizzle/typeorm, django
+`manage.py migrate`, alembic, rails `db:migrate`, goose/migrate/atlas,
+`mix ecto.migrate` — or a Makefile `migrate` target). Seed if the project
+ships seed data (`prisma db seed`, fixtures, `db:seed`, `make seed`).
+No migration tool → skip.
 
-If B → skip `references/browser.md` and `references/electron.md`.
-API and CLI testing still work with just curl.
+## Phase 5: Start the application
 
-### Detect runtime
+The contract, per service:
 
 ```bash
-# Node.js
-if [ -f package.json ]; then
-  echo "RUNTIME: node"
-  # Package manager
-  [ -f pnpm-lock.yaml ] && echo "PKG: pnpm"
-  [ -f yarn.lock ] && echo "PKG: yarn"
-  [ -f bun.lockb ] && echo "PKG: bun"
-  [ -f package-lock.json ] && echo "PKG: npm"
-  # Framework
-  grep -q '"next"' package.json && echo "FRAMEWORK: next"
-  grep -q '"nuxt"' package.json && echo "FRAMEWORK: nuxt"
-  grep -q '"vite"' package.json && echo "FRAMEWORK: vite"
-  grep -q '"remix"' package.json && echo "FRAMEWORK: remix"
-  grep -q '"astro"' package.json && echo "FRAMEWORK: astro"
-  grep -q '"express"' package.json && echo "FRAMEWORK: express"
-  grep -q '"fastify"' package.json && echo "FRAMEWORK: fastify"
-  grep -q '"hono"' package.json && echo "FRAMEWORK: hono"
-  grep -q '"electron"' package.json && echo "FRAMEWORK: electron"
-fi
-
-# Python
-if [ -f pyproject.toml ] || [ -f setup.py ] || [ -f requirements.txt ]; then
-  echo "RUNTIME: python"
-  [ -f pyproject.toml ] && grep -q 'django' pyproject.toml && echo "FRAMEWORK: django"
-  [ -f pyproject.toml ] && grep -q 'fastapi' pyproject.toml && echo "FRAMEWORK: fastapi"
-  [ -f pyproject.toml ] && grep -q 'flask' pyproject.toml && echo "FRAMEWORK: flask"
-  [ -f poetry.lock ] && echo "PKG: poetry"
-  [ -f uv.lock ] && echo "PKG: uv"
-  [ -f Pipfile.lock ] && echo "PKG: pipenv"
-fi
-
-# Go
-if [ -f go.mod ]; then
-  echo "RUNTIME: go"
-  grep -q 'gin-gonic' go.mod && echo "FRAMEWORK: gin"
-  grep -q 'gofiber' go.mod && echo "FRAMEWORK: fiber"
-  grep -q 'echo' go.mod && echo "FRAMEWORK: echo"
-fi
-
-# Rust
-if [ -f Cargo.toml ]; then
-  echo "RUNTIME: rust"
-  grep -q 'actix' Cargo.toml && echo "FRAMEWORK: actix"
-  grep -q 'axum' Cargo.toml && echo "FRAMEWORK: axum"
-  grep -q 'rocket' Cargo.toml && echo "FRAMEWORK: rocket"
-  grep -q 'tauri' Cargo.toml && echo "FRAMEWORK: tauri"
-fi
-
-# Ruby
-if [ -f Gemfile ]; then
-  echo "RUNTIME: ruby"
-  grep -q 'rails' Gemfile && echo "FRAMEWORK: rails"
-  grep -q 'sinatra' Gemfile && echo "FRAMEWORK: sinatra"
-fi
-
-# Java / Kotlin
-if [ -f build.gradle ] || [ -f build.gradle.kts ] || [ -f pom.xml ]; then
-  echo "RUNTIME: java"
-  grep -q 'spring' build.gradle 2>/dev/null && echo "FRAMEWORK: spring"
-  grep -q 'spring' pom.xml 2>/dev/null && echo "FRAMEWORK: spring"
-fi
-
-# Elixir
-if [ -f mix.exs ]; then
-  echo "RUNTIME: elixir"
-  grep -q 'phoenix' mix.exs && echo "FRAMEWORK: phoenix"
-fi
-```
-
-### Detect start command
-
-```bash
-# From package.json scripts
-if [ -f package.json ]; then
-  node -e "
-    const pkg = require('./package.json');
-    const s = pkg.scripts || {};
-    const order = ['dev', 'start:dev', 'start', 'serve', 'develop'];
-    for (const key of order) {
-      if (s[key]) { console.log('CMD: ' + key + ' → ' + s[key]); break; }
-    }
-  " 2>/dev/null
-fi
-
-# From Makefile
-if [ -f Makefile ]; then
-  grep -E '^(dev|start|serve|run|up)\s*:' Makefile | head -3
-fi
-
-# From Procfile (Heroku-style)
-if [ -f Procfile ]; then
-  cat Procfile | head -5
-fi
-```
-
-### Detect port
-
-```bash
-# From .env / .env.example / .env.local
-grep -hiE 'PORT=' .env .env.example .env.local .env.development 2>/dev/null | head -3
-
-# From package.json scripts (look for --port or -p flags)
-grep -oE '(--port|-p)\s*[0-9]+' package.json 2>/dev/null
-
-# From docker-compose
-grep -E 'ports:' -A 2 docker-compose.yml compose.yml 2>/dev/null
-
-# Common defaults by framework
-# Next.js: 3000, Vite: 5173, Django: 8000, Rails: 3000
-# FastAPI: 8000, Go: 8080, Spring: 8080, Phoenix: 4000
-```
-
-### Detect infrastructure dependencies
-
-```bash
-# Docker compose services
-if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
-  COMPOSE_FILE=$([ -f compose.yml ] && echo "compose.yml" || echo "docker-compose.yml")
-  docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null
-fi
-
-# Database from dependencies
-grep -liE 'postgres|mysql|sqlite|mongo|redis|prisma|typeorm|sequelize|drizzle|sqlalchemy|diesel|activerecord' \
-  package.json pyproject.toml Gemfile go.mod Cargo.toml 2>/dev/null
-
-# Database from env
-grep -hiE 'DATABASE_URL|DB_HOST|REDIS_URL|MONGO_URI' .env .env.example 2>/dev/null
-```
-
-### Output discovery results
-
-After probing, print a summary:
-
-```
-[Startup] Discovery:
-  Runtime: <node|python|go|rust|ruby|java|elixir>
-  Framework: <next|django|fastapi|express|...>
-  Package manager: <npm|pnpm|yarn|bun|poetry|uv|cargo|...>
-  Start command: <the command>
-  Port: <number>
-  Infrastructure: <postgres, redis, ...>
-  Docker: <yes|no>
-```
-
-If any critical piece is unclear (especially start command or port),
-use AskUserQuestion before proceeding.
-
-## Phase 2: Install Dependencies
-
-Based on detected runtime and package manager:
-
-```bash
-# Node.js
-[ -f pnpm-lock.yaml ] && pnpm install
-[ -f yarn.lock ] && yarn install
-[ -f bun.lockb ] && bun install
-[ -f package-lock.json ] && npm install
-# Fallback if no lockfile
-[ -f package.json ] && [ ! -d node_modules ] && npm install
-
-# Python
-[ -f poetry.lock ] && poetry install
-[ -f uv.lock ] && uv sync
-[ -f Pipfile.lock ] && pipenv install
-[ -f requirements.txt ] && pip install -r requirements.txt
-
-# Go
-[ -f go.mod ] && go mod download
-
-# Rust
-[ -f Cargo.toml ] && cargo build
-
-# Ruby
-[ -f Gemfile ] && bundle install
-
-# Java (Gradle)
-[ -f build.gradle ] && ./gradlew build -x test
-
-# Java (Maven)
-[ -f pom.xml ] && mvn install -DskipTests
-
-# Elixir
-[ -f mix.exs ] && mix deps.get
-```
-
-## Phase 3: Start Infrastructure
-
-Only if docker compose detected:
-
-```bash
-COMPOSE_FILE=$([ -f compose.yml ] && echo "compose.yml" || echo "docker-compose.yml")
-
-# Validate
-docker compose -f "$COMPOSE_FILE" config --quiet 2>&1
-
-# Build if needed
-docker compose -f "$COMPOSE_FILE" build 2>&1
-
-# Start
-docker compose -f "$COMPOSE_FILE" up -d 2>&1
-
-# Wait for healthy (120s timeout)
-for i in $(seq 1 40); do
-  UNHEALTHY=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null \
-    | grep -v '"healthy"' | grep -c '"running"' || echo "0")
-  [ "$UNHEALTHY" -eq 0 ] && echo "INFRA: all healthy" && break
-  sleep 3
-done
-
-# Fallback: TCP check on common ports
-for PORT in 5432 3306 6379 27017; do
-  (echo > /dev/tcp/localhost/$PORT) 2>/dev/null && echo "PORT $PORT: open"
-done
-```
-
-If no docker compose but database URL is in .env, assume external
-database and skip this phase.
-
-## Phase 4: Run Migrations
-
-Detect and run migration commands:
-
-```bash
-# Prisma (Node.js)
-[ -f prisma/schema.prisma ] && npx prisma migrate deploy 2>&1
-[ -f prisma/schema.prisma ] && npx prisma generate 2>&1
-
-# Drizzle (Node.js)
-[ -f drizzle.config.ts ] && npx drizzle-kit push 2>&1
-
-# TypeORM (Node.js)
-grep -q 'typeorm' package.json 2>/dev/null && npx typeorm migration:run 2>&1
-
-# Django (Python)
-[ -f manage.py ] && python manage.py migrate 2>&1
-
-# SQLAlchemy / Alembic (Python)
-[ -d alembic ] && alembic upgrade head 2>&1
-
-# Rails (Ruby)
-[ -f bin/rails ] && bin/rails db:migrate 2>&1
-
-# Go (goose, migrate, atlas)
-which goose >/dev/null 2>&1 && goose up 2>&1
-which migrate >/dev/null 2>&1 && migrate up 2>&1
-
-# Elixir / Phoenix
-[ -f mix.exs ] && mix ecto.migrate 2>&1
-
-# From Makefile (common pattern)
-grep -qE '^(migrate|db-setup|db-migrate)\s*:' Makefile 2>/dev/null && make migrate 2>&1
-```
-
-If no migration tool detected, skip this phase.
-
-### Seed data (if needed)
-
-```bash
-# Prisma
-[ -f prisma/seed.ts ] && npx prisma db seed 2>&1
-
-# Django
-[ -f manage.py ] && python manage.py loaddata fixtures/*.json 2>&1
-
-# Rails
-[ -f db/seeds.rb ] && bin/rails db:seed 2>&1
-
-# From Makefile
-grep -qE '^(seed|db-seed)\s*:' Makefile 2>/dev/null && make seed 2>&1
-```
-
-## Phase 5: Start Application
-
-All logs and PID tracking go to `$EVIDENCE_DIR` (set by the calling skill).
-
-```bash
-# $EVIDENCE_DIR was set before entering this reference — see "Inputs" at top.
-
-# Check port is free
 PORT=<detected_port>
 lsof -i :$PORT -t 2>/dev/null && echo "WARNING: port $PORT already in use" || echo "PORT $PORT: free"
 
-# Start in background, track PID in the same call
 nohup <start_command> > "$EVIDENCE_DIR/app.log" 2>&1 &
-PID=$!
-echo $PID >> "$EVIDENCE_DIR/pids.txt"
-echo "Started app PID=$PID"
-```
-
-### Common start commands by framework
-
-```bash
-# Next.js
-nohup npx next dev > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Vite (React, Vue, Svelte)
-nohup npx vite dev > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Express / Fastify / Hono
-nohup node server.js > "$EVIDENCE_DIR/app.log" 2>&1 &
-nohup npm run dev > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Django
-nohup python manage.py runserver 0.0.0.0:8000 > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# FastAPI
-nohup uvicorn main:app --host 0.0.0.0 --port 8000 > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Flask
-nohup flask run --host 0.0.0.0 > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Go
-nohup go run ./cmd/server > "$EVIDENCE_DIR/app.log" 2>&1 &
-nohup go run . > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Rust
-nohup cargo run > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Rails
-nohup bin/rails server > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Phoenix
-nohup mix phx.server > "$EVIDENCE_DIR/app.log" 2>&1 &
-
-# Spring Boot
-nohup ./gradlew bootRun > "$EVIDENCE_DIR/app.log" 2>&1 &
-nohup mvn spring-boot:run > "$EVIDENCE_DIR/app.log" 2>&1 &
-```
-
-Always prefer the start command found in discovery (Makefile, package.json scripts,
-CLAUDE.md) over these defaults. These are fallbacks.
-
-### Monorepo: multiple services
-
-Some projects have multiple services (frontend + backend, or microservices).
-Start each one separately with its own PID and log file:
-
-```bash
-# Example: frontend + backend
-nohup npm run dev --prefix packages/frontend > "$EVIDENCE_DIR/frontend.log" 2>&1 &
-echo $! >> "$EVIDENCE_DIR/pids.txt"
-
-nohup npm run dev --prefix packages/backend > "$EVIDENCE_DIR/backend.log" 2>&1 &
 echo $! >> "$EVIDENCE_DIR/pids.txt"
 ```
 
-## Phase 6: Verify Readiness
+**Every started process gets its PID appended to `pids.txt` in the same
+command that starts it** — an untracked PID is a leaked process at
+cleanup time. Monorepos with multiple services: one log file and one
+`pids.txt` line per service (`frontend.log`, `backend.log`, …).
 
-Poll until the app responds. 90 second timeout.
+## Phase 6: Verify readiness
+
+Poll up to 90 seconds across common health endpoints before declaring
+success or failure:
 
 ```bash
-PORT=<detected_port>
-
-# Try common health endpoints
 for i in $(seq 1 30); do
   for ENDPOINT in "/" "/health" "/healthz" "/api/health" "/api"; do
     STATUS=$(curl -sf -o /dev/null -w '%{http_code}' "http://localhost:$PORT$ENDPOINT" 2>/dev/null)
-    if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 500 ]; then
-      echo "READY: http://localhost:$PORT$ENDPOINT returned $STATUS"
-      break 2
-    fi
+    [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 500 ] && echo "READY: $ENDPOINT → $STATUS" && break 2
   done
   sleep 3
 done
-
-# If still not ready, check the log for errors
-if [ $i -eq 30 ]; then
-  echo "TIMEOUT: app did not become ready in 90 seconds"
-  echo "Last 20 lines of log:"
-  tail -20 "$EVIDENCE_DIR/app.log"
-fi
 ```
 
-### Verify PID is still alive
-
-```bash
-PID=$(tail -1 "$EVIDENCE_DIR/pids.txt")
-kill -0 $PID 2>/dev/null && echo "PID $PID: running" || echo "PID $PID: DEAD — check app.log"
-```
-
-### Output
+On timeout: `tail -20 "$EVIDENCE_DIR/app.log"` and check the PID is alive
+(`kill -0 $(tail -1 "$EVIDENCE_DIR/pids.txt")`). Report per service:
 
 ```
-[Startup] Services:
-  app:3000 — healthy
-  docker:postgres:5432 — healthy
-  docker:redis:6379 — healthy
+[Startup] app:3000 — healthy | FAILED (+ last 20 log lines when failed)
 ```
 
-If the app fails to start:
-```
-[Startup] app:3000 — FAILED
-[Startup] Last 20 lines of server log:
-<tail -20 app.log>
-```
+If a service fails, SKIP only the criteria that depend on it — not the
+entire run, unless everything depends on it.
 
-SKIP criteria that depend on the failed service. Do not SKIP the entire
-run unless ALL criteria depend on it.
+## Troubleshooting recognition list
 
-## Cleanup
-
-**Cleanup is NOT part of startup.** Startup only starts services.
-Cleanup is handled by SKILL.md Phase 7, which runs after ALL testing
-is complete. Do not kill processes or stop docker here — the tests
-need the services running.
-
-## Troubleshooting
-
-### Port already in use
-
-```bash
-# Find what's using the port
-lsof -i :<port> -t 2>/dev/null
-# Kill it if it's a leftover from a previous run
-lsof -i :<port> -t 2>/dev/null | xargs kill -9 2>/dev/null
-```
-
-### Dependencies won't install
-
-```bash
-# Node: clear cache and retry
-rm -rf node_modules && <pkg_manager> install
-
-# Python: check venv
-python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-```
-
-### Docker won't start
-
-```bash
-# Check docker daemon
-docker info 2>&1 | head -5 || echo "Docker not running"
-
-# Check compose file is valid
-docker compose config --quiet 2>&1
-
-# Nuclear reset (ask user first)
-docker compose down -v --remove-orphans 2>&1
-```
-
-### App starts but immediately crashes
-
-```bash
-# Check the log
-tail -50 "$EVIDENCE_DIR/app.log"
-
-# Common causes:
-# - Missing .env file (copy from .env.example)
-# - Database not ready yet (migration didn't run or docker still starting)
-# - Port conflict
-# - Missing build step (Next.js needs `next build` for production mode)
-```
-
-### App starts but returns 500 on every request
-
-```bash
-# Check if it's a build issue
-# Some frameworks need a build step before serving
-npm run build 2>&1  # Next.js, Vite in production
-python manage.py collectstatic 2>&1  # Django
-
-# Check if it's a database issue
-# App started before migrations ran or database is empty
-```
-
-### Migrations fail
-
-```bash
-# Check database is reachable
-(echo > /dev/tcp/localhost/5432) 2>/dev/null && echo "DB reachable" || echo "DB unreachable"
-
-# Check DATABASE_URL is set
-grep DATABASE_URL .env 2>/dev/null || echo "No DATABASE_URL in .env"
-
-# Copy .env.example if .env is missing
-[ ! -f .env ] && [ -f .env.example ] && cp .env.example .env && echo "Copied .env.example to .env"
-```
+- **Port in use** → `lsof -i :<port> -t`; kill only if it's a leftover from a previous run.
+- **App starts then immediately dies** → tail the log; usual causes: missing `.env` (copy `.env.example`), database not ready (docker still starting / migrations not run), port conflict, missing build step.
+- **500 on every request** → framework needs a build step (`next build`, `collectstatic`), or the app started before migrations ran.
+- **Migrations fail** → is the DB reachable (TCP check)? is `DATABASE_URL` set? is `.env` missing while `.env.example` exists?
+- **Install fails** → clear the package cache / recreate the venv, retry once.
+- **Docker won't start** → `docker info` (daemon running?), `docker compose config --quiet` (file valid?). Ask before any `down -v` reset — it destroys volumes.

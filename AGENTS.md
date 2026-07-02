@@ -13,9 +13,8 @@
 
 | Directory | Contents | Purpose |
 |-----------|----------|---------|
-| `scripts/` | Shell scripts | Startup hint, workflow hooks, auto orchestrator, PR readiness, docs index generation, and PATH bootstrap |
-| `hooks/` | `hooks.json`, `codex-hooks.json` | Plugin-level quality gate hook registration for Claude Code and Codex |
-| `.codex/` | `INSTALL.md` | Codex install docs |
+| `scripts/` | Shell scripts | Startup hint, workflow hooks, auto orchestrator, PR readiness, docs index generation, PATH bootstrap, and dev-phase file handoffs (`story-brief.sh`, `review-package.sh`) |
+| `hooks/` | `hooks.json`, `codex-hooks.json` | Same three hooks per platform (session hint, phase guardrail, stop gate); they differ only in the root variable each platform expands |
 | `.codex-plugin/` | `plugin.json` | Native Codex plugin metadata for skills, MCP, and Codex UI |
 | `skills/` | Skill dirs plus `.shared/` helpers | Slash commands (`/ship:*`) and hidden shared references |
 | `skills/use-ship/` | Routing skill | Agent-facing guide for grouping Ship phases based on task need |
@@ -33,11 +32,12 @@ workflows, especially `/ship:auto`:
 - Full workflow runs write raw input to `.ship/tasks/<task_id>/input/requirement.md`.
 - The runner owns only minimal state in `.ship/tasks/<task_id>/control/run_state.yaml`; agents may create task-specific YAML notes if useful.
 - Markdown artifacts and repository code are the output plane.
+- Bulk artifacts move between agents as file paths, never pasted prompt text: story briefs, implementer reports, and review packages live in the self-ignoring `.ship/scratch/`.
 - Durable production artifacts may be organized under `docs/ship/<task-id-or-req-id>/` when the repo lacks an existing convention.
 - `stop-gate.sh` — blocks session exit while `.ship/ship-auto.local.md` is active (with fast-path for terminal phases)
 - `auto-orchestrate.sh` — code-driven state machine for staged workflows (init, resume, complete, status commands)
 - `phase-guardrail.sh` — PreToolUse hook enforcing artifact access rules per phase (QA independence, review read-only, state file protection)
-- Claude Code loads hooks through plugin `hooks/hooks.json`; Codex discovers skills through `.codex-plugin/plugin.json` and loads Codex hook definitions from `hooks/codex-hooks.json`
+- Claude Code loads hooks through plugin `hooks/hooks.json` (`${CLAUDE_PLUGIN_ROOT}`). Codex loads `hooks/codex-hooks.json` (`${PLUGIN_ROOT}`) via the explicit `"hooks"` pointer in `.codex-plugin/plugin.json` — the pointer is REQUIRED: without it Codex falls back to `hooks/hooks.json`, whose variable does not expand there. Both SessionStart hooks match `startup|clear|compact` so the hint does not re-inject on resume
 
 ## Code Style
 

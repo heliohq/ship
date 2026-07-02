@@ -4,6 +4,15 @@ Shared report structure for all testing references (browser, API, CLI).
 Each reference writes its report to `<qa_dir>/` using this template
 with type-specific metadata fields.
 
+## Issue severity (shared definitions)
+
+| Severity | Definition |
+|----------|------------|
+| **critical** | Blocks a core workflow, causes data loss, or crashes the app |
+| **high** | Major feature broken or unusable, no workaround |
+| **medium** | Feature works but with noticeable problems, workaround exists |
+| **low** | Minor cosmetic or polish issue |
+
 ## Report structure
 
 ```markdown

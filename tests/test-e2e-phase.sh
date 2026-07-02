@@ -122,6 +122,9 @@ seed_through_dev() {
   printf '# Plan\n## Story 1\n- Implement feature\n' > "$TASK_DIR/plan/plan.md"
   printf '# Peer Spec\n## Criteria\n- Must work\n' > "$TASK_DIR/plan/peer-spec.md"
   printf '# Diff Report\n## Resolved\n- Aligned\n' > "$TASK_DIR/plan/diff-report.md"
+  # Dev ledger gate: plan has 1 story, so dev completion requires a ledger
+  # recording it complete (validate_artifacts dev case).
+  printf 'Story 1: "mock" — complete (commits abc1234..def5678, review clean)\n' > "$TASK_DIR/dev-ledger.md"
 }
 
 # Create a throwaway commit so dev's artifact validation (HEAD != pre_dev_sha)

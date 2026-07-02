@@ -211,11 +211,23 @@ assert_file_exists "dev prompt created" "$PROMPT_FILE"
 
 echo ""
 
-# ── Test 3: Complete dev:success → e2e ──────────────────────
+# ── Test 3: Dev ledger gate, then dev success → e2e ─────────
 # Pipeline order is design → dev → e2e → review → qa → refactor → handoff.
 # E2E runs before review so reviewers see green tests alongside the code.
-echo "▸ Test 3: Dev success → E2E dispatch"
+echo "▸ Test 3: Dev ledger gate blocks partial completion"
 
+# Plan has 1 story ("## Story 1") but the ledger records none complete —
+# a dev that claims success without finishing must be retried.
+printf 'Story 1: "mock" — in progress\n' > "$TASK_DIR/dev-ledger.md"
+OUT=$(bash "$ORCH" complete dev --verdict=success --summary="claims done" 2>/dev/null)
+parse_output "$OUT"
+
+assert_eq "ledger gate: action is dispatch (retry)" "dispatch" "$ACTION"
+assert_eq "ledger gate: phase still dev" "dev" "$PHASE"
+
+echo "▸ Test 3 (cont): Dev success → E2E dispatch"
+
+printf 'Story 1: "mock" — complete (commits abc1234..def5678, review clean)\n' > "$TASK_DIR/dev-ledger.md"
 OUT=$(bash "$ORCH" complete dev --verdict=success --summary="3/3 stories done" 2>/dev/null)
 parse_output "$OUT"
 

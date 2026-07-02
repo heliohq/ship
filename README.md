@@ -1,6 +1,6 @@
 # Ship: AI-Powered Software Development Harness
 
-> An agentic development harness for Claude Code, Codex & Cursor: agent-routed workflows from raw requirement to green PR.
+> An agentic development harness for Claude Code & Codex: agent-routed workflows from raw requirement to green PR.
 
 Ship helps agents choose and run the right amount of software delivery process: one standalone phase, a grouped quality/build bundle, or the full raw-input-to-green-PR flow.
 
@@ -19,7 +19,9 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 - **Every phase is isolated.** The reviewer has never seen the implementation context. The QA evaluator can only see the spec, the diff, and the running application. Fresh context per phase means no accumulated bias.
 - **Plans are adversarially tested.** An independent peer challenger produces code-grounded objections with file paths and snippets. The planner must respond with evidence, not hand-waving. Two rounds before you see anything.
 - **Evidence is hierarchical.** L1 (screenshot, curl response, console log) is the only acceptable proof. L2 (HTTP 200, "tests passed") is insufficient. L3 ("should work based on the code") is an automatic FAIL.
-- **State lives on disk, not in memory.** The current phase is tracked in local state. On resume, the orchestrator reads disk and picks up where it left off. A stop-gate hook blocks session exit while the workflow is active.
+- **State lives on disk, not in memory.** The current phase is tracked in local state, and dev keeps a per-story ledger. On resume — or after context compaction — the orchestrator reads disk and picks up where it left off instead of redoing finished work. A stop-gate hook blocks session exit while the workflow is active.
+- **Context moves as files, judgment stays expensive.** Story briefs, implementer reports, and review diffs are handed to subagents as file paths, not pasted text — nothing bulky parks in the host's context. Every subagent dispatch names its model tier: mechanical transcription can go a tier down, reviewers have a mid-tier floor, and judgment calls never leave the host (adopted from superpowers v6's measured results).
+- **The host can't game its own reviewers.** Reviewer dispatches carry the spec's constraints verbatim, never "don't flag X" or pre-rated severity. Reviews are read-only, implementer rationales don't downgrade findings, and a defect the plan itself mandates still gets reported — the user decides.
 - **The finish line is checks green, not PR created.** After opening the PR, Ship enters a fix loop — read CI failures, dispatch fixes, address review comments, resolve merge conflicts — up to 3 rounds before escalating.
 - **Test-driven implementation.** Stories follow a RED-GREEN-REFACTOR cycle with per-story code review before merge.
 
@@ -40,15 +42,7 @@ Ship is a harness, not a copilot. It doesn't help AI write code — it constrain
 /plugins
 ```
 
-Search for `Ship`, then install it. In Codex App, open **Plugins** in the sidebar and install `Ship` from there. See [`.codex/INSTALL.md`](./.codex/INSTALL.md) for details.
-
-### Cursor
-
-```
-/add-plugin ship
-```
-
-Or search for `Ship` in the Cursor plugin marketplace.
+Search for `Ship`, then install it. In Codex App, open **Plugins** in the sidebar and install `Ship` from there. Codex loads Ship's skills, MCP config, and hooks from `.codex-plugin/plugin.json` — the same routing hint and quality gates as Claude Code.
 
 ### Verify Installation
 
@@ -75,8 +69,7 @@ Run `/ship:use-ship` when you want the agent to choose the right Ship route. Run
 | `/ship:qa` | Exploratory sweep against the running app, finds what codified tests missed |
 | `/ship:handoff` | PR creation + CI fix loop until checks green |
 | `/ship:refactor` | Four-lens scan, classify by risk, apply with verification |
-| `/ship:arch-design` | System design thinking — requirements, components, trade-offs, scaling |
-| `/ship:write-docs` | Project documentation with frontmatter, lifecycle, and indexing |
+| `/ship:write-docs` | Architecture thinking (ADRs, trade-offs) + project documentation with frontmatter, lifecycle, and indexing |
 | `/ship:visual-design` | DESIGN.md visual system for consistent UI generation |
 
 Skills are available through the host plugin catalog and direct `/ship:*` commands. At startup, Ship injects only a tiny hint to consult `/ship:use-ship` when Ship may apply; it does not inject docs, memory, or artifact content.

@@ -1,11 +1,13 @@
 {
+  "description": "Ship hooks for Codex — same behavior as the Claude manifest, resolved via ${PLUGIN_ROOT}. SessionStart matches startup|clear|compact so the hint does not re-inject on resume.",
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CODEX_PLUGIN_ROOT}/scripts/session-start.sh\"",
+            "command": "bash \"${PLUGIN_ROOT}/scripts/session-start.sh\"",
             "statusMessage": "Loading Ship routing hint"
           }
         ]
@@ -16,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CODEX_PLUGIN_ROOT}/scripts/phase-guardrail.sh\"",
+            "command": "bash \"${PLUGIN_ROOT}/scripts/phase-guardrail.sh\"",
             "statusMessage": "Checking phase access rules"
           }
         ]
@@ -27,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CODEX_PLUGIN_ROOT}/scripts/stop-gate.sh\"",
+            "command": "bash \"${PLUGIN_ROOT}/scripts/stop-gate.sh\"",
             "statusMessage": "Checking Ship auto state",
             "timeout": 30
           }

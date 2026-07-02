@@ -354,7 +354,30 @@ validate_artifacts() {
       file_exists_nonempty "$task_dir/plan/diff-report.md" \
         || { echo "diff-report.md missing — spec divergence resolution did not run"; return 1; }
       ;;
-    dev|dev_fix)
+    dev)
+      has_branch_changes || { echo "no code changes on branch"; return 1; }
+      # Ledger gate: when the plan carries countable stories, dev must have
+      # recorded every one as complete in dev-ledger.md before advancing.
+      # Catches "reported DONE but finished 2 of 5 stories" mechanically —
+      # no LLM verifier needed.
+      local plan_file="$task_dir/plan/plan.md" ledger_file="$task_dir/dev-ledger.md"
+      local plan_stories=0 ledger_done=0
+      if [ -f "$plan_file" ]; then
+        plan_stories=$(awk '
+          /^```/ { infence = !infence }
+          !infence && /^#+[ \t]+((Story|Task)[ \t]+[0-9]+|[0-9]+\.[ \t])/ { n++ }
+          END { print n+0 }
+        ' "$plan_file")
+        if [ "$plan_stories" -gt 0 ]; then
+          [ -f "$ledger_file" ] \
+            || { echo "dev-ledger.md missing — plan has $plan_stories stories and dev must record each completion"; return 1; }
+          ledger_done=$(awk '/^Story [0-9]+.*complete/ { n++ } END { print n+0 }' "$ledger_file")
+          [ "$ledger_done" -ge "$plan_stories" ] \
+            || { echo "dev-ledger.md records $ledger_done/$plan_stories stories complete — dev is not finished"; return 1; }
+        fi
+      fi
+      ;;
+    dev_fix)
       has_branch_changes || { echo "no code changes on branch"; return 1; }
       ;;
     review)

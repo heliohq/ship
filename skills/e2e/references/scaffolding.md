@@ -19,8 +19,8 @@ the default for them on purpose.
 
 ## Playwright (Node.js / TypeScript)
 
-This is the most common default. The official installer does almost
-everything for you.
+The most common default. Install non-interactively (the interactive
+`create playwright` wizard is unreliable headless):
 
 ```bash
 # Pick the package manager from the lockfile
@@ -30,25 +30,12 @@ elif [ -f bun.lockb ];     then PM="bun";  PMX="bunx"
 else                            PM="npm";  PMX="npx"
 fi
 
-# Install + download browsers + create config
-$PMX create playwright@latest --quiet --ct=false --install-deps --lang=TypeScript --gha=false
-
-# What this produces:
-#   playwright.config.ts       — base config
-#   tests/                     — directory for specs
-#   tests-examples/            — examples (delete if you don't want them)
-#   package.json scripts.test  — may or may not be added depending on prompts
-```
-
-If the interactive installer is problematic in a headless environment, do
-it manually:
-
-```bash
 $PM add -D @playwright/test
 $PMX playwright install --with-deps
 ```
 
-Then create `playwright.config.ts`:
+Then create `playwright.config.ts` — this config encodes Ship's evidence
+conventions (trace/screenshot/video on failure), keep those settings:
 
 ```ts
 import { defineConfig, devices } from '@playwright/test';
@@ -71,23 +58,9 @@ export default defineConfig({
 });
 ```
 
-And add the npm script if missing:
-
-```bash
-node -e "
-const fs = require('fs');
-const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
-pkg.scripts = pkg.scripts || {};
-if (!pkg.scripts['test:e2e']) pkg.scripts['test:e2e'] = 'playwright test';
-fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-```
-
-Create the test directory so your first test has a home:
-
-```bash
-mkdir -p tests/e2e
-```
+Add `"test:e2e": "playwright test"` to `package.json` scripts if missing
+(edit the file directly), and `mkdir -p tests/e2e` so the first test has
+a home.
 
 ## pytest-playwright (Python)
 
@@ -137,27 +110,9 @@ EOF
 
 ## supertest (JS/TS API-only, when a test runner already exists)
 
-Only use this path when the project already has Jest, Vitest, or node:test
-wired up and the diff is backend-only.
-
-```bash
-$PM add -D supertest @types/supertest
-```
-
-Example test skeleton at `tests/e2e/api.spec.ts`:
-
-```ts
-import request from 'supertest';
-import { app } from '../../src/app';
-
-describe('POST /items', () => {
-  it('creates an item', async () => {
-    const res = await request(app).post('/items').send({ name: 'x' });
-    expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ name: 'x' });
-  });
-});
-```
+Only when the project already has Jest, Vitest, or node:test wired up and
+the diff is backend-only: `$PM add -D supertest @types/supertest`, tests
+in `tests/e2e/*.spec.ts` importing the app directly.
 
 ## Capybara + Selenium (Rails)
 
@@ -180,42 +135,9 @@ repo uses RSpec or Minitest.
 ## chromedp (Go, browser flow required)
 
 Prefer `net/http/httptest` for pure API. Only reach for chromedp when a
-real browser is needed.
-
-```bash
-go get -u github.com/chromedp/chromedp
-mkdir -p tests/e2e
-```
-
-Skeleton:
-
-```go
-package e2e
-
-import (
-    "context"
-    "testing"
-    "time"
-
-    "github.com/chromedp/chromedp"
-)
-
-func TestLandingPage(t *testing.T) {
-    ctx, cancel := chromedp.NewContext(context.Background())
-    defer cancel()
-    ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-    defer cancel()
-
-    var title string
-    err := chromedp.Run(ctx,
-        chromedp.Navigate("http://localhost:8080"),
-        chromedp.Title(&title),
-    )
-    if err != nil || title == "" {
-        t.Fatalf("navigation failed: %v title=%q", err, title)
-    }
-}
-```
+real browser is needed: `go get -u github.com/chromedp/chromedp`, tests
+in `tests/e2e/` using `chromedp.NewContext` with a 30s
+`context.WithTimeout`.
 
 ## Playwright (Electron)
 

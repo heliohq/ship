@@ -1,6 +1,6 @@
 ---
 name: dev
-version: 0.6.0
+version: 0.7.0
 description: >
   Implement from a spec or plan: extract stories, build in safe waves, test,
   commit, and get peer review per story. Use for "implement", "build/code this
@@ -79,11 +79,17 @@ else to fix their code loses that context.
 - Re-implement a full story on FAIL — make targeted surgical fixes
 - Advance to next story without getting a reviewer verdict
 - Soften a test assertion to make it pass instead of fixing the code
-- In multi-story waves: omit prior stories' context from each dispatched
-  implementer prompt
 - Reuse a reviewer dispatch across stories — fresh peer call each time
 - Let the peer reviewer become your coder — if the reviewer suggests a
   fix, YOU apply it; don't ask the reviewer to write patches
+- Tell a reviewer what not to flag, or pre-rate a finding's severity.
+  Tripwire: if the dispatch you are composing contains "do not flag",
+  "don't treat X as a defect", or "at most minor" — stop; you are
+  pre-judging, usually to spare yourself a review round. Let the
+  reviewer raise it and adjudicate the verdict yourself.
+- Re-implement a story the dev ledger already marks complete — after a
+  compaction or resume, trust `dev-ledger.md` and `git log` over your
+  own recollection
 
 ---
 
@@ -125,10 +131,18 @@ TodoWrite([
 
 ## Phase 1: Setup
 
+0. **Check for a ledger.** If `<task_dir>/dev-ledger.md` exists, stories
+   listed there as complete are DONE — do not re-implement or re-review
+   them; resume at the first story not marked complete. The commits the
+   ledger names exist in git even when your context no longer remembers
+   creating them.
 1. Read **acceptance criteria** (from spec file, or derived from user request).
 2. Read **implementation stories** (from plan file, or single story for small tasks).
    Accept any heading format: `## Story N`, `## Step N`, `## N. Title`,
-   or numbered/bulleted lists. Normalize as ordered stories.
+   or numbered/bulleted lists. Normalize as ordered stories. Note the
+   plan's `## Global Constraints` section if present — copy it verbatim
+   into every implementer and reviewer dispatch; it is the reviewer's
+   attention lens for what this project's spec demands.
 3. Detect the repo's test command by inspecting project root
    (`Makefile`, `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`,
    CI configs, `CLAUDE.md`/`AGENTS.md`). If none found, AskUserQuestion.
@@ -155,13 +169,16 @@ TodoWrite([
    Pattern references are evidence, not copy-paste licenses. Mirror the
    local structure and conventions, but do not clone product-specific
    logic, stale bugs, or unrelated behavior.
-6. **Build story dependency graph.** For each story, identify:
+6. **Build story dependency graph.** When the plan carries per-task
+   `**Interfaces:**` blocks (consumes/produces) and `**Files:**` lists,
+   build the graph from those declarations — that is what they exist
+   for, and declared beats guessed. Otherwise derive per story:
    - Files/modules it will create or modify (from plan text)
    - Explicit dependencies (e.g., "uses the model from story 1")
    - Shared resources (e.g., two stories both modify the same config file)
 
-   A story **depends on** another if it reads/imports what the other
-   creates, or both modify the same file. Build a DAG and topologically
+   A story **depends on** another if it consumes what the other
+   produces, or both modify the same file. Build a DAG and topologically
    sort into **waves** — groups of stories with no dependencies between
    them.
 
@@ -244,6 +261,22 @@ by `/ship:auto`'s next-phase dispatch (`/ship:review`, `/ship:qa`, or the
 Return: which findings were fixed, what verification ran, any remaining
 concerns.
 
+### Pre-flight plan review
+
+Before Wave 1 (skip in fix mode), scan the plan once for:
+
+- stories that contradict each other or the plan's Global Constraints
+- anything the plan explicitly mandates that review treats as a defect
+  (a test that asserts nothing, verbatim duplication of a logic block)
+
+Present everything you find as ONE batched AskUserQuestion — each
+finding beside the plan text that mandates it, asking which governs —
+before execution begins, not one interrupt per discovery mid-run. If
+the scan is clean, proceed without comment. (Under /ship:auto's
+no-questions mode, record the conflicts in `concerns.md`, choose the
+spec-compliant reading, and continue.) The review loop remains the net
+for conflicts that only emerge from implementation.
+
 ## Phase 2: Per-Wave Loop
 
 For each wave, run all stories in the wave through Steps A→B→(C)→D.
@@ -272,8 +305,9 @@ WAVE_BASE_SHA=$(git rev-parse HEAD)
 **Single-story wave (and all fix rounds where host is the implementer) — you implement directly.**
 
 Use `implementer-prompt.md` as your own checklist: read the story text,
-acceptance criteria, prior stories, CODE_CONDUCT, pattern references,
-and TEST_CMD, then write the code in the current branch. Commit using
+acceptance criteria, Global Constraints, the interfaces earlier stories
+produce (from the ledger), CODE_CONDUCT, pattern references, and
+TEST_CMD, then write the code in the current branch. Commit using
 Conventional Commits as you go. Run `TEST_CMD` before declaring the
 story complete.
 
@@ -284,17 +318,41 @@ Dispatch one Agent per story, all in a single message so they run in
 parallel. All subagents share the same cwd (the current branch); the
 wave's dependency analysis guarantees their file scopes don't overlap.
 
+Hand each subagent its inputs as file paths, not pasted text —
+everything you paste into a dispatch stays resident in your context and
+is re-read on every later turn. Generate the story brief first:
+
+```bash
+bash "../../scripts/story-brief.sh" <plan_file> <i>  # resolve relative to this skill file
+# prints the brief path; if extraction fails (exit 3), Write the
+# story text to .ship/scratch/story-<i>-brief.md yourself
+```
+
 ```
 Agent({
   subagent_type: "general-purpose",
+  model: <tier per ../.shared/runtime-resolution.md Model tiers — the
+         plan's **Tier:** tag is the recommendation, you hold override>,
   description: "Implement story <i>/<N>",
   prompt: <implementer-prompt.md with placeholders filled for this story>
 })
 ```
 
-Each subagent edits files, commits its own changes, and reports back
-with: the files it changed, the commit SHAs it produced, and its
-status. Git's index lock serializes concurrent commits automatically.
+Your dispatch prompt contains exactly:
+1. one line on where this story fits in the task,
+2. the brief path, introduced as "read this first — it is your
+   requirements, with the exact values to use verbatim",
+3. the Global Constraints copied verbatim, and the interfaces this
+   story consumes from earlier stories (from the plan's Interfaces
+   blocks or the ledger) — not a history of prior stories,
+4. the file scope it may modify (from dependency analysis),
+5. the report-file path (`.ship/scratch/story-<i>-report.md`) and the
+   report contract from implementer-prompt.md.
+
+Each subagent edits files, commits its own changes, writes its full
+report to the report file, and returns only: status, commit SHAs, files
+changed, and a one-line test summary. Git's index lock serializes
+concurrent commits automatically.
 
 **After implementation completes (either path):**
 
@@ -309,10 +367,30 @@ Proceed to **Step B**. A story is only complete when peer review returns PASS.
 
 ### Step B: Review (peer cross-validation)
 
+Generate the review package first — the reviewer reads one file instead
+of re-deriving the diff commit by commit (rebuilding diffs is the
+single biggest reviewer cost), and the package never enters your own
+context:
+
+```bash
+# Single-story wave — range mode. STORY_BASE_SHA = HEAD recorded before
+# implementation started (WAVE_BASE_SHA in a single-story wave); never
+# HEAD~1, which drops all but the last commit of a multi-commit story.
+bash "../../scripts/review-package.sh" <STORY_BASE_SHA> HEAD
+
+# Multi-story parallel wave — commit mode, because stories interleave
+# commits on the shared branch. Pass exactly the SHAs this story's
+# implementer reported.
+bash "../../scripts/review-package.sh" --commits <sha1,sha2,...>
+```
+
+Either mode prints the package path to hand the reviewer.
+
 Dispatch the peer using the prompt template in `reviewer-prompt.md`.
 Prefer the non-host provider when available. Fill all placeholders
-(story number, commit SHAs or file list from Step A, TEST_CMD, spec
-requirements, story text) before dispatch.
+(story number, the package path, the story brief path and implementer
+report path when they exist, TEST_CMD, acceptance criteria, Global
+Constraints copied verbatim) before dispatch.
 
 ```
 mcp__codex__codex({
@@ -333,6 +411,17 @@ After the reviewer returns, read the verdict:
 - **No recognized verdict** → re-dispatch the reviewer once with an
   explicit format reminder. If still unparseable → treat as FAIL.
 
+Resolve any `[UNVERIFIABLE]` criteria yourself before marking the story
+complete — you hold the plan and cross-story context the reviewer
+lacks. If one turns out to be a real gap, treat it as a FAIL finding
+and route to Step C. A finding the reviewer labels **plan-mandated** —
+or any finding that conflicts with what the plan's text requires — is
+the user's decision, like any plan contradiction: present the finding
+and the plan text together and ask which governs (under /ship:auto's
+no-questions mode: record it in `concerns.md`, apply the
+spec-compliant reading, and continue). Do not dismiss a finding because
+the plan mandates it.
+
 ### Step C: Targeted Fix
 
 **Whoever implemented the story, fixes the story.** This keeps the
@@ -344,7 +433,7 @@ Routing:
 | Who implemented | Who fixes |
 |---|---|
 | Host (single-story wave) | Host — you apply the fix directly |
-| Sub-agent (multi-story wave) | Fresh sub-agent dispatch with the original story + prior implementation summary + FAIL findings |
+| Sub-agent (multi-story wave) | Fresh sub-agent dispatch with the story brief + report file + FAIL findings |
 | Host in fix mode (/ship:auto dispatch) | Host — you apply the fix directly |
 
 Before dispatching or editing, verify repo state:
@@ -363,16 +452,19 @@ commit.
 **If dispatching a sub-agent to fix** (multi-story wave): the sub-agent
 is new but plays the same role the original implementer did. Give it:
 
-- The original story text and acceptance criteria
-- A summary of what was implemented (files changed, key commits)
+- The story brief path and acceptance criteria
+- The story's report-file path (it holds what was implemented; the
+  fixer appends its fix evidence there)
 - The reviewer's FAIL findings verbatim
 - The same Fix rules below
 
 ```
 Agent({
   subagent_type: "general-purpose",
+  model: <fixes with exact findings are mechanical — one tier down is
+         usually right; see ../.shared/runtime-resolution.md>,
   description: "Fix story <i>/<N> — round <R>/2",
-  prompt: <fix prompt with findings + original story context>
+  prompt: <fix prompt with findings + brief and report paths>
 })
 ```
 
@@ -386,17 +478,26 @@ Fix rules (whoever is applying):
 
 After fix commits:
 1. Re-record the story's commit SHAs (original + fix commits).
-2. Return to **Step B** with a fresh reviewer dispatch. (Do NOT reuse
-   the prior reviewer session — fresh eyes each round.)
+2. Confirm the fix evidence names: the covering tests, the command run,
+   and the result. (For sub-agent fixes, the fix report carries these;
+   for your own fixes, your TEST_CMD run is the evidence.)
+3. Return to **Step B** with a fresh reviewer dispatch and a fresh
+   review package covering original + fix commits. (Do NOT reuse the
+   prior reviewer session — fresh eyes each round.)
 
-### Step D: Record Context
+### Step D: Record to the Ledger
 
-After each story completes (PASS or PASS_WITH_CONCERNS), record:
+Conversation memory does not survive compaction — hosts that lost their
+place have re-implemented entire completed story sequences, the single
+most expensive failure mode. When a story's review comes back clean,
+append one block to `<task_dir>/dev-ledger.md` in the same message as
+your other bookkeeping:
 
 ```
-Story <i>: "<title>"
+Story <i>: "<title>" — complete
   Commits: <list of commit SHAs produced by this story>
   Files: <list of files changed by this story's commits>
+  Produces: <interfaces later stories consume — exact signatures>
   Concerns: <any PASS_WITH_CONCERNS notes, or "none">
 ```
 
@@ -406,8 +507,10 @@ the subagent's report (multi-story waves) or from
 `git diff WAVE_BASE..HEAD --name-only` — that aggregates all stories
 in the wave.
 
-Pass this summary to the next wave's prompts in the "Prior Stories
-Completed" section so each implementer sees what's already been built.
+The ledger is both your recovery map (Phase 1 step 0 resumes from it)
+and the source for later dispatches: when a next-wave story consumes an
+earlier story's interfaces, copy the relevant `Produces:` lines into
+that dispatch — not a narrative history of prior stories.
 
 ## Phase 3: Cross-Story Regression
 
@@ -426,6 +529,11 @@ BLOCKED.
 
 ## Progress Reporting
 
+Between tool calls, narrate at most one short line — the ledger and the
+tool results carry the record. Execute all stories without pausing to
+check in; the only reasons to stop are BLOCKED, a genuine ambiguity, or
+completion.
+
 Use `[Dev]` prefix:
 
 ```
@@ -434,7 +542,7 @@ Use `[Dev]` prefix:
 [Dev] Wave w/W (parallel|sequential): Stories [list]
 [Dev] Story i/N: "<title>" → implementing...
 [Dev] Story i/N: PASS | FAIL — <detail>. Fixing (round/2)...
-[Dev] Wave w/W: merging branches... ✓
+[Dev] Wave w/W complete ✓ — ledger updated
 [Dev] All N stories complete. M concerns recorded.
 ```
 
@@ -443,7 +551,13 @@ Use `[Dev]` prefix:
 ```text
 .ship/tasks/<task_id>/
   dev-context.md — TEST_CMD, CODE_CONDUCT, pattern references, wave notes
+  dev-ledger.md — one block per completed story: commits, files,
+                  produced interfaces, concerns (compaction recovery)
   concerns.md   — recorded PASS_WITH_CONCERNS notes (if any)
+
+.ship/scratch/   — disposable, self-ignoring: story briefs, implementer
+                   reports, review packages. `git clean -fdx` deletes
+                   it; the ledger recovers from `git log`.
 ```
 
 ## Example Workflow
@@ -534,6 +648,7 @@ Output the report card (read `skills/.shared/report-card.md` for the standard fo
 | File | Purpose |
 |------|---------|
 | .ship/tasks/<task_id>/dev-context.md | TEST_CMD, CODE_CONDUCT, pattern references, wave notes |
+| .ship/tasks/<task_id>/dev-ledger.md | Per-story completion record (commits, interfaces, concerns) |
 | .ship/tasks/<task_id>/concerns.md | Residual concerns (if any) |
 
 ### Next Steps
