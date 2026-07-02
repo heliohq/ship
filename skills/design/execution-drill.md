@@ -44,6 +44,13 @@ Read these files:
 Check that plan.md follows the writing-plans format:
 
 - [ ] Has header with Goal, Architecture, Tech Stack
+- [ ] Has a Global Constraints section with exact values copied verbatim
+      from the spec (version floors, naming rules — one line each)
+- [ ] Every task carries an Interfaces block (Consumes/Produces with
+      exact signatures) and a Tier recommendation
+      (mechanical | standard | judgment)
+- [ ] Tasks are right-sized: each carries its own test cycle; no
+      dispatch-sized tasks like "create .gitignore" standing alone
 - [ ] Tasks have checkbox steps (- [ ] syntax)
 - [ ] Steps follow TDD order: failing test → verify fail → implement → verify pass → commit
 - [ ] Steps that change code show the code (test steps show complete test code;

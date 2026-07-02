@@ -22,13 +22,9 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
-if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
-  jq -n --arg context "$PARTS" '{additional_context: $context}'
-else
-  jq -n --arg context "$PARTS" '{
-    hookSpecificOutput: {
-      hookEventName: "SessionStart",
-      additionalContext: $context
-    }
-  }'
-fi
+jq -n --arg context "$PARTS" '{
+  hookSpecificOutput: {
+    hookEventName: "SessionStart",
+    additionalContext: $context
+  }
+}'

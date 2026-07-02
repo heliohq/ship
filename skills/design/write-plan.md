@@ -48,6 +48,14 @@ decisions get locked in.
 
 **Tech Stack:** [Key technologies/libraries]
 
+## Global Constraints
+
+[The spec's project-wide requirements — version floors, dependency
+limits, naming and copy rules, platform requirements — one line each,
+with exact values copied verbatim from the spec. Every task's
+requirements implicitly include this section; /ship:dev copies it
+verbatim into every implementer and reviewer dispatch.]
+
 ---
 
 ### Task 1: [Component Name]
@@ -56,6 +64,19 @@ decisions get locked in.
 - Create: `exact/path/to/file.ext`
 - Modify: `exact/path/to/existing.ext:123-145`
 - Test: `tests/exact/path/to/test.ext`
+
+**Interfaces:**
+- Consumes: [what this task uses from earlier tasks — exact signatures]
+- Produces: [what later tasks rely on — exact function names, parameter
+  and return types. An implementer sees only their own task; this block
+  is how they learn the names and types neighboring tasks use. /ship:dev
+  also builds its wave dependency graph from these blocks.]
+
+**Tier:** [mechanical | standard | judgment — your recommendation for
+the implementer's model tier. `mechanical` = the steps below carry the
+complete code (transcription plus testing). `standard` = multi-file
+integration from prose. `judgment` = design decisions remain. The dev
+host keeps override authority.]
 
 - [ ] **Step 1: Write the failing test**
 
@@ -91,6 +112,16 @@ git commit -m "feat: <description>"
 
 ### Task 2: ...
 ```
+
+## Task right-sizing
+
+A task is the smallest unit that carries its own test cycle and is
+worth a fresh reviewer's gate. Fold setup, configuration, scaffolding,
+and documentation steps into the task whose deliverable needs them;
+split only where a reviewer could meaningfully reject one task while
+approving its neighbor. Each task ends with an independently testable
+deliverable. (A plan of "create .gitignore"-sized tasks pays a full
+dispatch + review cycle per task for no added safety.)
 
 ## Bite-sized step granularity
 
@@ -135,8 +166,14 @@ After writing the complete plan, check against spec.md:
    "No placeholders" section above. Fix them.
 3. **Type consistency:** Do types, function names, and signatures match
    across tasks? A function called `clearLayers()` in Task 2 but
-   `clearFullLayers()` in Task 5 is a bug.
-4. **Anti-shortcut check:** Would an implementer know not to solve this
+   `clearFullLayers()` in Task 5 is a bug. The Interfaces blocks are
+   where this shows first — a task consuming a signature no earlier
+   task produces is a gap.
+4. **Constraints propagation:** Is every binding project-wide rule
+   (version floors, exact values, naming) stated verbatim in Global
+   Constraints rather than only in prose? Downstream dispatches copy
+   that section mechanically; prose does not reach them.
+5. **Anti-shortcut check:** Would an implementer know not to solve this
    by overfitting fixtures, editing the harness, or optimizing for tests
    while violating the task intent?
 

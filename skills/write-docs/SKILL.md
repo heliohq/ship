@@ -2,13 +2,47 @@
 name: write-docs
 description: >
   Create or update structured docs under docs/ with frontmatter, numbering,
-  lifecycle status, and index regeneration. Use for guides, references,
-  troubleshooting, decisions, and architecture docs after /ship:arch-design.
+  lifecycle status, and index regeneration — guides, references,
+  troubleshooting, decisions. Also the home of system-design thinking:
+  architecture docs, ADRs, API/data-model decisions, trade-off analysis
+  ("design this system", "trade-offs for X", "write an ADR"). Not visual
+  design (/ship:visual-design) or implementation planning (/ship:design).
 ---
 
 # Documentation Standard
 
 All structured docs live under `docs/`. Each subdirectory is a category (e.g., `docs/design/`, `docs/guides/`, `docs/troubleshooting/`). Follow this standard when creating new docs or modifying existing ones.
+
+## Architecture Thinking (before a design doc)
+
+For system-design decisions — architecture, ADRs, API/data-model choices,
+service boundaries — do the thinking before the writing. Scale the depth
+to the decision: a single component with clear constraints needs
+requirements + component sketch + trade-offs; a new system with unknowns
+needs all of it, with load estimates.
+
+1. **Requirements first** — functional capabilities, the non-functional
+   numbers that bind the design (latency, throughput, availability,
+   consistency, data volume), and real constraints (existing stack, team,
+   timeline, compliance, backward compatibility). Never jump to a
+   solution before this, and never conflate "what we want" with "what
+   exists" — state the gap.
+2. **Components and contracts** — responsibilities, data flow, key
+   interfaces, storage choices driven by access patterns. Verify
+   assumptions against the actual codebase, not memory.
+3. **Trade-off analysis** — for each major decision: at least two
+   alternatives considered, concrete pros/cons, the deciding factor, and
+   what you're giving up. A design with no rejected alternatives hasn't
+   been designed.
+4. **What to revisit** — flag decisions that won't age well, with their
+   trigger: load-dependent ("rethink at 10k rps"), time-bound ("chose X
+   because Y isn't ready"), assumption-sensitive ("multi-region breaks
+   this"). These are honest engineering, not weaknesses.
+
+Then write it as a design doc per this standard — Boundaries required,
+Trade-offs and Assumptions recommended. If the user only wants to think
+it through (no doc yet), the analysis itself is the deliverable — offer
+the doc as the follow-up.
 
 ## Red Flag
 
@@ -205,6 +239,6 @@ After writing or updating a doc, regenerate the index and output the report card
 
 ### Next Steps
 1. **Review the doc** — read it and verify claims against code
-2. **Design thinking** — /ship:arch-design if the architectural analysis needs more depth
+2. **Plan implementation** — /ship:design to turn the decision into executable stories
 3. **Ship it** — /ship:handoff to create a PR with the doc changes
 ```

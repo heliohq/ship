@@ -46,8 +46,7 @@ way a human does. No separate auto/standalone output formats.
 | E2E | Framework (pre-existing/scaffolded), Tests added, Suite pass rate, Regressions |
 | Refactor | Smells fixed, Lines before/after, Functions extracted, Dead code deleted |
 | Handoff | PR URL, Check status, Fix rounds |
-| Arch Design | Phases completed, Trade-offs analyzed, Revisit items |
-| Write Docs | Docs created, Docs updated, Index regenerated |
+| Write Docs | Docs created, Docs updated, Index regenerated; for design docs also Trade-offs analyzed, Revisit items |
 
 ## Status Values
 

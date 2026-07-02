@@ -1,6 +1,6 @@
 {
   "name": "ship",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "An agent-routed harness for end-to-end software product development.",
   "author": {
     "name": "Helio",
@@ -23,6 +23,7 @@
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Ship",
     "shortDescription": "Agent-routed software delivery workflows for coding agents",

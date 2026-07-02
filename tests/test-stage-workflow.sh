@@ -82,7 +82,7 @@ assert_no_file "retired staged process pre-compact hook is absent" "$ROOT/script
 assert_no_file "legacy skill preflight is absent" "$ROOT/scripts/preflight.sh"
 startup_script="session""-start"
 assert_file "startup hint script exists" "$ROOT/scripts/$startup_script.sh"
-assert_file "startup hook wrapper exists" "$ROOT/hooks/$startup_script"
+assert_no_file "legacy startup hook wrapper is absent" "$ROOT/hooks/$startup_script"
 
 learn_word="learn"
 memory_word="${learn_word}ings"
@@ -119,13 +119,20 @@ compat_auto_phrase="compatibility /ship:a""uto"
 duplicated_auto_phrase="/ship:a""uto or /ship:a""uto"
 assert_no_match "no retired staged process command or files" "ship:${retired_workflow_word}|/ship:${retired_workflow_word}|ship-${retired_workflow_word}|${retired_workflow_word}-orchestrate\\.sh|${retired_workflow_word}-state\\.sh|${retired_workflow_word}-pre-compact\\.sh|skills/${retired_workflow_word}|SHIP_${retired_workflow_upper}_STATE_FILE|${compat_alias_phrase}|${compat_auto_phrase}|${duplicated_auto_phrase}"
 session_start_event="Session""Start"
-cursor_session_start_event="session""Start"
-if jq -e --arg event "$session_start_event" '.hooks | has($event)' "$ROOT/hooks/hooks.json" >/dev/null \
-  && jq -e --arg event "$cursor_session_start_event" '.hooks | has($event)' "$ROOT/hooks/hooks-cursor.json" >/dev/null \
-  && jq -e --arg event "$session_start_event" '.hooks | has($event)' "$ROOT/hooks/codex-hooks.json" >/dev/null; then
-  pass "hook manifests include startup hint"
+if jq -e --arg event "$session_start_event" '.hooks | has($event)' "$ROOT/hooks/hooks.json" >/dev/null; then
+  pass "hook manifest includes startup hint"
 else
-  fail "hook manifests include startup hint"
+  fail "hook manifest includes startup hint"
+fi
+
+# Exactly two hook manifests with the same three events: hooks.json
+# (Claude Code, ${CLAUDE_PLUGIN_ROOT}) and codex-hooks.json (Codex,
+# ${PLUGIN_ROOT}). Cursor support is removed.
+if [ -e "$ROOT/hooks/codex-hooks.json" ] && [ ! -e "$ROOT/hooks/hooks-cursor.json" ] \
+  && [ "$(find "$ROOT/hooks" -type f | wc -l | tr -d ' ')" = "2" ]; then
+  pass "hooks/ holds exactly the Claude and Codex manifests"
+else
+  fail "hooks/ holds exactly the Claude and Codex manifests"
 fi
 
 if jq -e '.hooks | has("PreCompact") | not' "$ROOT/hooks/hooks.json" >/dev/null; then

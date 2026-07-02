@@ -26,6 +26,36 @@ Resolve the peer once at the start of the skill and reuse that decision.
 - Claude host ↔ Codex peer
 - Codex host ↔ Claude peer
 
+## Model tiers (Agent subagent dispatches)
+
+Cheapen mechanics, never judgment. When dispatching same-provider
+`Agent()` subagents, name the model explicitly — an omitted model
+silently inherits the session's model, usually the most expensive one.
+
+- **Mechanical work** (the plan step carries the complete code to write;
+  single-file fixes with exact findings): one tier below the session
+  model is fine. Transcription plus testing does not need top-tier
+  reasoning.
+- **Standard work** (multi-file integration from prose, pattern
+  matching): mid tier. Turn count beats token price — the cheapest
+  models take 2–3× the turns on multi-step work and cost more overall,
+  so mid tier is the floor for anything multi-step.
+- **Reviewer roles**: mid tier is a hard floor. Measured upstream:
+  bottom-tier reviewers flagged 0/10 planted defects at correct
+  severity — they fail by advocating for the defect, which no gate
+  catches.
+- **Judgment stays with the host**: verdict adjudication, severity
+  calibration, diagnosing a BLOCKED report, deciding a finding is a
+  false positive, and recognizing that the plan itself is wrong are
+  never delegated to a cheaper dispatch. When a plan tags a task's
+  `**Tier:**`, that is the planner's recommendation; the host may
+  override in either direction.
+
+Peer dispatches (Codex, Claude CLI) run whatever model that provider's
+session is configured with — tier selection applies to `Agent()`
+subagents, not peers. Never select the host session's own model; the
+user owns that choice.
+
 ## Session continuation (Codex only)
 
 When a Codex peer returns, save the `session_id` from the response. For
