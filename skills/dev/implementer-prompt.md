@@ -1,5 +1,9 @@
 # Implementer Prompt
 
+_Path note: `../shared/*.md` references resolve against the dev skill's
+base directory (announced when the skill loaded), not the working
+directory._
+
 Two audiences use this prompt:
 
 1. **The host (you)** — read it as your own implementation checklist when

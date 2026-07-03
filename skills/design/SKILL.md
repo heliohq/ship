@@ -31,6 +31,10 @@ independently and produces its own spec for adversarial comparison.
 
 ## Runtime Resolution
 
+_Path note: `../shared/*.md` references resolve against this skill's base
+directory (announced as "Base directory for this skill" when the skill
+loaded), not your working directory._
+
 See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:design, the peer plays two roles:
 **investigator** (Phase 2) and **drill agent** (Phase 6). Both use the
@@ -370,7 +374,7 @@ best available independent review. Add a warning:
 ### Execution Handoff
 
 Verify `spec.md` and `plan.md` are non-empty on disk, then output the report card
-(read `skills/shared/report-card.md` for the standard format):
+(read `../shared/report-card.md` for the standard format):
 
 ```
 ## [Design] Report Card

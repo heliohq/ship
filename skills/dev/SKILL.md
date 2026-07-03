@@ -27,6 +27,10 @@ EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
 
 ## Runtime Resolution
 
+_Path note: `../shared/*.md` references resolve against this skill's base
+directory (announced as "Base directory for this skill" when the skill
+loaded), not your working directory._
+
 See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:dev, the **host is the primary implementer**
 and the **peer is the independent reviewer**. Prefer a non-host provider
@@ -628,7 +632,7 @@ story.
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `../shared/report-card.md` for the standard format):
 
 ```
 ## [Dev] Report Card
