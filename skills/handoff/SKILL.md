@@ -560,7 +560,7 @@ Output: `[Handoff] Fix round <i> — target: <failure signature> — <what was f
 
 ## Execution Handoff
 
-Output the report card (read `skills/.shared/report-card.md` for the standard format):
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [Handoff] Report Card

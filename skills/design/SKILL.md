@@ -4,7 +4,8 @@ version: 1.4.0
 description: >
   Plan implementation before coding: investigate the repo, write spec and plan,
   and validate with a peer. Use for "plan", "design approach", "scope", or any
-  coding task needing a plan. Not visual/system design or full /ship:auto.
+  coding task needing a plan. Not system-design thinking
+  (/ship:arch-design) or full /ship:auto.
 allowed-tools:
   - Bash
   - Read
@@ -30,7 +31,7 @@ independently and produces its own spec for adversarial comparison.
 
 ## Runtime Resolution
 
-See `../.shared/runtime-resolution.md` for the host/peer concept and
+See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:design, the peer plays two roles:
 **investigator** (Phase 2) and **drill agent** (Phase 6). Both use the
 same dispatch pattern from the shared reference.
@@ -369,7 +370,7 @@ best available independent review. Add a warning:
 ### Execution Handoff
 
 Verify `spec.md` and `plan.md` are non-empty on disk, then output the report card
-(read `skills/.shared/report-card.md` for the standard format):
+(read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [Design] Report Card

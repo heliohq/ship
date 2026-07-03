@@ -33,7 +33,7 @@ regressions, perf smells, odd edge cases, unexpected interactions,
 
 ```
 1. Understand   Read spec + git diff to know WHAT changed and WHAT to test
-2. Start        Start the application (../.shared/startup.md)
+2. Start        Start the application (../shared/startup.md)
 3. Test         Test changes using the matching references
 4. Cleanup      Kill services you started
 5. Report       Summarize what you found
@@ -84,7 +84,7 @@ Match the testing effort to the change.
 
 ## Phase 2: Start the application
 
-Follow `../.shared/startup.md` — it will discover the stack, install
+Follow `../shared/startup.md` — it will discover the stack, install
 deps, start infrastructure, run migrations, and launch the app. Set
 `EVIDENCE_DIR=".ship/tasks/<task_id>/qa"` before running the reference's
 commands so logs and PIDs land in the QA folder.
@@ -136,7 +136,7 @@ its report using the template from `references/report.md`.
 ## Phase 4: Cleanup
 
 **Mandatory — never skip, even on failure or timeout.** Follow
-`../.shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 2.
+`../shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 2.
 It kills tracked PIDs, stops any docker compose stack you started, and
 verifies ports are free.
 
@@ -180,8 +180,8 @@ When invoked with `--recheck`:
 
 ## Reference Files
 
-- `../.shared/startup.md` — project discovery, install, start, verify (shared with /ship:e2e)
-- `../.shared/cleanup.md` — mandatory cleanup contract (shared with /ship:e2e)
+- `../shared/startup.md` — project discovery, install, start, verify (shared with /ship:e2e)
+- `../shared/cleanup.md` — mandatory cleanup contract (shared with /ship:e2e)
 - `references/browser.md` — web UI testing via agent-browser
 - `references/api.md` — API endpoint testing
 - `references/cli.md` — CLI testing
@@ -193,7 +193,7 @@ When invoked with `--recheck`:
 Never stop for individual criterion failures (record and continue)
 or a single service failing to start (test what you can).
 
-Output the report card (read `skills/.shared/report-card.md` for the standard format):
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [QA] Report Card

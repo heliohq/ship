@@ -7,8 +7,8 @@ description: >
   operability, security, trade-offs. Use for "design this system",
   "architecture for X", "trade-offs for X", "how should we architect",
   "API design", "data model for", "service boundaries", or before an ADR.
-  Hands off to /ship:write-docs to record the decision. Not visual design
-  (/ship:visual-design) or implementation planning (/ship:design).
+  Hands off to /ship:write-docs to record the decision. Not implementation
+  planning (/ship:design — that turns a decided design into stories).
 ---
 
 # Ship: Architecture Design
@@ -122,7 +122,7 @@ thing that breaks in production? Which number is least defensible?
 Which alternative was dismissed too fast? If an attack lands, fix the
 design, not the wording. For high-stakes or contested decisions,
 dispatch a fresh peer challenge with only the draft (see
-`../.shared/runtime-resolution.md`) — the same adversarial pattern
+`../shared/runtime-resolution.md`) — the same adversarial pattern
 /ship:design applies to specs.
 
 ## Execution Handoff
@@ -136,7 +136,7 @@ To make it durable, hand off to `/ship:write-docs` — it records the
 decision as a design doc (design category: Boundaries required,
 recommended body shape in that skill's conventions).
 
-Output the report card (read `../.shared/report-card.md` for the
+Output the report card (read `../shared/report-card.md` for the
 standard format):
 
 ```

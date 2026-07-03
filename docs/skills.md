@@ -53,7 +53,6 @@ work directly from the user's current request and repository state.
 | `/ship:handoff` | Commit, push, PR, CI, review feedback, merge readiness |
 | `/ship:arch-design` | System-design thinking: nine lenses, self-interview, red-team — hands off to write-docs |
 | `/ship:write-docs` | Structured documentation under `docs/`, incl. design docs and ADRs |
-| `/ship:visual-design` | DESIGN.md visual system for frontend consistency |
 
 ## `/ship:use-ship`
 

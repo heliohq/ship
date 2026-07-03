@@ -71,7 +71,6 @@ Run `/ship:use-ship` when you want the agent to choose the right Ship route. Run
 | `/ship:refactor` | Four-lens scan, classify by risk, apply with verification |
 | `/ship:arch-design` | System-design thinking — nine falsifiable lenses, self-interview method, red-team pass — hands off to write-docs |
 | `/ship:write-docs` | Project documentation with frontmatter, lifecycle, and indexing, incl. design docs and ADRs |
-| `/ship:visual-design` | DESIGN.md visual system for consistent UI generation |
 
 Skills are available through the host plugin catalog and direct `/ship:*` commands. At startup, Ship injects only a tiny hint to consult `/ship:use-ship` when Ship may apply; it does not inject docs, memory, or artifact content.
 
@@ -88,5 +87,4 @@ Ship is built on ideas from:
 - [agent-browser](https://github.com/vercel-labs/agent-browser) — Browser automation CLI for AI agents
 - [Superpowers](https://github.com/obra/superpowers) — Jesse Vincent's agentic skills framework for Claude Code
 - [gstack](https://github.com/garrytan/gstack) — Garry Tan's opinionated Claude Code setup
-- [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — The 9-section DESIGN.md format used by `/ship:visual-design`
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — Agent workflows and the cleanup pattern that inspired `/ship:refactor`'s four-lens scan

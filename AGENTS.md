@@ -16,7 +16,7 @@
 | `scripts/` | Shell scripts | Startup hint, workflow hooks, auto orchestrator, PR readiness, docs index generation, PATH bootstrap, and dev-phase file handoffs (`story-brief.sh`, `review-package.sh`) |
 | `hooks/` | `hooks.json`, `codex-hooks.json` | Same three hooks per platform (session hint, phase guardrail, stop gate); they differ only in the root variable each platform expands |
 | `.codex-plugin/` | `plugin.json` | Native Codex plugin metadata for skills, MCP, and Codex UI |
-| `skills/` | Skill dirs plus `.shared/` helpers | Slash commands (`/ship:*`) and hidden shared references |
+| `skills/` | Skill dirs plus `shared/` helpers | Slash commands (`/ship:*`) and shared references (`shared/` has no `SKILL.md`, so it is not a routable skill) |
 | `skills/use-ship/` | Routing skill | Agent-facing guide for grouping Ship phases based on task need |
 | `skills/auto/prompts/` | `.md.tmpl` files | Prompt templates for the full workflow runner |
 | `.claude-plugin/` | `plugin.json` | Plugin metadata for ShipAI |

@@ -27,7 +27,7 @@ EVERY FINDING NEEDS FILE:LINE + EVIDENCE.
 
 ## Runtime Resolution
 
-See `../.shared/runtime-resolution.md` for the host/peer concept and
+See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:dev, the **host is the primary implementer**
 and the **peer is the independent reviewer**. Prefer a non-host provider
 for cross-model validation; if unavailable, use a fresh same-provider
@@ -153,9 +153,8 @@ stories.
    - Patterns to capture include import/export shape, file organization,
      naming, test setup, fixture style, error handling, logging, styling,
      theme usage, and framework-specific conventions.
-   - For frontend/UI work, if `DESIGN.md` exists at project root, read it
-     and include the relevant design rules. If not, read theme/config
-     files plus representative components before writing styles.
+   - For frontend/UI work, read theme/config files plus representative
+     components before writing styles.
    - If no analogous file exists, record the searches performed and
      `none found`; this is allowed, but silent skipping is not.
 
@@ -327,7 +326,7 @@ bash "$SKILL_DIR/../../scripts/story-brief.sh" <plan_file> <i>
 ```
 Agent({
   subagent_type: "general-purpose",
-  model: <tier per ../.shared/runtime-resolution.md Model tiers — the
+  model: <tier per ../shared/runtime-resolution.md Model tiers — the
          plan's **Tier:** tag is the recommendation, you hold override>,
   description: "Implement story <i>/<N>",
   prompt: <implementer-prompt.md with placeholders filled for this story>
@@ -462,7 +461,7 @@ is new but plays the same role the original implementer did. Give it:
 Agent({
   subagent_type: "general-purpose",
   model: <fixes with exact findings are mechanical — one tier down is
-         usually right; see ../.shared/runtime-resolution.md>,
+         usually right; see ../shared/runtime-resolution.md>,
   description: "Fix story <i>/<N> — round <R>",
   prompt: <fix prompt with findings + brief and report paths>
 })
@@ -629,7 +628,7 @@ story.
 
 ## Execution Handoff
 
-Output the report card (read `skills/.shared/report-card.md` for the standard format):
+Output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [Dev] Report Card

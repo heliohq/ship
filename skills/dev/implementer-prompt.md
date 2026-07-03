@@ -20,7 +20,7 @@ Two audiences use this prompt:
 ```
 Agent({
   subagent_type: "general-purpose",
-  model: <tier per ../.shared/runtime-resolution.md Model tiers — name
+  model: <tier per ../shared/runtime-resolution.md Model tiers — name
          it explicitly; an omitted model silently inherits the session's
          most expensive one>,
   description: "Implement story <i>/<N>",
@@ -90,10 +90,9 @@ Use the references to match:
 - error handling, logging, and edge-case treatment
 - styling, theme usage, and component composition for UI work
 
-For UI work, follow `DESIGN.md` when it exists. If no `DESIGN.md` exists,
-read the local theme/config files and representative components before
-writing styles. Avoid hardcoded visual values when the codebase has
-theme tokens or design primitives.
+For UI work, read the local theme/config files and representative
+components before writing styles. Avoid hardcoded visual values when
+the codebase has theme tokens or design primitives.
 
 ## Instructions
 

@@ -52,7 +52,7 @@ MATCH THE REPO'S EXISTING STYLE BEFORE INVENTING A NEW ONE.
 2. Detect      Find the existing E2E framework, or scaffold one
 3. Author      Write/extend tests that cover the change
 4. Run         Execute the suite, iterate until green or a real failure
-5. Cleanup     Kill anything you started (.shared/cleanup.md)
+5. Cleanup     Kill anything you started (shared/cleanup.md)
 6. Report      Summarize tests added, results, and any regressions
 ```
 
@@ -174,7 +174,7 @@ scratch, prefer `tests/e2e/` (readable, language-agnostic).
 Bring the app up via the shared startup reference:
 
 ```
-Read ../.shared/startup.md. Set EVIDENCE_DIR=".ship/tasks/<task_id>/e2e"
+Read ../shared/startup.md. Set EVIDENCE_DIR=".ship/tasks/<task_id>/e2e"
 before running its commands so logs and PIDs land under the e2e folder.
 Start services → run migrations → verify readiness.
 ```
@@ -201,7 +201,7 @@ Playwright/Cypress produce traces, videos, and screenshots on failure. Copy
 them into `<task_dir>/e2e/` so debuggers (human or agent) have evidence:
 
 ```bash
-# $EVIDENCE_DIR was set before entering .shared/startup.md — reuse it here
+# $EVIDENCE_DIR was set before entering shared/startup.md — reuse it here
 mkdir -p "$EVIDENCE_DIR/artifacts"
 # Framework-specific examples — adapt to whatever the runner actually produces
 [ -d playwright-report ] && cp -r playwright-report "$EVIDENCE_DIR/artifacts/" 2>/dev/null
@@ -213,7 +213,7 @@ mkdir -p "$EVIDENCE_DIR/artifacts"
 ## Phase 5: Cleanup
 
 **Mandatory — never skip, even on failure or timeout.** Follow
-`../.shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 4.
+`../shared/cleanup.md` with the same `EVIDENCE_DIR` you set in Phase 4.
 It kills tracked PIDs (graceful then forceful), stops any docker compose
 stack, and verifies ports are free. Do not inline your own cleanup logic —
 the shared contract is the single source of truth.
@@ -267,8 +267,8 @@ When invoked outside `/ship:auto` (user types `/ship:e2e` directly):
 
 ## Reference files
 
-- `../.shared/startup.md` — bring the app up (shared with /ship:qa)
-- `../.shared/cleanup.md` — mandatory cleanup contract (shared with /ship:qa)
+- `../shared/startup.md` — bring the app up (shared with /ship:qa)
+- `../shared/cleanup.md` — mandatory cleanup contract (shared with /ship:qa)
 - `references/frameworks.md` — detection checks + framework selection matrix
 - `references/scaffolding.md` — install recipes for each default framework
 - `references/authoring.md` — writing good E2E tests (selectors, data,
@@ -276,7 +276,7 @@ When invoked outside `/ship:auto` (user types `/ship:e2e` directly):
 
 ## Execution Handoff
 
-Output the report card (read `skills/.shared/report-card.md` for the standard
+Output the report card (read `skills/shared/report-card.md` for the standard
 format):
 
 ```
