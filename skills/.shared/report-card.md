@@ -56,7 +56,8 @@ them to route the pipeline:
 | E2E | Framework (pre-existing/scaffolded), Tests added, Suite pass rate, Regressions |
 | Refactor | Smells fixed, Lines before/after, Functions extracted, Dead code deleted |
 | Handoff | PR URL, Check status, Fix rounds |
-| Write Docs | Docs created, Docs updated, Index regenerated; for design docs also Trade-offs analyzed, Revisit items |
+| Arch Design | Lenses applied, Alternatives rejected, Assumptions recorded, Revisit triggers |
+| Write Docs | Docs created, Docs updated, Index regenerated |
 
 ## Status Values
 

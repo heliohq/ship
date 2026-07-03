@@ -24,7 +24,7 @@ production delivery.
 | Need | Route |
 |------|-------|
 | Understand scope, write a plan, de-risk approach | `/ship:design` |
-| Architecture/API/data-model decision, ADR, trade-off analysis | `/ship:write-docs` (architecture thinking + design doc), then `/ship:design` if implementation follows |
+| Architecture/API/data-model decision, ADR, trade-off analysis | `/ship:arch-design` (thinking) → `/ship:write-docs` (record), then `/ship:design` if implementation follows |
 | Implement a well-scoped change | `/ship:design` → `/ship:dev` |
 | Implement from an existing approved plan | `/ship:dev` |
 | Add durable browser/API/CLI coverage | `/ship:e2e` |

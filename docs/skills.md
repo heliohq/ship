@@ -12,7 +12,7 @@ predefined stage YAML.
 | Need | Route |
 |------|-------|
 | Plan or de-risk | `/ship:design` |
-| Architecture decision / ADR | `/ship:write-docs`, then `/ship:design` when needed |
+| Architecture decision / ADR | `/ship:arch-design` → `/ship:write-docs`, then `/ship:design` when needed |
 | Build a scoped change | `/ship:design` → `/ship:dev` |
 | Implement from an existing plan | `/ship:dev` |
 | Quality hardening | `/ship:e2e` → `/ship:review` → `/ship:qa` → `/ship:refactor` |
@@ -51,7 +51,8 @@ work directly from the user's current request and repository state.
 | `/ship:qa` | Exploratory verification against the running app |
 | `/ship:refactor` | Behavior-preserving cleanup after quality gates |
 | `/ship:handoff` | Commit, push, PR, CI, review feedback, merge readiness |
-| `/ship:write-docs` | Structured documentation under `docs/`, incl. architecture thinking and ADRs |
+| `/ship:arch-design` | System-design thinking: nine lenses, self-interview, red-team — hands off to write-docs |
+| `/ship:write-docs` | Structured documentation under `docs/`, incl. design docs and ADRs |
 | `/ship:visual-design` | DESIGN.md visual system for frontend consistency |
 
 ## `/ship:use-ship`
@@ -126,5 +127,6 @@ QA recheck.
 Agents discover Ship through skill metadata and explicit `/ship:*` commands.
 The startup hook only reminds agents to consult `/ship:use-ship` when Ship may
 apply; it does not inject docs, memory, or artifact content.
-Documentation and architecture thinking are handled through
-`/ship:write-docs`, and delivery/CI readiness through `/ship:handoff`.
+Architecture thinking is handled through `/ship:arch-design`,
+documentation through `/ship:write-docs`, and delivery/CI readiness
+through `/ship:handoff`.
