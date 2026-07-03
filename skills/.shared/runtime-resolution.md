@@ -53,8 +53,9 @@ silently inherits the session's model, usually the most expensive one.
 
 Peer dispatches (Codex, Claude CLI) run whatever model that provider's
 session is configured with — tier selection applies to `Agent()`
-subagents, not peers. Never select the host session's own model; the
-user owns that choice.
+subagents, not peers. And tier rules pick models for dispatches only:
+never change the host session's own model — that choice belongs to the
+user.
 
 ## Session continuation (Codex only)
 

@@ -14,7 +14,6 @@ allowed-tools:
   - Glob
   - Agent
   - AskUserQuestion
-  - TodoWrite
   - Monitor
   - TaskStop
   - mcp__codex__codex
@@ -134,31 +133,29 @@ turn bound replaces any hand-rolled cap.
 
 ## Progress Tracking
 
-Use `TodoWrite` to track your own progress through the handoff phases.
-Create todos at the start based on what the repo actually needs.
+Track your progress with the harness's task/todo list. Create the items
+at the start based on what the repo actually needs.
 Not every repo has a CHANGELOG, CI, or docs to update — only include
 items for work that will actually happen.
 
-**Principle**: one todo per phase the user would wait on. Fix rounds
+**Principle**: one item per phase the user would wait on. Fix rounds
 are dynamic — add them only when a check fails.
 
 **Example** (repo with CHANGELOG and CI):
 
 ```
-TodoWrite([
-  { content: "Pre-flight (resolve branch and scope)", status: "in_progress", activeForm: "Resolving branch and scope" },
-  { content: "Run local verification",                status: "pending",     activeForm: "Running local verification" },
-  { content: "Update CHANGELOG and docs",             status: "pending",     activeForm: "Updating CHANGELOG and docs" },
-  { content: "Push and create PR",                    status: "pending",     activeForm: "Pushing and creating PR" },
-  { content: "Wait for GitHub checks",                status: "pending",     activeForm: "Watching PR checks" }
-])
+[in_progress] Pre-flight (resolve branch and scope)
+[pending]     Run local verification
+[pending]     Update CHANGELOG and docs
+[pending]     Push and create PR
+[pending]     Wait for GitHub checks
 ```
 
 **Adaptations** (not exhaustive — use judgment):
 - No CHANGELOG.md and no doc changes needed → drop that item entirely
 - No CI workflows and no PR check contexts after PR creation → drop
   "Wait for GitHub checks"
-- Check fails → insert `"Fix round N — <failure signature>"` with `in_progress`
+- Check fails → insert `"Fix round N — <failure signature>"` as in progress
 - PR already exists (update flow) → rename "Push and create PR" to
   "Push update to existing PR"
 
@@ -451,7 +448,9 @@ In each fix round:
    esac
 
    # 2. No human approvals, change requests, comments, or review threads.
-   gh pr view "$BRANCH" --json reviews,comments --jq '
+   # gh --jq exits 0 even when the expression prints "false" — capture the
+   # boolean and test the string, or the gate can never fire.
+   NO_HUMAN_SIGNALS=$(gh pr view "$BRANCH" --json reviews,comments --jq '
      [
        .reviews[]?.author.login,
        .comments[]?.author.login
@@ -459,13 +458,14 @@ In each fix round:
      | map(select(. != "github-actions[bot]" and . != "dependabot[bot]"))
      | map(select(. != env.PR_AUTHOR and . != env.ME))
      | length == 0
-   ' || { echo "NOT_SAFE: human review/comment signal"; exit 1; }
+   ')
+   [ "$NO_HUMAN_SIGNALS" = "true" ] || { echo "NOT_SAFE: human review/comment signal"; exit 1; }
 
    # 3. No unresolved review threads from humans.
    OWNER=$(gh repo view --json owner --jq '.owner.login')
    REPO=$(gh repo view --json name --jq '.name')
    PR_NUMBER=$(gh pr view "$BRANCH" --json number --jq '.number')
-   gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='
+   NO_HUMAN_THREADS=$(gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='
    query($owner: String!, $repo: String!, $number: Int!) {
      repository(owner: $owner, name: $repo) {
        pullRequest(number: $number) {
@@ -488,7 +488,8 @@ In each fix round:
      | map(select(. != "github-actions[bot]" and . != "dependabot[bot]"))
      | map(select(. != env.PR_AUTHOR and . != env.ME))
      | length == 0
-   ' || { echo "NOT_SAFE: unresolved human review thread"; exit 1; }
+   ')
+   [ "$NO_HUMAN_THREADS" = "true" ] || { echo "NOT_SAFE: unresolved human review thread"; exit 1; }
 
    # 4. No other commit authors on this PR branch.
    git fetch origin "$BASE"
@@ -503,10 +504,11 @@ In each fix round:
    # 5. Repo appears to prefer/require linear history.
    OWNER=$(gh repo view --json owner --jq '.owner.login')
    REPO=$(gh repo view --json name --jq '.name')
-   gh api "repos/$OWNER/$REPO" --jq '
+   LINEAR_HISTORY=$(gh api "repos/$OWNER/$REPO" --jq '
      (.allow_rebase_merge == true or .allow_squash_merge == true)
      and (.allow_merge_commit == false)
-   ' || { echo "NOT_SAFE: repo does not clearly require linear history"; exit 1; }
+   ')
+   [ "$LINEAR_HISTORY" = "true" ] || { echo "NOT_SAFE: repo does not clearly require linear history"; exit 1; }
    ```
 
    Only when all gates are proven safe may the agent run:

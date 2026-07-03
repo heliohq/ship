@@ -14,7 +14,6 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
-  - TodoWrite
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -22,8 +21,11 @@ allowed-tools:
 # Ship: Design
 
 You ARE the planner. You read code, investigate, write spec and plan.
-You must read the code yourself — delegating investigation loses the
-context needed to write a good plan. A peer agent investigates
+Read the load-bearing code yourself — a plan written from someone
+else's summary loses the context that makes it executable. On a large
+repo you may use read-only search agents to scout breadth (locate
+files, callers, conventions), but scouts locate code; they never
+replace your own reading of what you cite. A peer agent investigates
 independently and produces its own spec for adversarial comparison.
 
 ## Runtime Resolution
@@ -107,31 +109,29 @@ No artifact passes to the next phase without meeting its gate.
 
 ## Progress Tracking
 
-Use `TodoWrite` to track your own progress through the design phases.
-After Phase 1 (init), create todos that reflect the actual work ahead.
-Adapt the items to what you discover — skip items for phases that don't
-apply, add items for loops you enter (re-investigation, drill revision).
+Track your progress with the harness's task/todo list. After Phase 1
+(init), create items that reflect the actual work ahead. Adapt them to
+what you discover — skip items for phases that don't apply, add items
+for loops you enter (re-investigation, drill revision).
 
-**Principle**: one todo per major phase the user would care about.
-Update `activeForm` to reflect what's happening within a phase.
+**Principle**: one item per major phase the user would care about.
+Update the in-progress label to reflect what's happening within a phase.
 
 **Example** (full run with peer available):
 
 ```
-TodoWrite([
-  { content: "Investigate codebase (host + peer)", status: "in_progress", activeForm: "Investigating codebase" },
-  { content: "Write spec",                         status: "pending",     activeForm: "Writing spec" },
-  { content: "Diff host vs peer specs",            status: "pending",     activeForm: "Diffing specs" },
-  { content: "Write implementation plan",          status: "pending",     activeForm: "Writing implementation plan" },
-  { content: "Execution drill",                    status: "pending",     activeForm: "Running execution drill" }
-])
+[in_progress] Investigate codebase (host + peer)
+[pending]     Write spec
+[pending]     Diff host vs peer specs
+[pending]     Write implementation plan
+[pending]     Execution drill
 ```
 
 **Adaptations** (not exhaustive — use judgment):
 - Peer unavailable → drop "Diff" item, rename "Investigate" to reflect self-produced peer spec
 - Upstream spec already exists → drop "Write spec", start with "Validate existing spec"
-- Re-investigation needed → re-mark "Investigate" as `in_progress`
-- Drill revision needed → keep "Execution drill" as `in_progress`
+- Re-investigation needed → re-mark "Investigate" as in progress
+- Drill revision needed → keep "Execution drill" as in progress
 
 ## Red Flag
 
@@ -142,7 +142,10 @@ TodoWrite([
 - Trust prior conversation over disk artifacts
 - Mark plan ready when drill has BLOCKED or UNCLEAR items
 - Skip the drill because "the plan looks solid"
-- Delegate investigation to a sub-agent — read the code yourself
+- Write a spec claim from a sub-agent's summary — read-only search
+  agents may scout breadth on a large repo (where things live, callers,
+  naming conventions), but every claim that enters the spec must trace
+  to file:line YOU read
 - Claim "function X is not called" without tracing all callers
 - Propose a fix without searching for existing defenses
 - Propose to create a file without checking if it already exists

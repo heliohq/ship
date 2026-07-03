@@ -18,7 +18,7 @@ cat <<'EOF'
 {
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": "<SHIP_ROUTING>\nShip is available in this repo. At the beginning of the session, consult /ship:use-ship when the user's request may need Ship process.\n- If the user names a specific /ship:* command, follow that command directly.\n- If the request is unrelated to software delivery, do not use Ship.\n- Do not start /ship:auto unless the user explicitly asks for full end-to-end delivery.\n</SHIP_ROUTING>"
+    "additionalContext": "<SHIP_ROUTING>\nShip is available in this repo. Consult /ship:use-ship when the user asks for delivery process — planning/design, implementing from a plan, code review, QA/E2E, refactor, or shipping a PR.\n- If the user names a specific /ship:* command, follow that command directly.\n- For anything else (questions, debugging, ad-hoc edits, non-delivery work), do not use Ship.\n- Do not start /ship:auto unless the user explicitly asks for full end-to-end delivery.\n</SHIP_ROUTING>"
   }
 }
 EOF

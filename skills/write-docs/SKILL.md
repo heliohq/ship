@@ -94,7 +94,10 @@ last_modified: "2026-04-13"
 After creating or updating a doc, regenerate the index:
 
 ```bash
-bash "../../scripts/generate-docs-index.sh"
+# SKILL_DIR = this skill's base directory (announced as "Base directory
+# for this skill" when the skill loaded) — your cwd is the user's repo,
+# so a bare relative path will not find the plugin's scripts.
+bash "$SKILL_DIR/../../scripts/generate-docs-index.sh"
 ```
 
 This produces `docs/DOCS_INDEX.md` — a compact table (Category, #, Status, Name, Description, Last Modified, Path) that agents can read on demand to see what docs exist without opening each one. Superseded docs are excluded from the index.

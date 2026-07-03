@@ -53,8 +53,12 @@ default you infer.**
 
 ### Testing tools
 
-`curl` is assumed. Browser and Electron testing need the `agent-browser`
-CLI — if `which agent-browser` fails, AskUserQuestion:
+`curl` is assumed. For browser testing, first check whether the harness
+already exposes native browser automation (e.g. Chrome MCP or preview
+tools in Claude Code) — if so, use that and skip the agent-browser
+check entirely. Electron testing always needs the `agent-browser` CLI
+(via CDP), and browser testing needs it only when no native tooling is
+available. If it's needed and `which agent-browser` fails, AskUserQuestion:
 
 > Browser testing requires agent-browser (https://github.com/vercel-labs/agent-browser).
 > A) Install it now (`npm install -g agent-browser`)  B) Skip browser testing this run
@@ -62,6 +66,10 @@ CLI — if `which agent-browser` fails, AskUserQuestion:
 On A, install and re-verify (continue without it if the install fails).
 On B, skip `references/browser.md` and `references/electron.md` — API and
 CLI testing still run with curl.
+
+In a dispatched or no-questions run (subagents cannot reach the user):
+don't ask — choose A automatically; if the install fails, degrade to
+curl-only checks and record the skipped browser coverage in the report.
 
 ## Phase 2: Install dependencies
 
