@@ -37,7 +37,6 @@ agent, classify the report card, and call `complete <PHASE>`.
 
 ## Standalone Skill Boundary
 
-`/ship:auto` is only for full production workflow runs. If the user asks for a
-specific phase such as design, development, E2E, review, QA, refactor, or
-handoff, invoke that standalone `/ship:*` skill directly instead of routing
-through auto.
+`/ship:auto` is only for full end-to-end runs. For a single phase (design, dev,
+E2E, review, QA, refactor, handoff), invoke that `/ship:*` skill directly
+instead of routing through auto.

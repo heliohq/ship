@@ -8,45 +8,16 @@ Two audiences use this prompt:
 
 1. **The host (you)** — read it as your own implementation checklist when
    you implement single-story waves and fix-mode dispatches directly.
-   No Agent dispatch; just follow the instructions below on the current
-   branch. Skip the report file — your TEST_CMD run in-session is the
-   test evidence, and the reviewer verifies it against the diff.
+   No Agent dispatch; skip the report file — your in-session TEST_CMD run
+   is the test evidence, and the reviewer verifies it against the diff.
 
-2. **Dispatched Agent subagents** — used ONLY for multi-story
-   parallel waves (where the host cannot fork itself) and for multi-story
-   fix rounds (where the original implementer was a sub-agent). All
-   dispatches work on the current branch — no worktrees. The wave's
-   dependency analysis guarantees the subagent's file scope does not
-   overlap other parallel subagents' scopes.
+2. **Dispatched Agent subagents** — used ONLY for multi-story parallel
+   waves and multi-story fix rounds, all on the current branch.
 
-## Dispatch (multi-story waves and their fix rounds)
-
-```
-Agent({
-  subagent_type: "general-purpose",
-  model: <tier per ../shared/runtime-resolution.md Model tiers — name
-         it explicitly; an omitted model silently inherits the session's
-         most expensive one>,
-  description: "Implement story <i>/<N>",
-  prompt: <prompt below, with all placeholders filled>
-})
-```
-
-The subagent runs in the current repo directory (whatever cwd the host
-is running in). The prompt MUST state:
-- The story brief path (`scripts/story-brief.sh` output) as the single
-  source of requirements — hand paths, not pasted story text.
-- Which files/modules the subagent is allowed to modify (from dependency
-  analysis). The subagent must not touch files outside that scope.
-- Which analogous files were read for this story and which local
-  conventions the subagent should mirror.
-- That the subagent commits its own changes using Conventional Commits.
-- The report-file path the subagent writes its full report to, and that
-  its final message is only the short status block below.
-
-For single-story waves and fix mode, the host implements directly — no
-Agent dispatch is needed. The peer reviewer validates the host's diff in
-Phase 2 Step B.
+Dispatch shape and the five-item prompt contract live in SKILL.md Step A;
+the fillable template follows. (When dispatching, name the model
+explicitly — an omitted model silently inherits the session's most
+expensive one.)
 
 ## Prompt
 
@@ -94,10 +65,6 @@ Use the references to match:
 - error handling, logging, and edge-case treatment
 - styling, theme usage, and component composition for UI work
 
-For UI work, read the local theme/config files and representative
-components before writing styles. Avoid hardcoded visual values when
-the codebase has theme tokens or design primitives.
-
 ## Instructions
 
 Follow the TDD cycle:
@@ -134,9 +101,6 @@ Before committing, check:
 - Pattern fit: structure, exports, tests, and styling match the recorded
   references, or deviations are intentional and documented?
 - Quality: names clear, simplest thing that works?
-- Discipline: ONLY what the story asks, no gold-plating?
-- Testing: tests verify actual behavior, catch real regressions?
-- Integrity: would this still work on plausible unseen inputs, not just the current fixtures?
 
 Fix issues before committing.
 

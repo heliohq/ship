@@ -10,12 +10,10 @@ and use the best option:
 | **Playwright/Puppeteer** (via Bash) | Screenshots, interaction, no video |
 | **curl only** (fallback) | Page content verification only, interactive criteria → SKIP |
 
-When your harness exposes native browser automation, use it instead of
-installing anything — it is faster and its console/network views beat
-screenshot-only evidence. The agent-browser commands below then serve
-as the checklist of *what* to capture, not the tool to use. Electron
-apps are the exception: follow `electron.md` (agent-browser via CDP)
-regardless.
+When native browser automation is present, the agent-browser commands
+below serve as the checklist of *what* to capture, not the tool to use.
+Electron apps are the exception: follow `electron.md` (agent-browser via
+CDP) regardless.
 
 ## Setup
 
@@ -199,110 +197,26 @@ Use this as a guide for what to test on each page/feature:
 
 ## Guidance
 
-- **Repro is everything.** Every issue needs proof -- but match the evidence to the issue. Interactive bugs need video and step-by-step screenshots. Static bugs (typos, placeholder text, visual glitches visible on load) only need a single annotated screenshot.
 - **Verify reproducibility before collecting evidence.** Before recording video or taking screenshots, verify the issue is reproducible with at least one retry. If it can't be reproduced consistently, it's not a valid issue.
-- **Don't record video for static issues.** A typo or clipped text doesn't benefit from a video. Save video for issues that involve user interaction, timing, or state changes.
-- **For interactive issues, screenshot each step.** Capture the before, the action, and the after -- so someone can see the full sequence.
-- **Write repro steps that map to screenshots.** Each numbered step in the report should reference its corresponding screenshot. A reader should be able to follow the steps visually without touching a browser.
 - **Use the right snapshot command.**
   - `snapshot -i` — for finding clickable/fillable elements (buttons, inputs, links)
   - `snapshot` (no flag) — for reading page content (text, headings, data lists)
 - **Be thorough but use judgment.** You are not following a test script -- you are exploring like a real user would. If something feels off, investigate.
-- **Write findings incrementally.** Append each issue to the report as you discover it. If the session is interrupted, findings are preserved. Never batch all issues for the end.
 - **Never delete output files.** Do not `rm` screenshots, videos, or the report mid-session. Do not close the session and restart. Work forward, not backward.
 - **Never read the target app's source code.** You are testing as a user, not auditing code. Do not read HTML, JS, or config files of the app under test. All findings must come from what you observe in the browser.
 - **Check the console.** Many issues are invisible in the UI but show up as JS errors or failed requests.
 - **Test like a user, not a robot.** Try common workflows end-to-end. Click things a real user would click. Enter realistic data.
 - **Type like a human.** When filling form fields during video recording, use `type` instead of `fill` -- it types character-by-character. Use `fill` only outside of video recording when speed matters.
-- **Pace repro videos for humans.** Add `sleep 1` between actions and `sleep 2` before the final result screenshot. Videos should be watchable at 1x speed -- a human reviewing the report needs to see what happened, not a blur of instant state changes.
 - **Be efficient with commands.** Batch multiple `agent-browser` commands in a single shell call when they are independent (e.g., `agent-browser ... screenshot ... && agent-browser ... console`). Use `agent-browser --session {SESSION} scroll down 300` for scrolling -- do not use `key` or `evaluate` to scroll.
-
-## Issue Severity
-
-| Severity | Definition |
-|----------|------------|
-| **critical** | Blocks a core workflow, causes data loss, or crashes the app |
-| **high** | Major feature broken or unusable, no workaround |
-| **medium** | Feature works but with noticeable problems, workaround exists |
-| **low** | Minor cosmetic or polish issue |
 
 ## Issue Categories
 
-### Visual / UI
+Set the report's **Category** field to one of: Visual/UI, Functional,
+UX, Content, Performance, Console/Errors, Accessibility.
 
-- Layout broken or misaligned elements
-- Overlapping or clipped text
-- Inconsistent spacing, padding, or margins
-- Missing or broken icons/images
-- Dark mode / light mode rendering issues
-- Responsive layout problems (viewport sizes)
-- Z-index stacking issues (elements hidden behind others)
-- Font rendering issues (wrong font, size, weight)
-- Color contrast problems
-- Animation glitches or jank
-
-### Functional
-
-- Broken links (404, wrong destination)
-- Buttons or controls that do nothing on click
-- Form validation that rejects valid input or accepts invalid input
-- Incorrect redirects
-- Features that fail silently
-- State not persisted when expected (lost on refresh, navigation)
-- Race conditions (double-submit, stale data)
-- Broken search or filtering
-- Pagination issues
-- File upload/download failures
-
-### UX
-
-- Confusing or unclear navigation
-- Missing loading indicators or feedback after actions
-- Slow or unresponsive interactions (>300ms perceived delay)
-- Unclear error messages
-- Missing confirmation for destructive actions
-- Dead ends (no way to go back or proceed)
-- Inconsistent patterns across similar features
-- Missing keyboard shortcuts or focus management
-- Unintuitive defaults
-- Missing empty states or unhelpful empty states
-
-### Content
-
-- Typos or grammatical errors
-- Outdated or incorrect text
-- Placeholder or lorem ipsum content left in
-- Truncated text without tooltip or expansion
-- Missing or wrong labels
-- Inconsistent terminology
-
-### Performance
-
-- Slow page loads (>3s)
-- Janky scrolling or animations
-- Large layout shifts (content jumping)
-- Excessive network requests (check via console/network)
-- Memory leaks (page slows over time)
-- Unoptimized images (large file sizes)
-
-### Console / Errors
-
-- JavaScript exceptions in console
-- Failed network requests (4xx, 5xx)
-- Deprecation warnings
-- CORS errors
-- Mixed content warnings
-- Unhandled promise rejections
-
-### Accessibility
-
-- Missing alt text on images
-- Unlabeled form inputs
-- Poor keyboard navigation (can't tab to elements)
-- Focus traps
-- Insufficient color contrast
-- Missing ARIA attributes on dynamic content
-- Screen reader incompatible patterns
+Non-obvious tripwires easy to miss: z-index stacking (elements hidden
+behind others), layout shift / CLS (content jumping on load),
+unhandled promise rejections, focus traps.
 
 ## Output
 

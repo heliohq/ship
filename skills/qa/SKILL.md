@@ -48,7 +48,6 @@ loaded), not your working directory._
 **Never:**
 - Read `review.md` or `plan.md` — breaks independence. (`spec.md` IS
   allowed — it defines the acceptance criteria you must verify.)
-- Fix problems instead of reporting them
 - Accept HTTP 200, "E2E suite green", or "tests passed" as proof a feature
   works for the user. Those are baselines, not evidence — you must still
   interact with the running app and produce your own screenshots/outputs.
@@ -56,9 +55,6 @@ loaded), not your working directory._
   someone thought to write. Your job is the paths they didn't.
 - Just re-run the E2E tests — they already passed. Your verdict must come
   from independent interaction.
-- Leave services or containers running after completion
-- Skip cleanup, even on failure or timeout
-- Run full test suite when the diff only touches one file
 
 ---
 

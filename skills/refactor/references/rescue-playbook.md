@@ -12,20 +12,9 @@ its blast radius. Signals outside the blast radius are deferred.
 
 Read every source file in the target directory. Launch the four parallel scan agents
 as described in SKILL.md Phase 1 (Structure, Reuse, Quality, Efficiency). For
-codebase-wide rescue, each agent covers the full directory.
-
-The structure agent looks for the primary structural signals:
-
-1. **God files** — files over ~300 lines with mixed concerns
-2. **Duplication clusters** — repeated code blocks across files
-3. **Import fan-in / fan-out** — files everything depends on, or that depend on everything
-4. **Mixed responsibilities** — one file owning unrelated reasons to change
-5. **Circular or lateral dependencies** — A imports B, B imports A
-6. **Dead code** — exports never imported, functions never called
-
-The reuse, quality, and efficiency agents scan the same files through their lenses
-(see `smell-catalog.md` for what each lens covers). Deduplicate findings after all
-four agents report back.
+codebase-wide rescue, each agent covers the full directory; the structure agent
+prioritizes cross-file structural signals (god files, duplication clusters, import
+fan-in/out, circular deps). Deduplicate findings after all four agents report back.
 
 ## Step 2: Read the top candidates
 
@@ -70,39 +59,14 @@ For each proposed module, apply the Boundary Test inline:
 
 ## Step 6: Write the execution card
 
-Use the template from `structural-card.md`, but expanded for rescue scope:
+Use the `structural-card.md` template, with these rescue-scope changes:
+
+- **Evidence**: list findings from all four lenses in their own subsections
+  (Structure, Reuse, Quality, Efficiency), ranked by leverage within each group.
+- Replace the **Eliminate** section with a **Required Structural Reductions**
+  table:
 
 ```markdown
-# Refactor: [primary contradiction in one line]
-
-## Scope
-Files in blast radius: [list all affected files]
-Test command: [command]
-
-## Evidence
-[All findings from all four lenses, grouped by lens. Ranked by leverage within each group.]
-
-### Structure
-1. [primary contradiction] — file:line — [what's wrong]
-2. [secondary signal in blast radius] — file:line
-
-### Reuse
-- [finding] — file:line
-
-### Quality
-- [finding] — file:line
-
-### Efficiency
-- [finding] — file:line
-
-## Invariants
-[Max 5 critical behaviors that must not change]
-
-## Target Structure
-| Module | Owns | Changes When |
-|--------|------|--------------|
-| ... | ... | ... |
-
 ## Required Structural Reductions
 Every signal MUST be classified:
 
@@ -115,17 +79,6 @@ Every signal MUST be classified:
 - **Out of scope**: not addressable by refactoring (e.g., algorithmic redesign).
 
 If all signals are Defer/Out of scope, reconsider whether this refactor is worth doing.
-
-## Execution Order
-1. Verify: run tests to establish baseline
-2. Structure: relocate, consolidate, simplify, clean per Target Structure — run tests after each
-3. Reuse: replace new code with existing utilities — run tests
-4. Quality: fix stringly-typed code, comments, naming, copy-paste — run tests
-5. Efficiency: fix resource-per-call, projections, batching, concurrency — run tests
-
-## Abort If
-- Tests fail twice on the same step
-- Blast radius grows beyond scope
 ```
 
 ## Step 7: Execute

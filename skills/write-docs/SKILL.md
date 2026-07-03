@@ -62,7 +62,7 @@ last_modified: "2026-04-13"
 
 ### Conditional Fields
 
-- **services**: Array of affected directories or components. Helps agents match "I'm editing X, does a doc cover this?"
+- **services**: Array of affected directories or components.
 - **superseded_by**: Required when status is `superseded`. Points to the replacement doc as `category/number`.
 - **related**: Include when related docs exist. Array of `category/number` references for navigation.
 
@@ -96,22 +96,17 @@ draft → current → partially-outdated → superseded
 
 When changing status, also update `last_modified` to today's date.
 
-## Numbering
+## Numbering & File Naming
 
 - Next available number: check `ls docs/<category>/ | sort` and pick the next zero-padded 3-digit number (e.g., `003`, `010`).
 - No duplicate numbers within a category. Each top-level doc or directory within a category gets a unique number.
 - Sub-documents inside a directory (e.g., `design/014-credentials-vault/plan-1-vault-service.md`) share the parent number.
 
-## File Naming
-
 ```
 docs/<category>/{number}-{kebab-case-topic}.md
 ```
 
-Examples:
-- `docs/design/029-prototype-v3-web-migration.md`
-- `docs/guides/003-getting-started.md`
-- `docs/troubleshooting/001-auth-failures.md`
+Example: `docs/design/029-prototype-v3-web-migration.md`
 
 ## Document Structure
 
@@ -147,8 +142,6 @@ Examples:
 
 ## Category Conventions
 
-Each category has its own natural structure. The frontmatter and status lifecycle are universal; the body structure varies by category.
-
 ### design (architectural decisions)
 - **Boundaries section required** — the core anti-drift mechanism
 - **Recommended body shape** (adapt, don't pad — a small ADR needs only
@@ -159,8 +152,6 @@ Each category has its own natural structure. The frontmatter and status lifecycl
   Revisit triggers
 - **Trade-offs section recommended** — what alternatives were considered, what was given up, and why this choice won
 - **Assumptions section recommended** — state what must be true for this design to hold (e.g., "assumes < 10k users", "assumes single-region"). When assumptions change, the doc is stale.
-- Lead with the decision, not the analysis
-- Verify claims against code before marking `current`
 
 ### guide (how-to guides)
 - Step-by-step structure with numbered steps
@@ -177,10 +168,7 @@ Each category has its own natural structure. The frontmatter and status lifecycl
 - Include examples for every parameter
 - Version-sensitive — note which versions apply
 
-### Other categories
-- Any subdirectory under `docs/` becomes a category
-- Follow the universal frontmatter and naming rules
-- Adapt the body structure to what serves the category best
+Other categories: any subdirectory under `docs/` becomes a category; adapt the body to fit, universal rules still apply.
 
 ## Cross-References
 

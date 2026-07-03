@@ -28,11 +28,9 @@ to improve. Diagnose, fix, verify. In that order.
 
 **The code's current structure vs the change patterns it actually faces.**
 
-Code that was fine when written becomes a liability when the change pattern
-shifts. Functions grow. Logic duplicates. Modules accrete unrelated concerns.
-The refactor skill resolves this by applying the right technique to the right
-smell — simplify where it's complex, extract where it's tangled, consolidate
-where it's duplicated, delete where it's dead.
+Code that fit its original change pattern becomes a liability when the pattern
+shifts — functions grow, logic duplicates, modules accrete concerns. Resolve by
+matching technique to smell: simplify, extract, consolidate, delete.
 
 ## Core Principle
 
@@ -61,14 +59,10 @@ VERIFY AFTER EVERY CHANGE.
 Read the target (file, directory, or codebase as indicated by user).
 Determine the diff or file set to review.
 
-**Small target shortcut:** If the target is a single file under ~200 lines,
-scan through all four lenses yourself in one pass instead of dispatching
-four agents. The parallel dispatch is valuable for large scopes; for a
-small file, sequential scan is faster because it avoids agent round-trip
-overhead. Use the same smell catalog — just apply all four lenses in order.
-Note: the Reuse lens still requires searching the broader codebase for
-existing utilities, even for a small target. "Small target" means scan
-inline (no agents), not limit search scope.
+**Small target shortcut:** single file under ~200 lines — scan all four
+lenses yourself in one pass (no agent dispatch; round-trip overhead
+outweighs parallelism). Same smell catalog. The Reuse lens still searches
+the broader codebase, not just the target.
 
 **Standard scan (multiple files, directories, or codebase):**
 
@@ -78,9 +72,7 @@ has full context. Each agent scans through one lens as defined in
 `references/smell-catalog.md`:
 
 ### Agent 1: Structure Review
-Scan for structural smells: Long Method, Dead Code, Duplication (3+ sites),
-Complex Conditional, God File, Circular Dependency, Feature Envy, Magic
-Numbers, etc. (Surgical + Structural sections of the smell catalog.)
+Scan the Surgical + Structural sections of the smell catalog.
 
 ### Agent 2: Reuse Review
 Search the codebase for existing utilities and helpers that could replace
@@ -88,15 +80,10 @@ newly written code. Flag any new function that duplicates existing
 functionality. Flag inline logic that could use an existing utility.
 
 ### Agent 3: Quality Review
-Review for: redundant state, copy-paste with slight variation (2 sites),
-leaky abstractions, stringly-typed code, unnecessary comments, inconsistent
-naming.
+Scan the Quality section of the smell catalog.
 
 ### Agent 4: Efficiency Review
-Review for: unnecessary work (redundant computations, repeated reads, N+1),
-missed concurrency, hot-path bloat, recurring no-op updates, unnecessary
-existence checks (TOCTOU), memory leaks, overly broad operations, expensive
-resource created per-call.
+Scan the Efficiency section of the smell catalog.
 
 ### Deduplication
 
@@ -125,22 +112,18 @@ Decide the approach based on **risk**, not file count or lens:
 - **Quality**: almost always quick — these are local, low-risk fixes
 - **Efficiency**: quick if the fix is local (add projection, hoist a resource); planned if it changes call patterns across files (batching N+1 across a call chain)
 
-A 500-line god function is **planned** even though it's one file.
-A 3-file rename of duplicated utils is **quick** even though it's cross-file.
-Classify by risk, not by file boundaries.
-
 Output: `[Refactor] Scope: <files>. Classification: <quick|planned|redirect>. Findings: <N> (structure: <n>, reuse: <n>, quality: <n>, efficiency: <n>).`
 
 ## Phase 3: Execute
 
 ### Execution order across lenses
 
-Fix in this order — each category leaves the code in a better state for the next:
+Fix in this order — each leaves the code better for the next:
 
-1. **Structure** — fix structural smells first (extract, consolidate, simplify). These change the shape of the code, so doing them first avoids rework.
-2. **Reuse** — replace with existing utilities. Now that structure is clean, it's clear what's genuinely duplicated vs what was tangled.
-3. **Quality** — fix quality smells (stringly-typed, comments, naming). Polish after structure and reuse are settled.
-4. **Efficiency** — fix efficiency smells last. Structural changes may have already eliminated some (e.g., extracting a method may naturally hoist a resource).
+1. **Structure** — changes code shape, do first to avoid rework.
+2. **Reuse** — duplication is now clear vs what was tangled.
+3. **Quality** — polish (stringly-typed, comments, naming).
+4. **Efficiency** — last; structural changes may already fix some.
 
 Within each category, order smells simplest first.
 

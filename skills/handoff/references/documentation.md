@@ -52,17 +52,18 @@ Do not resolve uncertainty by guessing in prose.
 
 ## Ownership
 
-Use the narrowest correct document.
+Use the narrowest correct document. Precedence runs top to bottom — if two
+docs conflict, trust the higher item until the lower one is fixed:
 
-1. Code, tests, config, scripts, and actual behavior are the ground truth.
-2. The agent instructions file owns repo-wide guidance, global rules, and the top-level map.
-3. The root onboarding doc owns onboarding, setup, run, test, and top-level repo structure.
-4. The deeper docs area owns durable architecture, design, decisions, integrations, runbooks, and migrations.
-5. Local subsystem docs own one subsystem, service, app, package, example, docs site, or published doc surface.
-6. Process docs own repeatable procedures such as release, refactor, migration, and documentation maintenance.
-7. Focused local docs own deep topics that are too detailed or too volatile for top-level docs.
-
-If two docs conflict, trust the higher item in this order until the lower item is fixed.
+| Rank | Owner | Owns |
+|---|---|---|
+| 1 | Code, tests, config, scripts, behavior | Ground truth |
+| 2 | Agent instructions file | Repo-wide guidance, global rules, top-level map |
+| 3 | Root onboarding doc | Onboarding, setup, run, test, top-level structure |
+| 4 | Deeper docs area | Durable architecture, design, decisions, integrations, runbooks, migrations |
+| 5 | Local subsystem docs | One subsystem, service, app, package, example, docs site, published surface |
+| 6 | Process docs | Repeatable procedures: release, refactor, migration, doc maintenance |
+| 7 | Focused local docs | Deep topics too detailed or volatile for top-level docs |
 
 ## Decision Tree
 
