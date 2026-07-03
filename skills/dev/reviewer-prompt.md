@@ -38,18 +38,6 @@ The prompt is tuned for modern literal coding agents:
   target categories are explicit.
 - **Strict output template + "no preamble" directive** — the host parses
   the verdict literally, so extra framing is harmful.
-- **Diff arrives as a package file** — a pasted diff parks permanently in
-  the host's context, and a reviewer without one rebuilds it commit by
-  commit (the biggest reviewer cost). `scripts/review-package.sh` writes
-  it once; the reviewer reads it once.
-- **Never coach the reviewer** — when filling placeholders, do not add
-  "do not flag X", "at most minor", or any pre-rating of severity. If
-  you believe a finding would be a false positive, let the reviewer
-  raise it and adjudicate it yourself in the verdict handling.
-- **No suite re-runs** — the implementer's report carries the test
-  evidence; the reviewer verifies claims against the diff. Re-running
-  the suite per review round was measured upstream as a top cost driver
-  with no quality gain.
 
 ## Prompt
 

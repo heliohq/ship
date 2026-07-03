@@ -139,25 +139,10 @@ install recipes per framework.
 Read `references/authoring.md` for patterns, selectors, data setup, and
 assertion guidelines.
 
-### What to cover
-
-1. **Every acceptance criterion from the spec** — each becomes one test (or
-   one `describe` block with a couple of cases). If QA verified it manually,
-   automate the same flow.
-2. **Regression sentinels for flows the diff clearly touched** — if the PR
-   modifies checkout, at least one checkout happy-path test must exist after
-   this phase. If the PR modifies an API endpoint, that endpoint must have
-   a test.
-3. **One negative test per new feature** — a predictable error path (bad
-   input, missing auth, etc.). Just enough to prove error handling isn't
-   silently broken.
-
-### What to NOT cover
-
-- Edge cases that belong in unit tests (algorithm branches, validation rules)
-- Styling details (unless visual regression is already set up in the repo)
-- Third-party service internals (mock or stub at the boundary)
-- Flows the diff didn't touch — you are scoping to the change
+Scope = every acceptance criterion (automate any flow QA verified manually)
++ regression sentinels for flows the diff clearly touched + one negative test
+per feature; full cover / do-NOT-cover lists and per-spec test budget in
+`references/authoring.md`.
 
 ### Where to write
 
@@ -191,13 +176,10 @@ workflow is constant:
 
 1. Run the **new/modified** tests first. Fastest feedback.
 2. If they pass, run the full E2E suite to check for regressions.
-3. If anything fails, decide: **test issue** (flaky selector, bad assumption)
-   or **real bug** (implementation is wrong).
-   - Test issue → fix the test, rerun. Up to 3 retries. If still failing
-     after 3, it's not a test issue — it's a bug.
-   - Real bug → report it as a FAIL. Do NOT weaken the test to make it
-     pass. If the pipeline is in auto mode, this triggers `e2e_fix`, which
-     routes back to /ship:dev to fix the code.
+3. If anything fails, decide **test issue vs real bug** (flake policy:
+   `references/authoring.md`). Real bug → report it as a FAIL, never weaken
+   the test to make it pass. In auto mode this triggers `e2e_fix`, which
+   routes back to /ship:dev to fix the code.
 
 ### Save artifacts
 

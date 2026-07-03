@@ -125,12 +125,9 @@ dispatch + review cycle per task for no added safety.)
 
 ## Bite-sized step granularity
 
-Each step is one action:
-- "Write the failing test" — one step
-- "Run it to make sure it fails" — one step
-- "Implement the minimal code to make it pass" — one step
-- "Run the tests" — one step
-- "Commit" — one step
+Each step is one action — keep the failing-test / verify-fail /
+implement / verify-pass / commit cycle as separate steps (see the
+template above).
 
 ## No placeholders
 
@@ -148,13 +145,6 @@ test code — the test IS the specification. Implementation steps show
 complete code for small focused changes; for larger steps, show the
 interface, signature, key logic, and file:line integration points so
 the implementer knows exactly what to build and where.
-
-## Remember
-
-- Exact file paths always
-- If a step changes code, show the code
-- Exact commands with expected output
-- DRY, YAGNI, TDD, frequent commits
 
 ## Self-review
 

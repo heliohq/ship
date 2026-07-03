@@ -22,10 +22,6 @@ allowed-tools:
 
 # Ship: Handoff
 
-Commit the related changes, push the branch, create or update the PR,
-then keep looping until GitHub checks are fully green and the PR is
-merge-ready.
-
 Do not stop when the PR is created.
 Do not stop while any GitHub check is pending.
 If any GitHub check fails, fix the problem, push again, and wait again.
@@ -35,35 +31,19 @@ the same fix loop.
 This is a goal-directed loop, not a counted one. Keep looping while each
 round makes progress toward the completion conditions; escalate on
 evidence, never on a round counter — the specific evidence classes are
-in [Loop Governance](#loop-governance).
-
-Done means every condition in [Completion](#completion) is satisfied:
-the PR exists, checks are green with no relevant pending contexts, the PR
-is merge-ready with no unresolved conflicts or required branch update, and
-no actionable review or bot feedback remains.
-
-(Full termination + escalation criteria in "Completion" at the bottom.)
+in [Loop Governance](#loop-governance). Done means every condition in
+[Completion](#completion) is satisfied.
 
 ## Process Flow
 
-Run this loop:
+Phase index — the phases below own the detail:
 
-1. Pre-flight: resolve the branch, task context, and related changes to ship.
-2. Run the relevant local verification.
-3. Update any required changelog or directly affected docs.
-4. Commit the related changes.
-5. Push the branch.
-6. Create or update the PR.
-7. Inspect `.github/workflows` and current PR checks so you know what this repo treats as CI/CD.
-8. Wait until GitHub checks finish.
-9. If any relevant check is still pending, keep waiting.
-10. If any relevant check fails, or an AI review workflow leaves actionable comments, fix the problem, verify the fix, commit, push, and wait again.
-11. If the branch must be updated from base to clear drift, conflicts, or repo policy, sync with base inside the fix loop, then verify, commit, push, and wait again.
-12. If the PR is not merge-ready, fix the cause inside the same loop.
-13. Ignore `cancelled` checks unless they block the repo's normal CI/CD path.
-14. Before each fix round, compare the new failure against the round
-    ledger (Loop Governance): progress → keep looping; the same failure
-    surviving a fix aimed at it → escalate with the evidence.
+1. Pre-flight (resolve branch, base, and scope)
+2. Verify locally
+3. Update changelog / directly affected docs
+4. Push and create/update the PR
+5. Wait for GitHub checks
+6. Fix loop — governed by the round ledger, not a counter
 
 ## Red Flag
 
@@ -140,24 +120,6 @@ items for work that will actually happen.
 
 **Principle**: one item per phase the user would wait on. Fix rounds
 are dynamic — add them only when a check fails.
-
-**Example** (repo with CHANGELOG and CI):
-
-```
-[in_progress] Pre-flight (resolve branch and scope)
-[pending]     Run local verification
-[pending]     Update CHANGELOG and docs
-[pending]     Push and create PR
-[pending]     Wait for GitHub checks
-```
-
-**Adaptations** (not exhaustive — use judgment):
-- No CHANGELOG.md and no doc changes needed → drop that item entirely
-- No CI workflows and no PR check contexts after PR creation → drop
-  "Wait for GitHub checks"
-- Check fails → insert `"Fix round N — <failure signature>"` as in progress
-- PR already exists (update flow) → rename "Push and create PR" to
-  "Push update to existing PR"
 
 ---
 
@@ -263,7 +225,8 @@ files, so never skip this phase based on `.github/workflows` alone.
 **Let the harness wait — never agent-side sleep polling.**
 `gh pr checks --watch` blocks locally and polls GitHub itself every ~10s;
 your job is to park on it with whatever waiting primitive your harness
-has, so idle waiting costs nothing:
+has, so idle waiting costs nothing. The watch command in every case
+below is `timeout 3600 gh pr checks --watch`:
 
 - **Monitor available** (Claude Code): arm one watch per wait cycle. A
   Monitor is single-use — it wakes you when output arrives and is
@@ -281,13 +244,13 @@ has, so idle waiting costs nothing:
   Before arming, check whether a Monitor for this PR is already running —
   on resume the prior watch may still be alive. If so, wait for its
   event; do not arm a duplicate.
-- **Background command support, no Monitor**: run
-  `timeout 3600 gh pr checks --watch` as a background command — the
-  completion notification wakes you with the exit code.
-- **Neither** (e.g. Codex today): run
-  `timeout 3600 gh pr checks --watch` as a plain blocking command; the
-  harness waits on the process. If the harness offers a scheduled-wakeup
-  loop instead, poll `gh pr checks` on a few-minute interval.
+- **Background command support, no Monitor**: run the watch command as a
+  background command — the completion notification wakes you with the
+  exit code.
+- **Neither** (e.g. Codex today): run the watch command as a plain
+  blocking command; the harness waits on the process. If the harness
+  offers a scheduled-wakeup loop instead, poll `gh pr checks` on a
+  few-minute interval.
 
 When the watch terminates (`TERMINAL exit=<code>` event, background
 completion, or command return), pull the authoritative state once:
@@ -370,9 +333,8 @@ the event-wait above.
 ## Phase 6: Fix Loop
 
 If CI failures, review comments, or merge conflicts exist, fix them.
-The loop is governed by progress, not a counter — see Loop Governance:
-compare each new failure against the round ledger before acting, and
-escalate the moment a failure signature survives a fix aimed at it.
+The loop is governed by progress, not a counter — see [Loop Governance](#loop-governance);
+step 0 below carries the in-loop ledger check.
 
 ### Comment Triage
 
@@ -613,17 +575,6 @@ verify/commit/push pattern after every fix round.
 [Handoff] Merge state → CLEAN
 [Handoff] DONE — PR #123 green and merge-ready
 ```
-
-Key invariants the example preserves:
-- PR creation is not the finish line — the loop continues until green.
-- Local verify runs before every push (first push AND each fix push).
-- Fix the smallest real cause from logs, not broad refactoring.
-- AI review feedback counts as "action required" — it triggers a fix round.
-- Merge readiness is a gate alongside checks; blocked/behind/conflicting
-  PRs keep looping.
-- Resolve threads / minimize obsolete bot comments only after the fix is pushed.
-- The loop is bounded by progress, not a count: each round targets a new
-  failure signature; a repeated signature escalates with the ledger.
 
 ## Completion
 

@@ -1,8 +1,7 @@
 You must use Skill('ship:e2e'). Skip preamble and auth gate.
 
 Codify the change's acceptance criteria as persistent end-to-end tests
-committed to the repo. You are the first automated verification gate —
-running before review, so a green suite means reviewers see working code.
+committed to the repo.
 
 IMPORTANT:
 - Detect the existing E2E framework first (references/frameworks.md). If
@@ -17,8 +16,7 @@ IMPORTANT:
   assertion to make it green — the downstream e2e_fix loop will route
   back to dev to fix the code.
 - Base your tests on the SPEC's acceptance criteria and the git diff —
-  these are the inputs of record. A QA report does NOT exist yet at this
-  point in the pipeline (QA runs after review, not before you).
+  the inputs of record; no QA report exists yet (QA runs later).
 - Skip the phase (SKIP verdict) only if the diff is docs-only or has no
   user-observable effect. Write a short justification to report.md.
 - Cleanup is mandatory — follow the e2e skill's shared cleanup contract

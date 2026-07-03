@@ -33,35 +33,19 @@ loaded), not your working directory._
 
 See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:dev, the **host is the primary implementer**
-and the **peer is the independent reviewer**. Prefer a non-host provider
-for cross-model validation; if unavailable, use a fresh same-provider
+and the **peer is the independent reviewer** — the reviewer MUST differ
+from whoever implemented the story. Prefer a non-host provider for
+cross-model validation; if unavailable, use a fresh same-provider
 session and record the weaker independence in the report.
 
-Two wave shapes, different dispatch patterns:
+Two wave shapes, different dispatch patterns (fix routing — **whoever
+implemented, fixes** — is specified in Step C):
 
-| Wave shape | Implementer | Reviewer | Fix-round owner |
-|---|---|---|---|
-| **Single-story** (most common) | Host (you), on current branch | Peer agent | Host — you apply fixes directly |
-| **Multi-story parallel** | Fresh Agent subagents per story, all on the current branch (dependency analysis guarantees their file scopes don't overlap — no worktrees needed) | Peer per story | Fresh Agent subagent dispatch — whoever implemented a story is who fixes it |
-| **Fix mode** (/ship:auto review_fix/qa_fix/e2e_fix dispatch) | Host — you | (next phase re-runs its own verification) | Host — you apply fixes directly |
-
-The independence contract — reviewer MUST differ from implementer —
-is strongest when it uses a different provider and a different session.
-If only same-provider dispatch is available, use a fresh session and
-make the limitation explicit.
-
-The fix-routing rule — **whoever implemented, fixes** — keeps context
-tight. The implementer knows what they built and why; asking someone
-else to fix their code loses that context.
-
-## Roles
-
-| Role | Who |
-|------|-----|
-| Orchestrator + primary implementer | **You (host agent)** — implement directly in single-story waves and fix mode |
-| Parallel implementer | **Fresh Agent subagent** — only in multi-story parallel waves, all on current branch (dependency analysis prevents file overlap) |
-| Reviewer | **Peer agent** — fresh dispatch per story |
-| Multi-story fixer | **Fresh Agent subagent** — dispatched when a sub-agent-implemented story needs a fix; "whoever implemented, fixes" |
+| Wave shape | Implementer | Reviewer |
+|---|---|---|
+| **Single-story** (most common) | Host (you), on current branch | Peer agent |
+| **Multi-story parallel** | Fresh Agent subagents per story, all on the current branch (dependency analysis guarantees their file scopes don't overlap — no worktrees needed) | Peer per story |
+| **Fix mode** (/ship:auto review_fix/qa_fix/e2e_fix dispatch) | Host — you | (next phase re-runs its own verification) |
 
 ## Quality Gates
 
@@ -117,12 +101,9 @@ stories.
 ```
 
 **Adaptations** (not exhaustive — use judgment):
-- Single-story task → one item for the story + one for regression, no wave labels
 - Fix mode (invoked with findings) → single item: `"Fix <review/QA> findings"`
 - Targeted fix within a wave → update that wave's in-progress label:
   `"Fixing Story N (round R)"`
-- All stories in one wave (no parallelism) → list stories individually
-  instead of grouping by wave
 
 ---
 
@@ -153,12 +134,9 @@ stories.
      files, not just matching snippets.
    - Record 1-3 references in `<task_dir>/dev-context.md` with:
      file path, why it is analogous, patterns to mirror, and intentional
-     deviations.
-   - Patterns to capture include import/export shape, file organization,
-     naming, test setup, fixture style, error handling, logging, styling,
-     theme usage, and framework-specific conventions.
-   - For frontend/UI work, read theme/config files plus representative
-     components before writing styles.
+     deviations. Capture the conventions listed in `implementer-prompt.md`
+     (import/export shape, file organization, naming, test setup, error
+     handling, styling/theme usage, framework-specific conventions).
    - If no analogous file exists, record the searches performed and
      `none found`; this is allowed, but silent skipping is not.
 
@@ -242,10 +220,8 @@ operate in fix mode instead of the full wave loop:
    touches a file or subsystem not covered by the recorded pattern
    references, read the nearest analogous file and append a short pattern
    note before editing.
-4. **You apply the fixes directly.** No dispatch. Fix mode exists
-   precisely because the caller has already done the analysis — your
-   job is surgical application, not re-analysis, so a dispatch
-   round-trip adds nothing.
+4. **You apply the fixes directly — no dispatch; the caller already did
+   the analysis.**
 5. Run `TEST_CMD` after fixes to verify no regressions.
 6. Commit the fixes with Conventional Commit messages.
 
@@ -281,13 +257,10 @@ specific branches.
 
 ### Why no worktrees
 
-Waves are constructed specifically because the stories in them don't
-share files (that's the whole point of dependency analysis in Phase 1).
-If two stories in a wave would touch the same file, they belong in
-different waves — that's a wave-construction error, not a merge-conflict
-to solve. Git's own commit serialization via `.git/index.lock` is
-sufficient protection against races on simultaneous commits to the same
-branch.
+Waves are built so stories in them don't share files (Phase 1 step 6) —
+two stories touching one file is a wave-construction error, not a merge
+conflict to solve. Git's `.git/index.lock` serializes concurrent commits
+to the branch.
 
 Record `WAVE_BASE_SHA` once at wave start so you can compute per-story
 file scope later:
@@ -564,68 +537,11 @@ Use `[Dev]` prefix:
                    it; the ledger recovers from `git log`.
 ```
 
-## Example Workflow
-
-Condensed. The full flow repeats implement → review → (fix) → next per
-story.
-
-```
-[Dev] Starting — 5 stories, test cmd: npm test
-[Dev] Pattern references:
-  Story 1 "User model" -> models/account.ts, tests/models/account.test.ts
-  Story 2 "Product model" -> models/catalog-item.ts
-[Dev] Dependency analysis:
-  Wave 1: [Story 1 "User model", Story 2 "Product model"] ← parallel
-  Wave 2: [Story 3 "User API", Story 4 "Product API"]     ← parallel
-  Wave 3: [Story 5 "Auth middleware"]                      ← single-story
-
-═══ Wave 1 (parallel, 2 stories, same branch) ═══════════
-
-[Dev] WAVE_BASE_SHA = abc1234. Dispatching 2 Agent subagents
-      in parallel (same cwd — dependency analysis says their files
-      don't overlap).
-      Story 1 subagent: DONE — edited models/user.ts, committed abc5
-      Story 2 subagent: DONE — edited models/product.ts, committed abc6
-[Dev] Peer reviews each story's commits — both PASS.
-
-═══ Wave 2 (parallel, 2 stories) ═══════════════════════
-
-[Dev] Subagents implement stories 3, 4 in parallel on same branch.
-      Story 3 subagent: DONE — routes/users.ts
-      Story 4 subagent: DONE — routes/products.ts
-[Dev] Peer reviewer → Story 3 FAIL: missing input validation.
-[Dev] Dispatching a fresh subagent to fix Story 3 (whoever implemented
-      it, fixes it — here that role is a new subagent with the original
-      story + the FAIL findings).
-      Fix subagent: DONE — commit abc9, TEST_CMD PASS.
-[Dev] Re-dispatch peer reviewer for Story 3 → PASS (round 2 — new
-      findings would have looped again; a repeat of the same finding
-      would have escalated).
-[Dev] Story 4 → PASS (same review batch).
-
-═══ Wave 3 (single story) ══════════════════════════════
-
-[Dev] I implement Story 5 directly. Commit, TEST_CMD → PASS.
-[Dev] Peer reviewer → PASS_WITH_CONCERNS ("jwt secret hardcoded in test
-      fixtures"). Appending to concerns.md.
-
-── Phase 3: Cross-Story Regression ──────────────────────
-
-[Dev] I run the full test suite: npm test → PASS (47 tests).
-
-[Dev] DONE_WITH_CONCERNS — 5/5 stories, 3 waves, 1 concern recorded.
-```
-
 ## Error Handling
 
 | Condition | Action |
 |-----------|--------|
-| Reviewer FAIL with new findings | Fix by whoever implemented (host or fresh sub-agent) → fresh peer re-review |
 | Same finding survives a fix aimed at it | Escalate BLOCKED with both rounds' findings — the approach is wrong |
-| Reviewer malformed output | Re-dispatch peer reviewer once with format reminder; treat second failure as FAIL |
-| Peer reviewer unavailable | Fall back to fresh Agent reviewer; note weaker independence in report |
-| Sub-agent implementer (multi-story wave) reports BLOCKED or NEEDS_CONTEXT | Escalate to caller |
-| Sub-agent implementer reports DONE_WITH_CONCERNS | Log concerns, proceed to review |
 | Sub-agent implementer crash (exit != 0) | Check HEAD + working tree; stash if dirty; retry once; then BLOCKED |
 | Agent dispatch failure | Retry once, then BLOCKED |
 | Two sub-agents in a wave touched the same file (race on commit or unexpected diff) | Wave construction error — abort wave, revisit dependency analysis, rebuild waves, retry |

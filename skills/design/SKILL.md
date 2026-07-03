@@ -37,8 +37,7 @@ loaded), not your working directory._
 
 See `../shared/runtime-resolution.md` for the host/peer concept and
 dispatch commands. In /ship:design, the peer plays two roles:
-**investigator** (Phase 2) and **drill agent** (Phase 6). Both use the
-same dispatch pattern from the shared reference.
+**investigator** (Phase 2) and **drill agent** (Phase 6).
 
 ## Scope Mode
 
@@ -300,8 +299,6 @@ and the self-review checklist.
 
 **Skip this phase when `Scope mode: refactor`.** Record in the report
 card that the drill was skipped due to refactor scope, then finish.
-Behavior-preserving plans rarely contain ambiguous steps, and the peer
-round-trip doesn't earn its cost here.
 
 For `full` scope (default), run the drill as below.
 

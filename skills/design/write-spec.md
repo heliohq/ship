@@ -5,10 +5,8 @@ in Phase 2-3 of `/ship:design`.
 
 ## Overview
 
-Write comprehensive specs assuming the next reader has zero context.
-Document what you found, what you traced, and what must be true for
-the task to be done. The spec is the contract — everything downstream
-(plan, implementation, review, QA) flows from it.
+Write the spec assuming the reader has zero context: what you found,
+what you traced, and what must be true for the task to be done.
 
 ## Investigation
 

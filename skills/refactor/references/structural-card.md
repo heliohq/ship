@@ -54,5 +54,5 @@ Test command: [command or "none — write characterization tests first"]
 2. **Invariants replace preserved behaviors.** Don't list every HTTP response shape. List the 3-5 behaviors where a silent change would be most dangerous.
 3. **Target Structure uses Changes When.** If you can't write it as one trigger, the module is too broad.
 4. **Eliminate must be actionable.** "3 copies → 1" not "reduce duplication." Name the target file.
-5. **Execution Order is always the same.** Verify → Move → Consolidate → Simplify → Clean. Don't skip steps. Don't reorder.
+5. **Execution Order is fixed** — don't skip or reorder steps.
 6. **Write to disk** if blast radius >5 files. Otherwise keep in memory.

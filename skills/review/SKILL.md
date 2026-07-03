@@ -16,9 +16,7 @@ allowed-tools:
 
 # Ship: Review
 
-You are reviewing a changeset for correctness, security, data integrity,
-and spec compliance. This file is an operating contract for an AI
-reviewer. Keep the focus on review behavior, not workflow prose.
+This file is an operating contract for an AI reviewer.
 
 ## Mission
 
@@ -150,15 +148,8 @@ Check for:
 
 ### 5. Rank findings
 
-Order findings by:
-
-1. `P1`
-2. `P2`
-3. `P3`
-
-Within a severity bucket, order by user impact.
-
-Do not use `B1`, `B2`, or any non-severity numbering scheme.
+Rank findings `P1`, then `P2`, then `P3`; within a bucket, order by user
+impact. Never use `B1`, `B2`, or any non-severity numbering scheme.
 
 ### 6. Diagnose only if it helps
 
@@ -181,14 +172,8 @@ Write to `<task_dir>/review.md`.
 `review.md` is freeform. Favor concise, actionable review notes over a
 rigid template. Findings come first. Open questions come after findings.
 
-Each finding must include:
-
-- severity: `P1`, `P2`, or `P3`
-- short title
-- `file:line`
-- trigger or concrete observation
-- impact
-- fix direction
+Each finding must include: severity (`P1`, `P2`, or `P3`), short title,
+`file:line`, trigger or concrete observation, impact, and fix direction.
 
 Example:
 

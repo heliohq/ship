@@ -27,41 +27,15 @@ agent-browser screenshot slack-desktop.png
 
 Every Electron app supports the `--remote-debugging-port` flag since it's built into Chromium.
 
-### macOS
+Same pattern per OS, one debugging port per app:
 
 ```bash
-# Slack
-open -a "Slack" --args --remote-debugging-port=9222
-
-# VS Code
-open -a "Visual Studio Code" --args --remote-debugging-port=9223
-
-# Discord
-open -a "Discord" --args --remote-debugging-port=9224
-
-# Figma
-open -a "Figma" --args --remote-debugging-port=9225
-
-# Notion
-open -a "Notion" --args --remote-debugging-port=9226
-
-# Spotify
-open -a "Spotify" --args --remote-debugging-port=9227
-```
-
-### Linux
-
-```bash
-slack --remote-debugging-port=9222
-code --remote-debugging-port=9223
-discord --remote-debugging-port=9224
-```
-
-### Windows
-
-```bash
-"C:\Users\%USERNAME%\AppData\Local\slack\slack.exe" --remote-debugging-port=9222
-"C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe" --remote-debugging-port=9223
+# macOS
+open -a "<App Name>" --args --remote-debugging-port=9222
+# Linux
+<app-binary> --remote-debugging-port=9222
+# Windows
+"C:\path\to\<App>.exe" --remote-debugging-port=9222
 ```
 
 **Important:** If the app is already running, quit it first, then relaunch with the flag. The `--remote-debugging-port` flag must be present at launch time.
@@ -78,8 +52,6 @@ agent-browser --cdp 9222 snapshot -i
 # Auto-discover a running Chromium-based app
 agent-browser --auto-connect snapshot -i
 ```
-
-After `connect`, all subsequent commands target the connected app without needing `--cdp`.
 
 ## Tab Management
 
@@ -121,64 +93,11 @@ agent-browser screenshot webview.png
 
 **Note:** Webview support works via raw CDP connection.
 
-## Common Patterns
+## Multiple Apps
 
-### Inspect and Navigate an App
-
-```bash
-open -a "Slack" --args --remote-debugging-port=9222
-sleep 3  # Wait for app to start
-agent-browser connect 9222
-agent-browser snapshot -i
-# Read the snapshot output to identify UI elements
-agent-browser click @e10  # Navigate to a section
-agent-browser snapshot -i  # Re-snapshot after navigation
-```
-
-### Take Screenshots of Desktop Apps
-
-```bash
-agent-browser connect 9222
-agent-browser screenshot app-state.png
-agent-browser screenshot --full full-app.png
-agent-browser screenshot --annotate annotated-app.png
-```
-
-### Extract Data from a Desktop App
-
-```bash
-agent-browser connect 9222
-agent-browser snapshot -i
-agent-browser get text @e5
-agent-browser snapshot --json > app-state.json
-```
-
-### Fill Forms in Desktop Apps
-
-```bash
-agent-browser connect 9222
-agent-browser snapshot -i
-agent-browser fill @e3 "search query"
-agent-browser press Enter
-agent-browser wait 1000
-agent-browser snapshot -i
-```
-
-### Run Multiple Apps Simultaneously
-
-Use named sessions to control multiple Electron apps at the same time:
-
-```bash
-# Connect to Slack
-agent-browser --session slack connect 9222
-
-# Connect to VS Code
-agent-browser --session vscode connect 9223
-
-# Interact with each independently
-agent-browser --session slack snapshot -i
-agent-browser --session vscode snapshot -i
-```
+Use named sessions to control multiple Electron apps at once:
+`--session <name> connect <port>` per app, then address each by
+`--session <name>`.
 
 ## Color Scheme
 
@@ -189,18 +108,11 @@ agent-browser connect 9222
 agent-browser --color-scheme dark snapshot -i
 ```
 
-Or set it globally:
-
-```bash
-AGENT_BROWSER_COLOR_SCHEME=dark agent-browser connect 9222
-```
-
 ## Troubleshooting
 
 ### "Connection refused" or "Cannot connect"
 
-- Make sure the app was launched with `--remote-debugging-port=NNNN`
-- If the app was already running, quit and relaunch with the flag
+- See the **Important** note above on relaunching with the flag.
 - Check that the port isn't in use by another process: `lsof -i :9222`
 
 ### App launches but connect fails
@@ -216,15 +128,3 @@ AGENT_BROWSER_COLOR_SCHEME=dark agent-browser connect 9222
 
 - Try `agent-browser keyboard type "text"` to type at the current focus without a selector
 - Some Electron apps use custom input components; use `agent-browser keyboard inserttext "text"` to bypass key events
-
-## Supported Apps
-
-Any app built on Electron works, including:
-
-- **Communication:** Slack, Discord, Microsoft Teams, Signal, Telegram Desktop
-- **Development:** VS Code, GitHub Desktop, Postman, Insomnia
-- **Design:** Figma, Notion, Obsidian
-- **Media:** Spotify, Tidal
-- **Productivity:** Todoist, Linear, 1Password
-
-If an app is built with Electron, it supports `--remote-debugging-port` and can be automated with agent-browser.
