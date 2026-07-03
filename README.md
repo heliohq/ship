@@ -69,7 +69,8 @@ Run `/ship:use-ship` when you want the agent to choose the right Ship route. Run
 | `/ship:qa` | Exploratory sweep against the running app, finds what codified tests missed |
 | `/ship:handoff` | PR creation + CI fix loop until checks green |
 | `/ship:refactor` | Four-lens scan, classify by risk, apply with verification |
-| `/ship:write-docs` | Architecture thinking (ADRs, trade-offs) + project documentation with frontmatter, lifecycle, and indexing |
+| `/ship:arch-design` | System-design thinking — nine falsifiable lenses, self-interview method, red-team pass — hands off to write-docs |
+| `/ship:write-docs` | Project documentation with frontmatter, lifecycle, and indexing, incl. design docs and ADRs |
 | `/ship:visual-design` | DESIGN.md visual system for consistent UI generation |
 
 Skills are available through the host plugin catalog and direct `/ship:*` commands. At startup, Ship injects only a tiny hint to consult `/ship:use-ship` when Ship may apply; it does not inject docs, memory, or artifact content.
