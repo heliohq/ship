@@ -45,6 +45,10 @@ ONE GOOD TEST PER ACCEPTANCE CRITERION > FIVE NOISY ONES.
 MATCH THE REPO'S EXISTING STYLE BEFORE INVENTING A NEW ONE.
 ```
 
+_Path note: `../shared/*.md` references resolve against this skill's base
+directory (announced as "Base directory for this skill" when the skill
+loaded), not your working directory._
+
 ## Flow
 
 ```
@@ -52,7 +56,7 @@ MATCH THE REPO'S EXISTING STYLE BEFORE INVENTING A NEW ONE.
 2. Detect      Find the existing E2E framework, or scaffold one
 3. Author      Write/extend tests that cover the change
 4. Run         Execute the suite, iterate until green or a real failure
-5. Cleanup     Kill anything you started (shared/cleanup.md)
+5. Cleanup     Kill anything you started (../shared/cleanup.md)
 6. Report      Summarize tests added, results, and any regressions
 ```
 
@@ -201,7 +205,7 @@ Playwright/Cypress produce traces, videos, and screenshots on failure. Copy
 them into `<task_dir>/e2e/` so debuggers (human or agent) have evidence:
 
 ```bash
-# $EVIDENCE_DIR was set before entering shared/startup.md — reuse it here
+# $EVIDENCE_DIR was set before entering ../shared/startup.md — reuse it here
 mkdir -p "$EVIDENCE_DIR/artifacts"
 # Framework-specific examples — adapt to whatever the runner actually produces
 [ -d playwright-report ] && cp -r playwright-report "$EVIDENCE_DIR/artifacts/" 2>/dev/null
@@ -276,7 +280,7 @@ When invoked outside `/ship:auto` (user types `/ship:e2e` directly):
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard
+Output the report card (read `../shared/report-card.md` for the standard
 format):
 
 ```

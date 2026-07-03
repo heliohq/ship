@@ -29,6 +29,10 @@ acceptance criteria. If E2E is green, those specific flows work.
 regressions, perf smells, odd edge cases, unexpected interactions,
 "this just feels wrong". The things tests can't see.
 
+_Path note: `../shared/*.md` references resolve against this skill's base
+directory (announced as "Base directory for this skill" when the skill
+loaded), not your working directory._
+
 ## Flow
 
 ```
@@ -193,7 +197,7 @@ When invoked with `--recheck`:
 Never stop for individual criterion failures (record and continue)
 or a single service failing to start (test what you can).
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card (read `../shared/report-card.md` for the standard format):
 
 ```
 ## [QA] Report Card

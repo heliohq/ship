@@ -227,7 +227,8 @@ path must remember the same defensive work.
 
 ## Execution Handoff
 
-Output the report card (read `skills/shared/report-card.md` for the standard format):
+Output the report card — read the format from `../shared/report-card.md`
+(resolved against this skill's base directory, not the working directory):
 
 ```
 ## [Review] Report Card

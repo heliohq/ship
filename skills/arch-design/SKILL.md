@@ -21,6 +21,10 @@ trade-offs; a new system with unknowns needs every lens. Skipping a lens
 is a judgment call you record with its reason ("no trust boundary
 crossed — internal tool, single user"), never a silent omission.
 
+_Path note: `../shared/*.md` references resolve against this skill's base
+directory (announced as "Base directory for this skill" when the skill
+loaded), not your working directory._
+
 The quality bar for every lens: statements someone could prove wrong —
 named numbers, named failure behaviors, named rejected alternatives.
 Virtue words ("scalable", "robust", "flexible") with no test attached
