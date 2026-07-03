@@ -1,11 +1,10 @@
 # Application Startup (shared)
 
-How to discover, start, and verify any application. Used by any skill that
-needs the app running before interacting with it — QA, E2E, and anything
-else that exercises the real service. Discovery-based: probe the project,
-act on what you find, assume no specific stack. You know how to start
-apps; this reference fixes the contract — where logs and PIDs go, what
-"ready" means, and what to do when startup fails.
+Discover, start, and verify any app before a skill interacts with it — QA,
+E2E, or anything exercising the real service. Probe the project and act on
+what you find; assume no specific stack. You know how to start apps — this
+reference only fixes the contract: where logs and PIDs go, what "ready"
+means, and what to do when startup fails.
 
 ## Inputs from the calling skill
 
