@@ -61,10 +61,16 @@ them to route the pipeline:
 
 ## Status Values
 
+Phases share this lifecycle vocabulary; runtime-verification phases
+(QA, E2E) also use `PASS`/`FAIL` for their verdict. Each skill's card
+declares the subset it emits.
+
 | Status | Meaning |
 |--------|---------|
 | DONE | Phase goal met, no issues |
 | DONE_WITH_CONCERNS | Goal met but residual concerns logged |
-| FINDINGS | Goal met but issues found that need fixing (review/QA) |
+| FINDINGS | Goal met but issues found that need fixing (review) |
+| PASS | Runtime verification succeeded (QA / E2E) |
+| FAIL | Runtime verification failed — issues to fix (QA / E2E) |
 | BLOCKED | Cannot proceed without external input |
 | SKIP | Phase not applicable |

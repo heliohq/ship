@@ -4,6 +4,13 @@ Used in Phase 2 of `/ship:design`. The peer agent independently
 investigates the codebase and produces its own spec. Dispatch it
 **before** the host starts investigating so both runs stay independent.
 
+> Maintenance note: the **Investigation** and **Write Spec** sections
+> inside the peer prompt below are also the host's canonical methodology
+> (`write-spec.md` points here rather than duplicating them). The peer
+> prompt must stay self-contained — it's a dispatch string the peer
+> cannot resolve file references from — so keep those steps role-neutral
+> and edit them here.
+
 ## Dispatch
 
 Resolve the peer runtime before dispatching:
