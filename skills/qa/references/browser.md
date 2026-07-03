@@ -5,9 +5,17 @@ and use the best option:
 
 | Tool | Capability |
 |------|-----------|
+| **Harness-native browser tools** (e.g. Chrome MCP, preview/inspect tools in Claude Code) | Full interaction, screenshots, console + network inspection — already connected; prefer when present |
 | **agent-browser** (CLI) | Screenshots, video recording, interaction, snapshots |
 | **Playwright/Puppeteer** (via Bash) | Screenshots, interaction, no video |
 | **curl only** (fallback) | Page content verification only, interactive criteria → SKIP |
+
+When your harness exposes native browser automation, use it instead of
+installing anything — it is faster and its console/network views beat
+screenshot-only evidence. The agent-browser commands below then serve
+as the checklist of *what* to capture, not the tool to use. Electron
+apps are the exception: follow `electron.md` (agent-browser via CDP)
+regardless.
 
 ## Setup
 

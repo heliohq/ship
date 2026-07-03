@@ -9,7 +9,6 @@ allowed-tools:
   - Bash
   - Read
   - Agent
-  - TodoWrite
 ---
 
 # Ship: Auto
@@ -18,15 +17,18 @@ Full staged workflow for explicit end-to-end production delivery.
 
 ## Execution
 
-Resolve `../../scripts/auto-orchestrate.sh` relative to this skill file, then
-run the shared stage-aware orchestrator:
+Your cwd is the user's repo, not the plugin — a bare relative path will
+not find the orchestrator. Set `SKILL_DIR` to this skill's base
+directory (announced as "Base directory for this skill" when the skill
+loaded), then run the shared stage-aware orchestrator:
 
 ```bash
-SHIP_ORCH="../../scripts/auto-orchestrate.sh"
+SKILL_DIR="<base directory from the skill invocation>"
+SHIP_ORCH="$SKILL_DIR/../../scripts/auto-orchestrate.sh"
 if [ -f .ship/ship-auto.local.md ]; then
-  "$SHIP_ORCH" resume
+  bash "$SHIP_ORCH" resume
 else
-  "$SHIP_ORCH" init '<user requirement goes here>'
+  bash "$SHIP_ORCH" init '<user requirement goes here>'
 fi
 ```
 

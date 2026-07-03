@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/phase-guardrail.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/phase-guardrail.sh\""
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/stop-gate.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-gate.sh\""
           }
         ]
       }

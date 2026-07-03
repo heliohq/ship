@@ -9,7 +9,6 @@ allowed-tools:
   - Read
   - Bash
   - Agent
-  - TodoWrite
 ---
 
 # Ship: Use Ship

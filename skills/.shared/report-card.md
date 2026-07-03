@@ -1,7 +1,17 @@
 # Report Card Format
 
-All Ship skills output a structured report card at the end of execution.
-This format is consistent across all skills so users always know where to look.
+Ship skills end with a report card. How much of it to emit depends on
+who is reading:
+
+- **Dispatched runs** (under /ship:auto or any Agent() call): output the
+  full card below, verbatim structure — the caller machine-parses the
+  `Status` field and relays the rest. This is a contract, not a style.
+- **Standalone with a human**: the reader is a person, not a parser.
+  Lead with the outcome in one or two sentences of prose, keep the
+  `Status | Summary` table, and include Metrics/Artifacts tables only
+  when the counts or paths genuinely help. Offer next steps
+  conversationally instead of the canned list — and only ones that make
+  sense for what just happened.
 
 ## Template
 
@@ -24,8 +34,8 @@ This format is consistent across all skills so users always know where to look.
 | <path> | <what it is> |
 ```
 
-Always include Next Steps — the orchestrator reads the report card the same
-way a human does. No separate auto/standalone output formats.
+In dispatched runs, always include Next Steps — the orchestrator reads
+them to route the pipeline:
 
 ```markdown
 ### Next Steps

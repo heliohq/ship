@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="$ROOT/.codex-plugin/plugin.json"
 CODEX_HOOKS="$ROOT/hooks/codex-hooks.json"
-EXPECTED_VERSION="0.3.0"
+EXPECTED_VERSION="0.3.1"
 
 PASS=0
 FAIL=0

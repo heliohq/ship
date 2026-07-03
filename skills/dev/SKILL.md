@@ -14,7 +14,6 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
-  - TodoWrite
   - mcp__codex__codex
   - mcp__codex__codex-reply
 ---
@@ -66,7 +65,7 @@ else to fix their code loses that context.
 |------|-----------|-------------|
 | Spec + plan read | Acceptance criteria extracted, TEST_CMD found | AskUserQuestion |
 | Implement → Review | Story produced at least one commit (from subagent report, or HEAD moved since WAVE_BASE_SHA for single-story waves) | BLOCKED |
-| Review → Next story | Verdict is PASS or PASS_WITH_CONCERNS | Targeted fix (max 2) |
+| Review → Next story | Verdict is PASS or PASS_WITH_CONCERNS | Targeted fix (progress-governed — see Step C) |
 | All stories → Done | Full test suite passes | Targeted fix for regression |
 
 ## Red Flag
@@ -95,35 +94,29 @@ else to fix their code loses that context.
 
 ## Progress Tracking
 
-Use `TodoWrite` to track your own progress through implementation.
-Build the todo list after Phase 1 (setup), once you know the actual
-wave/story structure. The items should reflect the real work — don't
-use a canned template.
+Track your progress with the harness's task/todo list. Build the list
+after Phase 1 (setup), once you know the actual wave/story structure.
+The items should reflect the real work — don't use a canned template.
 
-**Principle**: one todo per wave (not per story) to keep the list short.
-Use `activeForm` to show which story within a wave is active.
-Always end with a regression test item when there are multiple stories.
+**Principle**: one item per wave (not per story) to keep the list short.
+Set the item's in-progress label to show which story within a wave is
+active. Always end with a regression test item when there are multiple
+stories.
 
 **Example** (3-wave normal run):
 
 ```
-TodoWrite([
-  { content: "Wave 1: \"Add User model\", \"Add Product model\"",
-    status: "in_progress", activeForm: "Implementing Story 1" },
-  { content: "Wave 2: \"User API\", \"Product API\"",
-    status: "pending", activeForm: "Implementing Wave 2" },
-  { content: "Wave 3: \"Auth middleware\"",
-    status: "pending", activeForm: "Implementing Wave 3" },
-  { content: "Cross-story regression test",
-    status: "pending", activeForm: "Running regression test" }
-])
+[in_progress] Wave 1: "Add User model", "Add Product model"  (implementing Story 1)
+[pending]     Wave 2: "User API", "Product API"
+[pending]     Wave 3: "Auth middleware"
+[pending]     Cross-story regression test
 ```
 
 **Adaptations** (not exhaustive — use judgment):
 - Single-story task → one item for the story + one for regression, no wave labels
 - Fix mode (invoked with findings) → single item: `"Fix <review/QA> findings"`
-- Targeted fix within a wave → update that wave's `activeForm`:
-  `"Fixing Story N (round R/2)"`
+- Targeted fix within a wave → update that wave's in-progress label:
+  `"Fixing Story N (round R)"`
 - All stories in one wave (no parallelism) → list stories individually
   instead of grouping by wave
 
@@ -323,7 +316,10 @@ everything you paste into a dispatch stays resident in your context and
 is re-read on every later turn. Generate the story brief first:
 
 ```bash
-bash "../../scripts/story-brief.sh" <plan_file> <i>  # resolve relative to this skill file
+# SKILL_DIR = this skill's base directory (announced as "Base directory
+# for this skill" when the skill loaded) — your cwd is the user's repo,
+# so a bare relative path will not find the plugin's scripts.
+bash "$SKILL_DIR/../../scripts/story-brief.sh" <plan_file> <i>
 # prints the brief path; if extraction fails (exit 3), Write the
 # story text to .ship/scratch/story-<i>-brief.md yourself
 ```
@@ -373,15 +369,16 @@ single biggest reviewer cost), and the package never enters your own
 context:
 
 ```bash
+# SKILL_DIR = this skill's base directory, same as in Step A.
 # Single-story wave — range mode. STORY_BASE_SHA = HEAD recorded before
 # implementation started (WAVE_BASE_SHA in a single-story wave); never
 # HEAD~1, which drops all but the last commit of a multi-commit story.
-bash "../../scripts/review-package.sh" <STORY_BASE_SHA> HEAD
+bash "$SKILL_DIR/../../scripts/review-package.sh" <STORY_BASE_SHA> HEAD
 
 # Multi-story parallel wave — commit mode, because stories interleave
 # commits on the shared branch. Pass exactly the SHAs this story's
 # implementer reported.
-bash "../../scripts/review-package.sh" --commits <sha1,sha2,...>
+bash "$SKILL_DIR/../../scripts/review-package.sh" --commits <sha1,sha2,...>
 ```
 
 Either mode prints the package path to hand the reviewer.
@@ -406,8 +403,11 @@ the same, but still better than no review — note this in the report.
 After the reviewer returns, read the verdict:
 - **PASS** → proceed to Step D.
 - **PASS_WITH_CONCERNS** → append concerns to `concerns.md`. Proceed to Step D.
-- **FAIL** → proceed to Step C. Max 2 rounds.
-  If 2 rounds exhausted and still FAIL → escalate as BLOCKED.
+- **FAIL** → proceed to Step C. The fix loop is progress-governed, not
+  counted (same rule as /ship:handoff): a re-review that raises NEW
+  findings after a fix is progress — fix and re-review again; the SAME
+  finding surviving a fix aimed at it means the approach is wrong —
+  escalate as BLOCKED with both review rounds as evidence.
 - **No recognized verdict** → re-dispatch the reviewer once with an
   explicit format reminder. If still unparseable → treat as FAIL.
 
@@ -463,7 +463,7 @@ Agent({
   subagent_type: "general-purpose",
   model: <fixes with exact findings are mechanical — one tier down is
          usually right; see ../.shared/runtime-resolution.md>,
-  description: "Fix story <i>/<N> — round <R>/2",
+  description: "Fix story <i>/<N> — round <R>",
   prompt: <fix prompt with findings + brief and report paths>
 })
 ```
@@ -522,8 +522,9 @@ result. No dispatch — it's a shell command, not a reasoning task.
 ```
 
 If tests fail, apply targeted fixes yourself (same rules as Step C —
-surgical, don't soften assertions) and re-run. Max 2 rounds; then
-BLOCKED.
+surgical, don't soften assertions) and re-run. Progress-governed: a
+different failure after a fix is progress; the same test failing the
+same way after a fix aimed at it → BLOCKED with the failure output.
 
 ---
 
@@ -541,7 +542,7 @@ Use `[Dev]` prefix:
 [Dev] Pattern references recorded in <task_dir>/dev-context.md
 [Dev] Wave w/W (parallel|sequential): Stories [list]
 [Dev] Story i/N: "<title>" → implementing...
-[Dev] Story i/N: PASS | FAIL — <detail>. Fixing (round/2)...
+[Dev] Story i/N: PASS | FAIL — <detail>. Fixing (round R)...
 [Dev] Wave w/W complete ✓ — ledger updated
 [Dev] All N stories complete. M concerns recorded.
 ```
@@ -594,7 +595,9 @@ story.
       it, fixes it — here that role is a new subagent with the original
       story + the FAIL findings).
       Fix subagent: DONE — commit abc9, TEST_CMD PASS.
-[Dev] Re-dispatch peer reviewer for Story 3 → PASS (round 2/2).
+[Dev] Re-dispatch peer reviewer for Story 3 → PASS (round 2 — new
+      findings would have looped again; a repeat of the same finding
+      would have escalated).
 [Dev] Story 4 → PASS (same review batch).
 
 ═══ Wave 3 (single story) ══════════════════════════════
@@ -614,8 +617,8 @@ story.
 
 | Condition | Action |
 |-----------|--------|
-| Reviewer FAIL, rounds < 2 | Fix is applied by whoever implemented (host or fresh sub-agent) → fresh peer re-review |
-| Reviewer FAIL, rounds exhausted | Escalate BLOCKED with findings |
+| Reviewer FAIL with new findings | Fix by whoever implemented (host or fresh sub-agent) → fresh peer re-review |
+| Same finding survives a fix aimed at it | Escalate BLOCKED with both rounds' findings — the approach is wrong |
 | Reviewer malformed output | Re-dispatch peer reviewer once with format reminder; treat second failure as FAIL |
 | Peer reviewer unavailable | Fall back to fresh Agent reviewer; note weaker independence in report |
 | Sub-agent implementer (multi-story wave) reports BLOCKED or NEEDS_CONTEXT | Escalate to caller |

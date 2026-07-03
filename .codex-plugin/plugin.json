@@ -1,6 +1,6 @@
 {
   "name": "ship",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "An agent-routed harness for end-to-end software product development.",
   "author": {
     "name": "Helio",

@@ -90,9 +90,9 @@ fi
 if [ "$PHASE" = "qa" ]; then
   if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
     case "$FILE_PATH" in
-      *.ship/tasks/*/qa/*) ;;  # QA's own artifacts
-      *.ship/*) ;;              # other .ship metadata
-      /tmp/*) ;;                # temp files
+      *.ship/tasks/*/qa/*) ;;      # QA's own artifacts
+      *.ship/*) ;;                  # other .ship metadata
+      /tmp/*|/private/tmp/*|/var/folders/*) ;;  # temp + harness scratchpads (macOS /tmp → /private/tmp)
       *)
         block "[Ship guardrail] QA phase cannot modify source code — report findings only"
         exit 0

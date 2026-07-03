@@ -77,7 +77,7 @@ Use the smallest possible setup contract:
 
 - `spec`: caller-provided, else `<task_dir>/plan/spec.md` if it exists
 - `task_dir`: caller-provided, else `.ship/tasks/ad-hoc-review-<branch>`
-- `scope`: the active change scope = `origin/HEAD...HEAD` plus any staged or unstaged worktree changes
+- `scope`: the active change scope = `<base>...HEAD` plus any staged or unstaged worktree changes
 
 If there is no spec, do a diff-only review and say so explicitly.
 If there are no changes, write a short clean report and stop.
@@ -86,10 +86,13 @@ If there are no changes, write a short clean report and stop.
 
 ### 1. Resolve the review scope
 
-Use:
+Resolve `<base>` first — not every repo has `origin/HEAD` set:
 
 ```bash
-git diff <base>...HEAD --name-only
+BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+[ -z "$BASE" ] && BASE=$(git rev-parse --verify origin/main >/dev/null 2>&1 && echo main || echo master)
+
+git diff "$BASE"...HEAD --name-only
 git diff --cached --name-only
 git diff --name-only
 ```
