@@ -16,33 +16,106 @@ All structured docs live under `docs/`. Each subdirectory is a category (e.g., `
 ## Architecture Thinking (before a design doc)
 
 For system-design decisions — architecture, ADRs, API/data-model choices,
-service boundaries — do the thinking before the writing. Scale the depth
-to the decision: a single component with clear constraints needs
-requirements + component sketch + trade-offs; a new system with unknowns
-needs all of it, with load estimates.
+service boundaries — do the thinking before the writing. The lenses below
+apply to any system: a service, a CLI, a frontend, a data pipeline, an
+agent runtime. Scale the depth to the decision — a single component with
+clear constraints needs the frame, a contract sketch, and trade-offs; a
+new system with unknowns needs every lens. Skipping a lens is a judgment
+call you record in the doc ("no trust boundary crossed — internal tool,
+single user"), never a silent omission.
 
-1. **Requirements first** — functional capabilities, the non-functional
-   numbers that bind the design (latency, throughput, availability,
-   consistency, data volume), and real constraints (existing stack, team,
-   timeline, compliance, backward compatibility). Never jump to a
-   solution before this, and never conflate "what we want" with "what
-   exists" — state the gap.
-2. **Components and contracts** — responsibilities, data flow, key
-   interfaces, storage choices driven by access patterns. Verify
+The quality bar for every lens: statements someone could prove wrong —
+named numbers, named failure behaviors, named rejected alternatives.
+Virtue words ("scalable", "robust", "flexible") with no test attached
+are filler.
+
+**Method — walk the lenses as a self-interview.** Interview yourself
+relentlessly about every aspect of the design until no unresolved
+question remains — the lenses below are the branches of the tree. Take
+questions one at a time, in dependency order: resolve a decision before
+opening the ones that build on it (storage before schema, contract
+before internals) — an answer stacked on an unresolved dependency is a
+guess, and opening many branches at once produces shallow parallel
+guesses. For each question, state your recommended answer, then resolve
+it with the strongest means available:
+
+- **Codebase evidence** — if exploring the repo can answer it, explore;
+  most questions die here. Never ask anyone what the code already says.
+- **Arithmetic** — if a number decides it, compute the number (lens 2).
+- **Judgment** — adopt your recommended answer and record it under
+  Assumptions with what breaks if it's wrong.
+
+Do not interview the user. Questions only they could answer (product
+intent, priorities, external constraints) do not become blocking
+prompts — adopt the recommended answer, mark the assumption, and
+surface that short list when you present the doc. The Q&A itself is
+scaffolding, not deliverable: the doc records the decisions it
+produced.
+
+1. **Frame: goals, non-goals, requirements.** Functional capabilities;
+   the non-functional numbers that bind the design (latency, throughput,
+   availability, consistency, data volume); real constraints (existing
+   stack, team, timeline, compliance, backward compatibility). Write
+   explicit non-goals — a later reader must be able to tell deliberate
+   exclusion from oversight. Never conflate "what we want" with "what
+   exists": state the gap.
+2. **Do the arithmetic.** Back-of-envelope estimates for the numbers
+   that drive the shape: request rates, data growth, fan-out, budget
+   per hop. Show the math in the doc — a computed number is falsifiable;
+   "should scale fine" is not. Where a number is unknown, state the
+   assumption and what breaks if it is 10× off.
+3. **The boring option first.** Before designing anything new: does an
+   existing utility, library, managed service, or simpler shape already
+   cover this? Classify the decision — two-way door (reversible: pick
+   the simple option fast and note the revisit trigger) or one-way door
+   (hard to undo: full rigor). Most decisions are two-way doors;
+   treating them all as one-way is how designs bloat.
+4. **Components and contracts.** Responsibilities, data flow, data
+   model, storage choices driven by access patterns. Define the
+   contracts — interfaces, protocols, schemas — before the internals;
+   they are what other people and later phases build against. Verify
    assumptions against the actual codebase, not memory.
-3. **Trade-off analysis** — for each major decision: at least two
-   alternatives considered, concrete pros/cons, the deciding factor, and
-   what you're giving up. A design with no rejected alternatives hasn't
-   been designed.
-4. **What to revisit** — flag decisions that won't age well, with their
-   trigger: load-dependent ("rethink at 10k rps"), time-bound ("chose X
-   because Y isn't ready"), assumption-sensitive ("multi-region breaks
-   this"). These are honest engineering, not weaknesses.
+5. **Failure modes.** For each component and dependency: what happens
+   when it is down, slow, or returning garbage? What do concurrent
+   access, retries, and duplicate delivery do? Name the blast radius
+   and the degraded behavior a user sees ("if the queue dies, writes
+   buffer locally for 10 minutes, then reject with a clear error" —
+   never "handles failures gracefully"). Idempotency and
+   partial-failure recovery are design decisions, not implementation
+   details.
+6. **Operability and rollout.** How does the system get from the
+   current state to this design — the migration path, and whether it
+   must be zero-downtime? What is the rollback story? Which metric or
+   log line says it is working, and which signal says it is not? What
+   does it cost to run? A design you cannot observe or roll back is
+   not finished.
+7. **Security and trust boundaries.** Where does data cross a trust
+   line? AuthN/authZ at each boundary, secrets and credential handling,
+   which data is sensitive and who may see it. One sentence when
+   nothing crosses; a real section when anything does.
+8. **Trade-off analysis.** For each major decision: at least two
+   alternatives considered, concrete pros/cons, the deciding factor,
+   and what you are giving up. A design with no rejected alternatives
+   has not been designed.
+9. **Revisit triggers.** Flag decisions that will not age well, with
+   their trigger: load-dependent ("rethink at 10k rps"), time-bound
+   ("chose X because Y isn't ready"), assumption-sensitive
+   ("multi-region breaks this"). These are honest engineering, not
+   weaknesses.
+
+**Red-team before writing it up.** Re-read the design as a skeptical
+staff engineer: what is the first thing that breaks in production?
+Which number is least defensible? Which alternative was dismissed too
+fast? If an attack lands, fix the design, not the wording. For
+high-stakes or contested decisions, dispatch a fresh peer challenge
+with only the draft (see `../.shared/runtime-resolution.md`) — the same
+adversarial pattern /ship:design applies to specs.
 
 Then write it as a design doc per this standard — Boundaries required,
-Trade-offs and Assumptions recommended. If the user only wants to think
-it through (no doc yet), the analysis itself is the deliverable — offer
-the doc as the follow-up.
+Trade-offs and Assumptions recommended, body shape under Category
+Conventions below. If the user only wants to think it through (no doc
+yet), the analysis itself is the deliverable — offer the doc as the
+follow-up.
 
 ## Red Flag
 
@@ -54,6 +127,8 @@ the doc as the follow-up.
 - Create a doc without adding it to the docs index
 - Mark a doc as `current` without verifying claims against code
 - Skip the Boundaries section in design docs — it's the core anti-drift mechanism
+- Ship a design doc with zero numbers and zero rejected alternatives —
+  that's a description, not a design
 - Use a duplicate number within a category
 
 ## Frontmatter (Required)
@@ -174,6 +249,12 @@ Each category has its own natural structure. The frontmatter and status lifecycl
 
 ### design (architectural decisions)
 - **Boundaries section required** — the core anti-drift mechanism
+- **Recommended body shape** (adapt, don't pad — a small ADR needs only
+  Context, Decision, Trade-offs, Revisit triggers):
+  Context → Goals / Non-goals → Requirements & numbers → Design
+  (components, data model, contracts) → Failure modes → Rollout &
+  operations → Security → Alternatives considered → Assumptions →
+  Revisit triggers
 - **Trade-offs section recommended** — what alternatives were considered, what was given up, and why this choice won
 - **Assumptions section recommended** — state what must be true for this design to hold (e.g., "assumes < 10k users", "assumes single-region"). When assumptions change, the doc is stale.
 - Lead with the decision, not the analysis
