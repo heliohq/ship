@@ -7,7 +7,6 @@ description: >
   this", "create a guide", "write an ADR", "update the docs". For the
   system-design thinking itself (architecture, trade-offs, failure modes)
   use /ship:arch-design first — it hands back here to record the decision.
-  Not visual design (/ship:visual-design).
 ---
 
 # Documentation Standard
@@ -201,7 +200,7 @@ Update `last_modified` when you complete verification.
 
 ## Execution Handoff
 
-After writing or updating a doc, regenerate the index and output the report card (read `skills/.shared/report-card.md` for the standard format):
+After writing or updating a doc, regenerate the index and output the report card (read `skills/shared/report-card.md` for the standard format):
 
 ```
 ## [Write Docs] Report Card
