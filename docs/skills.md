@@ -29,9 +29,10 @@ YAML is never the deliverable. Agents may create lightweight YAML when it helps
 the current task, but Ship does not prescribe stage-specific YAML files.
 
 Atomic skills are standalone. `/ship:use-ship` coordinates them when the user
-wants grouped process, but `/ship:design`, `/ship:dev`, `/ship:e2e`,
-`/ship:review`, `/ship:qa`, `/ship:refactor`, and `/ship:handoff` must also
-work directly from the user's current request and repository state.
+wants grouped process, but every atomic skill — `/ship:design`, `/ship:dev`,
+`/ship:e2e`, `/ship:review`, `/ship:qa`, `/ship:refactor`, `/ship:handoff`,
+`/ship:arch-design`, and `/ship:write-docs` — must also work directly from the
+user's current request and repository state.
 
 ## Routing Skills
 
